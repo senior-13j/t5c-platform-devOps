@@ -1,6 +1,6 @@
 import Logger from "./utils/Logger";
 import { DB_MYSQL } from "./utils/database/mysql";
-import { DB_SQLLITE } from "./utils/database/sqllite";
+import type { DB_SQLLITE } from "./utils/database/sqllite";
 import { nanoid } from "nanoid";
 import { PlayerCharacter, PlayerSlots, PlayerUser } from "../shared/types";
 import { ParsedQs } from "qs";
@@ -24,9 +24,8 @@ class Database {
 
         if (this._config.database === "mysql") {
             this.querier = new DB_MYSQL();
-        } else if (this._config.database === "sqllite") {
-            this.querier = new DB_SQLLITE();
         } else {
+            const { DB_SQLLITE } = await import("./utils/database/sqllite");
             this.querier = new DB_SQLLITE();
         }
 
@@ -37,7 +36,7 @@ class Database {
 
     async create() {
         await this.querier.createDatabase();
-        Logger.info("[database] imported default mysql structure");
+        Logger.info("[database] database schema ready");
     }
 
     ///////////////////////////////////////

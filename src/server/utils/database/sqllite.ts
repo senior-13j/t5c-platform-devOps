@@ -19,6 +19,12 @@ export class DB_SQLLITE {
     }
 
     async createDatabase() {
+        const tables = await this.all("SELECT name FROM sqlite_master WHERE type='table' AND name='users';");
+        if (tables.length > 0) {
+            Logger.info("[database] sqlite schema already exists, skipping import");
+            return;
+        }
+
         let sql = fs.readFileSync("./database/sqllite.sql", { encoding: "utf8" });
         let splitCharacter = ");";
 

@@ -24,6 +24,10 @@ coverage
 
 # API keys and secrets
 .env
+docker/nginx/certs/*.crt
+docker/nginx/certs/*.key
+docker/nginx/certs/*.srl
+docker/nginx/certs/*.pem
 
 # Dependency directory
 node_modules

@@ -4,7 +4,6 @@ import express from "express";
 import cors from "cors";
 
 import { Server, matchMaker } from "@colyseus/core";
-import { monitor } from "@colyseus/monitor";
 
 import { WebSocketTransport } from "@colyseus/ws-transport";
 import { GameRoom } from "./rooms/GameRoom";
@@ -76,6 +75,8 @@ class GameServer {
 
         // start dev routes
         if (process.env.NODE_ENV !== "production") {
+            const { monitor } = await import("@colyseus/monitor");
+
             // start monitor
             app.use("/colyseus", monitor());
 

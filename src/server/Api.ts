@@ -8,13 +8,39 @@ import { generateId } from "colyseus";
 
 class Api {
     constructor(app, database: Database) {
+        app.get("/health", (req, res) => {
+            res.send({
+                status: "ok",
+                uptime: process.uptime(),
+            });
+        });
+
+        app.get("/metrics", (req, res) => {
+            res.type("text/plain").send(
+                [
+                    "# HELP t5c_server_uptime_seconds Server uptime in seconds.",
+                    "# TYPE t5c_server_uptime_seconds gauge",
+                    `t5c_server_uptime_seconds ${process.uptime()}`,
+                    "# HELP t5c_server_memory_rss_bytes Resident set size in bytes.",
+                    "# TYPE t5c_server_memory_rss_bytes gauge",
+                    `t5c_server_memory_rss_bytes ${process.memoryUsage().rss}`,
+                    "",
+                ].join("\n")
+            );
+        });
+
         // default to built client index.html
         let indexPath = "dist/client/";
         let clientFile = "index.html";
 
         // serve client
-        app.use(express.static(indexPath));
         let indexFile = path.resolve(indexPath + clientFile);
+        let docsIndexFile = path.resolve(indexPath + "docs/index.html");
+        app.get(["/docs", "/docs/"], function (req, res) {
+            res.sendFile(docsIndexFile);
+        });
+
+        app.use(express.static(indexPath));
         app.get("/", function (req, res) {
             res.sendFile(indexFile);
         });

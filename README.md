@@ -33,16 +33,17 @@ Check out my devlogs on [https://dev.to/orion3d](https://dev.to/orion3d)
 
 ## Requirements
 - Download and install [Node.js LTS](https://nodejs.org/en/download/)
+- Install Docker with Docker Compose support for the containerized local stack.
 - Clone or download this repository.
 - Run `npm install`
 
 ## Technology
 - Babylon.js 6.x.x [https://www.babylonjs.com/](https://www.babylonjs.com/)
 - Colyseus 0.15.x [https://colyseus.io/](https://colyseus.io/)
-- SQLite 3.x.x [https://www.sqlite.org/](https://www.sqlite.org/)
-  - Optionally, you can use MYSQL instead by updating the setting in src/shared/Config.ts
+- MySQL 8.x for the Docker Compose stack.
+- SQLite 3.x.x remains available for non-Docker local development.
 
-## How to run
+## How to run without Docker
 - Run `npm run server-dev` to launch the server
 - Run `npm run client-dev` to launch the client
 
@@ -50,7 +51,31 @@ Check out my devlogs on [https://dev.to/orion3d](https://dev.to/orion3d)
 
 > The server should be available locally at [http://localhost:3000](http://localhost:3000)
 
-> The Colyseus monitor should be available at [[http://localhost:3000/monitor](http://localhost:3000/monitor)
+> The Colyseus monitor should be available at [http://localhost:3000/monitor](http://localhost:3000/monitor)
 
-## Load testing
-- Run `npx tsx ./loadtest/test.ts --room game_room --numClients 1 --endpoint ws://localhost:3000`
+## Docker Compose
+- Copy `.env.example` to `.env` if you need to reset local Docker settings.
+- Run `scripts/setup-local-domain.sh` once to create local DNS entries and a trusted local TLS certificate.
+- Run `docker compose up -d --build`.
+- Open [`https://arkadii.game.local`](https://arkadii.game.local).
+
+The compose stack uses MySQL by default. Only the nginx HTTPS entrypoint is published to localhost as `127.0.0.1:${HTTPS_PORT:-443}:443`; the game server `3000`, MySQL `3306`, Prometheus `9090`, and Grafana `3001` stay inside the Docker network. Grafana and Prometheus are available through nginx at `https://grafana.arkadii.game.local` and `https://prometheus.arkadii.game.local`.
+
+Before committing infrastructure changes, run:
+
+```bash
+npm run client-build
+npm run server-build
+docker compose config
+docker compose up -d --build
+npm run smoke:ws
+```
+
+## Documentation
+- Repository documentation lives in [`docs/`](docs/README.md).
+- The running Docker stack serves the same documentation at [`https://arkadii.game.local/docs`](https://arkadii.game.local/docs).
+- Infrastructure and deployment details are in [`docs/INFRASTRUCTURE_AND_DEPLOYMENT.md`](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md).
+
+## Smoke and Load Testing
+- Run `npm run smoke:ws` to verify the local HTTPS/WSS route through `https://arkadii.game.local`.
+- Run `npm run loadtest` for an interactive Colyseus chat room load test over `wss://arkadii.game.local`.

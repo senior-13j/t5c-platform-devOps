@@ -1,13 +1,30 @@
 const isLocal = function () {
-    return window.location.host === "localhost:8080";
+    return ["localhost:8080", "127.0.0.1:8080"].includes(window.location.host);
 };
 
 const apiUrl = function (port) {
-    let url = "https://" + window.location.hostname;
-    if (isLocal()) {
-        url = "http://localhost:" + port;
+    if (process.env.CLIENT_API_URL) {
+        return process.env.CLIENT_API_URL;
     }
-    return url;
+
+    if (process.env.NODE_ENV !== "production" && isLocal()) {
+        return "http://localhost:" + port;
+    }
+
+    return window.location.origin;
 };
 
-export { isLocal, apiUrl };
+const websocketUrl = function (port) {
+    if (process.env.CLIENT_WS_URL) {
+        return process.env.CLIENT_WS_URL;
+    }
+
+    if (process.env.NODE_ENV !== "production" && isLocal()) {
+        return "ws://localhost:" + port;
+    }
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    return protocol + "//" + window.location.host;
+};
+
+export { isLocal, apiUrl, websocketUrl };
