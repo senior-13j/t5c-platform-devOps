@@ -2,6 +2,7 @@ const documents = [
     { file: "README.md", title: "Documentation Home" },
     { file: "PROJECT.md", title: "Project Overview" },
     { file: "INFRASTRUCTURE_AND_DEPLOYMENT.md", title: "Infrastructure and Deployment" },
+    { file: "PUBLIC_DEPLOYMENT.md", title: "Public Deployment" },
 ];
 
 const content = document.getElementById("content");

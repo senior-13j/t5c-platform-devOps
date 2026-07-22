@@ -15,6 +15,7 @@
         "server-start": "ts-node --transpile-only src/server/index.ts",
         "server-build": "tsc && cp -r public dist",
         "smoke:ws": "NODE_OPTIONS=--use-system-ca node scripts/smoke-websocket.js",
+        "check:public": "scripts/check-public-readiness.sh",
         "loadtest": "NODE_OPTIONS=--use-system-ca npx tsx loadtest/chat.ts --room chat_room --numClients 10 --endpoint wss://arkadii.game.local"
     },
     "author": "Orion3d",

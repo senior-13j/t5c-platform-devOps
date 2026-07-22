@@ -2,6 +2,8 @@
 
 This guide documents the containerized local infrastructure and the deployment assumptions for T5C.
 
+For public internet deployment at `https://arkadii.game`, use [Public Deployment](./PUBLIC_DEPLOYMENT.md).
+
 ## Goals
 
 The infrastructure work is built around these constraints:
@@ -232,6 +234,14 @@ The current compose stack is a local development deployment. For a shared enviro
 - publish only the reverse proxy;
 - add backups for the MySQL volume or move persistence to managed MySQL;
 - avoid publishing Prometheus and Grafana without authentication and access control.
+
+The repository also includes a dedicated public deployment profile:
+
+```bash
+docker compose --env-file .env.public -f docker-compose.public.yml up -d --build
+```
+
+That profile uses Caddy for automatic Let's Encrypt certificates, publishes `80` and `443` on `0.0.0.0`, serves the game at `https://arkadii.game`, and keeps MySQL, Prometheus, and Grafana private inside Docker.
 
 ## Troubleshooting
 

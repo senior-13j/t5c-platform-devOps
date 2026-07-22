@@ -6,6 +6,7 @@ This documentation describes the T5C project, the local containerized infrastruc
 
 - [Project Overview](./PROJECT.md)
 - [Infrastructure and Deployment](./INFRASTRUCTURE_AND_DEPLOYMENT.md)
+- [Public Deployment](./PUBLIC_DEPLOYMENT.md)
 
 ## Runtime URLs
 
@@ -17,6 +18,7 @@ The local Docker stack is designed to be used through domain names, not raw serv
 | Docs | `https://arkadii.game.local/docs` | Rendered project documentation |
 | Grafana | `https://grafana.arkadii.game.local` | Dashboards and observability UI |
 | Prometheus | `https://prometheus.arkadii.game.local` | Metrics target inspection and queries |
+| Public Game | `https://arkadii.game` | Public deployment target after DNS points to the host |
 
 The backend service ports remain internal to Docker. Only the nginx HTTPS entrypoint is published on the host.
 

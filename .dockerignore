@@ -4,6 +4,7 @@ dist
 .github
 .vscode
 .env
+.env.public
 *.db
 *.db-journal
 docker/nginx/certs

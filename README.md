@@ -61,6 +61,16 @@ Check out my devlogs on [https://dev.to/orion3d](https://dev.to/orion3d)
 
 The compose stack uses MySQL by default. Only the nginx HTTPS entrypoint is published to localhost as `127.0.0.1:${HTTPS_PORT:-443}:443`; the game server `3000`, MySQL `3306`, Prometheus `9090`, and Grafana `3001` stay inside the Docker network. Grafana and Prometheus are available through nginx at `https://grafana.arkadii.game.local` and `https://prometheus.arkadii.game.local`.
 
+## Public Deployment
+- Point DNS for `arkadii.game` to the deployment host.
+- Copy `.env.public.example` to `.env.public` and replace every `CHANGE_ME` secret.
+- Run `npm run check:public` to verify DNS readiness.
+- Stop the local compose stack and any host service already using ports `80` or `443`.
+- Run `docker compose --env-file .env.public -f docker-compose.public.yml up -d --build`.
+- Open [`https://arkadii.game`](https://arkadii.game).
+
+The public profile uses Caddy for automatic Let's Encrypt HTTPS, publishes only ports `80` and `443`, and keeps MySQL, Prometheus, and Grafana private inside Docker. The app `/metrics` endpoint remains public through the game domain.
+
 Before committing infrastructure changes, run:
 
 ```bash
@@ -75,6 +85,7 @@ npm run smoke:ws
 - Repository documentation lives in [`docs/`](docs/README.md).
 - The running Docker stack serves the same documentation at [`https://arkadii.game.local/docs`](https://arkadii.game.local/docs).
 - Infrastructure and deployment details are in [`docs/INFRASTRUCTURE_AND_DEPLOYMENT.md`](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md).
+- Public deployment details are in [`docs/PUBLIC_DEPLOYMENT.md`](docs/PUBLIC_DEPLOYMENT.md).
 
 ## Smoke and Load Testing
 - Run `npm run smoke:ws` to verify the local HTTPS/WSS route through `https://arkadii.game.local`.
