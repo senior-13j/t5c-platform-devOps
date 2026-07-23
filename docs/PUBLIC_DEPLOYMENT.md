@@ -3,22 +3,22 @@
 This guide describes how to run the game publicly at:
 
 ```text
-https://arkadii.game
+https://arkadii.world/game/
 ```
 
 The public stack is separate from the local `arkadii.game.local` stack. Local development continues to use `docker-compose.yml` with nginx and local certificates. Public deployment uses `docker-compose.public.yml` with Caddy, automatic HTTPS, and public port bindings.
 
 ## Current DNS Status
 
-At the time this deployment profile was added, `arkadii.game` did not resolve in DNS. The compose files are ready, but the public site will not work until DNS points to the deployment host.
+At the time this deployment profile was updated, `arkadii.world` is the public deployment domain. The public site will not work until DNS points to the deployment host.
 
 ## Public Architecture
 
 ```text
 Internet
   |
-  | https://arkadii.game
-  | https://www.arkadii.game -> https://arkadii.game
+  | https://arkadii.world/game/
+  | https://www.arkadii.world/game/ -> https://arkadii.world/game/
   v
 Caddy public proxy
   |
@@ -38,7 +38,7 @@ Only Caddy publishes host ports:
 0.0.0.0:443 -> caddy:443
 ```
 
-The game server port, MySQL, Prometheus, and Grafana remain private inside the Docker network. The application `/metrics` endpoint is available publicly through `https://arkadii.game/metrics`.
+The game server port, MySQL, Prometheus, and Grafana remain private inside the Docker network. The game client, API, and WebSocket endpoint are routed through `/game/`. The application `/metrics` endpoint is available publicly through `https://arkadii.world/metrics`.
 
 ## DNS Requirements
 
@@ -46,9 +46,9 @@ Create DNS records at the registrar or DNS provider:
 
 | Host | Type | Value |
 | --- | --- | --- |
-| `arkadii.game` | `A` | public IPv4 address of the deployment host |
-| `arkadii.game` | `AAAA` | public IPv6 address, only if the host has working IPv6 |
-| `www.arkadii.game` | `CNAME` | `arkadii.game` |
+| `arkadii.world` | `A` | public IPv4 address of the deployment host |
+| `arkadii.world` | `AAAA` | public IPv6 address, only if the host has working IPv6 |
+| `www.arkadii.world` | `CNAME` | `arkadii.world` |
 
 If the host is behind a home router, forward TCP ports `80` and `443` from the router to the machine running Docker.
 
@@ -79,15 +79,17 @@ Important defaults:
 
 | Variable | Public Default | Description |
 | --- | --- | --- |
-| `APP_DOMAIN` | `arkadii.game` | public game domain |
+| `APP_DOMAIN` | `arkadii.world` | public domain |
+| `APP_BASE_PATH` | `/game` | public path routed by Caddy to the game server |
 | `PUBLIC_BIND` | `0.0.0.0` | bind Caddy to all network interfaces |
 | `HTTP_PORT` | `80` | public HTTP port used for redirects and ACME challenges |
 | `HTTPS_PORT` | `443` | public HTTPS port |
+| `CLIENT_BASE_PATH` | `/game` | browser base path baked into the game bundle |
 | `DATABASE_PASSWORD` | required | MySQL application password |
 | `MYSQL_ROOT_PASSWORD` | required | MySQL root password |
 | `GRAFANA_ADMIN_PASSWORD` | required | Grafana admin password, even though Grafana is not publicly routed |
 
-Leave `CLIENT_API_URL` and `CLIENT_WS_URL` empty for public deployment. The production client will use the current origin and `wss://arkadii.game`.
+Leave `CLIENT_API_URL` and `CLIENT_WS_URL` empty for public deployment. The production client will use the current origin plus `/game` and `wss://arkadii.world/game`.
 
 ## Readiness Check
 
@@ -103,7 +105,7 @@ Or specify another environment file:
 scripts/check-public-readiness.sh .env.public
 ```
 
-The check verifies whether `arkadii.game` has DNS records and whether they match the host public IPv4 address when it can be detected.
+The check verifies whether `arkadii.world` has DNS records and whether they match the host public IPv4 address when it can be detected.
 
 ## Start the Public Stack
 
@@ -133,20 +135,20 @@ Run these checks from the deployment host:
 
 ```bash
 docker compose --env-file .env.public -f docker-compose.public.yml ps
-curl -fsS https://arkadii.game/health
-SMOKE_WS_URL=wss://arkadii.game npm run smoke:ws
+curl -fsS https://arkadii.world/health
+SMOKE_WS_URL=wss://arkadii.world/game npm run smoke:ws
 ```
 
 Run this from another network, such as a phone on mobile data:
 
 ```text
-https://arkadii.game
+https://arkadii.world/game/
 ```
 
 ## Public Runtime Notes
 
-- `https://arkadii.game` serves the game client, API, WebSocket endpoint, and `/docs`.
-- `https://www.arkadii.game` redirects to `https://arkadii.game`.
+- `https://arkadii.world/game/` serves the game client, API, WebSocket endpoint, and docs under `/game/docs/`.
+- `https://www.arkadii.world` redirects to `https://arkadii.world`.
 - `/metrics` is public through the game domain.
 - Prometheus and Grafana stay internal to Docker by default.
 - MySQL data is stored in the `t5c-platform-public_mysql_data` Docker volume.
@@ -169,7 +171,7 @@ Let's Encrypt must reach the host on port `80` or `443`.
 DNS propagation can take time. Check the authoritative DNS provider and compare:
 
 ```bash
-dig +short arkadii.game A
+dig +short arkadii.world A
 curl -fsS https://api.ipify.org
 ```
 

@@ -20,11 +20,13 @@ import "@babylonjs/core/Rendering/outlineRenderer";
 import "@babylonjs/core/Audio/audioSceneComponent";
 
 import { DracoCompression } from "@babylonjs/core/Meshes/Compression/dracoCompression";
+import { assetUrl, isLocal } from "./Utils";
+
 DracoCompression.Configuration = {
     decoder: {
-        wasmUrl: "/lib/draco_wasm_wrapper_gltf.js",
-        wasmBinaryUrl: "/lib/draco_decoder_gltf.wasm",
-        fallbackUrl: "/lib/draco_decoder_gltf.js",
+        wasmUrl: assetUrl("lib/draco_wasm_wrapper_gltf.js"),
+        wasmBinaryUrl: assetUrl("lib/draco_decoder_gltf.wasm"),
+        fallbackUrl: assetUrl("lib/draco_decoder_gltf.js"),
     },
 };
 
@@ -37,7 +39,6 @@ import { GameScene } from "./Screens/GameScene";
 import { DebugScene } from "./Screens/DebugScene";
 import { Config } from "../shared/Config";
 import { Loading } from "./Controllers/Loading";
-import { isLocal } from "./Utils";
 import { GameController } from "./Controllers/GameController";
 
 // App class is our entire game application

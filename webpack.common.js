@@ -49,6 +49,7 @@ module.exports = {
             "process.env.APP_DATABASE": JSON.stringify(process.env.APP_DATABASE || "mysql"),
             "process.env.CLIENT_API_URL": JSON.stringify(process.env.CLIENT_API_URL || ""),
             "process.env.CLIENT_WS_URL": JSON.stringify(process.env.CLIENT_WS_URL || ""),
+            "process.env.CLIENT_BASE_PATH": JSON.stringify(process.env.CLIENT_BASE_PATH || ""),
         }),
     ],
     mode: "development",

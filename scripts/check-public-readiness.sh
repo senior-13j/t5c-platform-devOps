@@ -12,13 +12,29 @@ else
     echo "No $ENV_FILE file found. Using built-in public defaults."
 fi
 
-APP_DOMAIN="${APP_DOMAIN:-arkadii.game}"
+APP_DOMAIN="${APP_DOMAIN:-arkadii.world}"
+APP_BASE_PATH="${APP_BASE_PATH:-/game}"
 PUBLIC_BIND="${PUBLIC_BIND:-0.0.0.0}"
 HTTP_PORT="${HTTP_PORT:-80}"
 HTTPS_PORT="${HTTPS_PORT:-443}"
 
+normalize_path() {
+    local value="${1:-}"
+    value="${value#/}"
+    value="${value%/}"
+    if [[ -z "$value" ]]; then
+        printf ''
+    else
+        printf '/%s' "$value"
+    fi
+}
+
+APP_BASE_PATH="$(normalize_path "$APP_BASE_PATH")"
+APP_URL="https://$APP_DOMAIN${APP_BASE_PATH}/"
+
 echo "Public deployment readiness"
 echo "Domain:       $APP_DOMAIN"
+echo "Game URL:     $APP_URL"
 echo "Bind address: $PUBLIC_BIND"
 echo "Ports:        $HTTP_PORT/tcp and $HTTPS_PORT/tcp"
 echo

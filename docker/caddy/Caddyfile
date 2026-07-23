@@ -2,7 +2,7 @@
 	admin off
 }
 
-{$APP_DOMAIN:arkadii.game} {
+{$APP_DOMAIN:arkadii.world} {
 	encode zstd gzip
 
 	header {
@@ -14,9 +14,26 @@
 		-Server
 	}
 
-	reverse_proxy server:3000
+	@gameRoot path {$APP_BASE_PATH:/game}
+	redir @gameRoot {$APP_BASE_PATH:/game}/ permanent
+
+	handle_path {$APP_BASE_PATH:/game}/* {
+		reverse_proxy server:3000
+	}
+
+	handle /health {
+		reverse_proxy server:3000
+	}
+
+	handle /metrics {
+		reverse_proxy server:3000
+	}
+
+	handle {
+		respond "T5C game is available at https://{$APP_DOMAIN:arkadii.world}{$APP_BASE_PATH:/game}/" 404
+	}
 }
 
-www.{$APP_DOMAIN:arkadii.game} {
-	redir https://{$APP_DOMAIN:arkadii.game}{uri} permanent
+www.{$APP_DOMAIN:arkadii.world} {
+	redir https://{$APP_DOMAIN:arkadii.world}{uri} permanent
 }

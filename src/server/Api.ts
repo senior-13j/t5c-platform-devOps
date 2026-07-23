@@ -36,7 +36,10 @@ class Api {
         // serve client
         let indexFile = path.resolve(indexPath + clientFile);
         let docsIndexFile = path.resolve(indexPath + "docs/index.html");
-        app.get(["/docs", "/docs/"], function (req, res) {
+        app.get("/docs", function (req, res) {
+            res.redirect(301, "docs/");
+        });
+        app.get("/docs/", function (req, res) {
             res.sendFile(docsIndexFile);
         });
 

@@ -24,8 +24,8 @@ https://arkadii.game.local
 
 The client uses same-origin URLs in production:
 
-- HTTP API calls use `window.location.origin`;
-- Colyseus WebSocket connections use `wss://` with the current host;
+- HTTP API calls use `window.location.origin` plus the configured `CLIENT_BASE_PATH`;
+- Colyseus WebSocket connections use `wss://` with the current host plus the configured `CLIENT_BASE_PATH`;
 - optional `CLIENT_API_URL` and `CLIENT_WS_URL` build-time variables can override those URLs.
 
 This keeps the browser-facing surface stable behind nginx and avoids exposing the Node server port directly.

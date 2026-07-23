@@ -170,7 +170,7 @@ async function loadDocument(file) {
     });
 
     try {
-        const response = await fetch(`/docs/content/${selected.file}`, { cache: "no-cache" });
+        const response = await fetch(`./content/${selected.file}`, { cache: "no-cache" });
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }

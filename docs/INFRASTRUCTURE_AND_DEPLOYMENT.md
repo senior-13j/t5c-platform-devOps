@@ -2,7 +2,7 @@
 
 This guide documents the containerized local infrastructure and the deployment assumptions for T5C.
 
-For public internet deployment at `https://arkadii.game`, use [Public Deployment](./PUBLIC_DEPLOYMENT.md).
+For public internet deployment at `https://arkadii.world/game/`, use [Public Deployment](./PUBLIC_DEPLOYMENT.md).
 
 ## Goals
 
@@ -103,8 +103,9 @@ Certificate and key files are intentionally ignored by git.
 | `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana admin password |
 | `CLIENT_API_URL` | empty | optional client API override baked into the bundle |
 | `CLIENT_WS_URL` | empty | optional client WebSocket override baked into the bundle |
+| `CLIENT_BASE_PATH` | empty | optional client base path baked into the bundle |
 
-When `CLIENT_API_URL` and `CLIENT_WS_URL` are empty, the production client uses the current HTTPS origin and `wss://` host.
+When `CLIENT_API_URL` and `CLIENT_WS_URL` are empty, the production client uses the current HTTPS origin and `wss://` host, plus `CLIENT_BASE_PATH` when one is configured.
 
 ## Build and Run
 
@@ -241,7 +242,7 @@ The repository also includes a dedicated public deployment profile:
 docker compose --env-file .env.public -f docker-compose.public.yml up -d --build
 ```
 
-That profile uses Caddy for automatic Let's Encrypt certificates, publishes `80` and `443` on `0.0.0.0`, serves the game at `https://arkadii.game`, and keeps MySQL, Prometheus, and Grafana private inside Docker.
+That profile uses Caddy for automatic Let's Encrypt certificates, publishes `80` and `443` on `0.0.0.0`, serves the game at `https://arkadii.world/game/`, and keeps MySQL, Prometheus, and Grafana private inside Docker.
 
 ## Troubleshooting
 
