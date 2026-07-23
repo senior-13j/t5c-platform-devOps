@@ -1,0 +1,14 @@
+node_modules
+dist
+.git
+.github
+.vscode
+.env
+.env.public
+*.db
+*.db-journal
+docker/nginx/certs
+logs
+tmp
+coverage
+construction

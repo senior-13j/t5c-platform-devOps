@@ -6,7 +6,8 @@ module.exports = merge(common, {
     mode: "development",
     devtool: "inline-source-map",
     devServer: {
-        host: "localhost",
+        host: "0.0.0.0",
+        allowedHosts: "all",
         static: {
             directory: path.join(__dirname, "public"),
         },

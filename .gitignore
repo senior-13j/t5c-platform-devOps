@@ -24,6 +24,7 @@ coverage
 
 # API keys and secrets
 .env
+.env.public
 docker/nginx/certs/
 
 # Dependency directory

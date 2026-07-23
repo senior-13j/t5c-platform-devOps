@@ -14,7 +14,9 @@
         "server-dev": "ts-node-dev --respawn --inspect --transpile-only src/server/index.ts",
         "server-start": "ts-node --transpile-only src/server/index.ts",
         "server-build": "tsc && cp -r public dist",
-        "loadtest": "npx tsx loadtest/test.ts --room game_room --numClients 10 --endpoint ws://localhost:3000"
+        "smoke:ws": "NODE_OPTIONS=--use-system-ca node scripts/smoke-websocket.js",
+        "check:public": "scripts/check-public-readiness.sh",
+        "loadtest": "NODE_OPTIONS=--use-system-ca npx tsx loadtest/chat.ts --room chat_room --numClients 10 --endpoint wss://arkadii.game.local"
     },
     "author": "Orion3d",
     "license": "MIT",
@@ -30,11 +32,12 @@
         "@types/node": "^20.12.12",
         "@types/react": "^18.3.2",
         "@types/react-dom": "^18.3.0",
-        "axios": "^1.12.2",
         "copy-webpack-plugin": "^12.0.2",
+        "sqlite3": "^5.1.7",
         "ts-loader": "^9.5.1",
         "ts-node": "^10.9.2",
         "ts-node-dev": "^2.0.0",
+        "tsx": "^4.23.1",
         "typescript": "^5.4.5",
         "webpack": "^5.92.0",
         "webpack-bundle-analyzer": "^4.10.2",
@@ -48,6 +51,7 @@
         "@babylonjs/loaders": "8.28.3",
         "@babylonjs/serializers": "8.28.3",
         "babylonjs-gltf2interface": "8.28.3",
+        "axios": "^1.12.2",
         "colyseus": "^0.15.57",
         "colyseus.js": "^0.15.28",
         "cors": "^2.8.5",
@@ -57,7 +61,6 @@
         "fs-extra": "^11.2.0",
         "mysql2": "^3.10.2",
         "nanoid": "^3.0.0",
-        "sqlite3": "^5.1.7",
         "winston": "^3.13.0"
     },
     "browserslist": {

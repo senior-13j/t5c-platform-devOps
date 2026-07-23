@@ -21,6 +21,12 @@ export class DB_MYSQL {
 
     // create tables in database
     async createDatabase() {
+        const tables = await this.all("SHOW TABLES LIKE 'users';");
+        if (tables.length > 0) {
+            Logger.info("[database] mysql schema already exists, skipping import");
+            return;
+        }
+
         let sql = fs.readFileSync("./database/mysql.sql", { encoding: "utf8" });
         let splitCharacter = ";";
         const dataArr = sql.toString().split(splitCharacter);

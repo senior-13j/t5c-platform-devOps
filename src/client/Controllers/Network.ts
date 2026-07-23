@@ -1,6 +1,6 @@
 // colyseus
 import { Client, Room } from "colyseus.js";
-import { isLocal } from "../Utils";
+import { websocketUrl } from "../Utils";
 import { ServerMsg } from "../../shared/types";
 
 export class Network {
@@ -8,11 +8,7 @@ export class Network {
 
     constructor(port) {
         // create colyseus client
-        let url = "wss://" + window.location.hostname;
-        if (isLocal()) {
-            url = "ws://localhost:" + port;
-        }
-        this._client = new Client(url);
+        this._client = new Client(websocketUrl(port));
     }
 
     public async joinRoom(roomId, token, character_id): Promise<any> {

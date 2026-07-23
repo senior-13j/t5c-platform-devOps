@@ -1,18 +1,30 @@
-import State from "../client/Screens/Screens";
+const Env = {
+    APP_PORT: process.env.APP_PORT,
+    APP_DATABASE: process.env.APP_DATABASE,
+};
 
 class Config {
+    private envString(key: keyof typeof Env, fallback: string): string {
+        return Env[key] || fallback;
+    }
+
+    private envNumber(key: keyof typeof Env, fallback: number): number {
+        const value = Number(Env[key]);
+        return Number.isFinite(value) ? value : fallback;
+    }
+
     // general settings
     title = "T5C";
     version = "Version 0.5.0";
     lang = "en";
 
     // server settings
-    port = 3000;
+    port = this.envNumber("APP_PORT", 3000);
     maxClients = 20; // set maximum clients per room
     updateRate = 100; // Set frequency the patched state should be sent to all clients, in milliseconds
     databaseUpdateRate = 10000; // the frequency at which server save data to the database, in milliseconds
     logLevel = "info";
-    database = "sqllite"; // "mysql" or "sqllite"
+    database = this.envString("APP_DATABASE", "mysql"); // "mysql" or "sqllite"
 
     // game settings
     PLAYER_NAMEPLATE_TIMEOUT = 15000; // 15 seconds

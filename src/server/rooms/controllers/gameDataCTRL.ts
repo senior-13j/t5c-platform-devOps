@@ -10,13 +10,14 @@ export class gameDataCTRL {
         races: [],
         quests: [],
     };
+    private port = Number(process.env.APP_PORT) || 3000;
 
     constructor() {}
 
     async initialize() {
         const options = {
             method: "GET",
-            url: "http://localhost:3000/load_game_data",
+            url: `http://127.0.0.1:${this.port}/load_game_data`,
             params: { category: "all", count: "2" },
             headers: {
                 "X-RapidAPI-Key": "your-rapid-key",

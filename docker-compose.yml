@@ -1,0 +1,126 @@
+services:
+  web:
+    image: nginx:1.27-alpine
+    depends_on:
+      server:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
+      grafana:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${HTTPS_PORT:-443}:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-arkadii.game.local}
+      GRAFANA_DOMAIN: ${GRAFANA_DOMAIN:-grafana.arkadii.game.local}
+      PROMETHEUS_DOMAIN: ${PROMETHEUS_DOMAIN:-prometheus.arkadii.game.local}
+    volumes:
+      - ./docker/nginx/t5c.conf:/etc/nginx/templates/default.conf.template:ro
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
+    networks:
+      - t5c_internal
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      args:
+        APP_PORT: ${APP_PORT:-3000}
+        APP_DATABASE: mysql
+        CLIENT_API_URL: ${CLIENT_API_URL:-}
+        CLIENT_WS_URL: ${CLIENT_WS_URL:-}
+    environment:
+      NODE_ENV: production
+      APP_PORT: ${APP_PORT:-3000}
+      APP_DATABASE: mysql
+      DATABASE_HOST: mysql
+      DATABASE_DB: ${DATABASE_DB:-t5c}
+      DATABASE_USER: ${DATABASE_USER:-t5c}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-t5c_password}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    expose:
+      - "${APP_PORT:-3000}"
+    networks:
+      - t5c_internal
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + (process.env.APP_PORT || 3000) + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${DATABASE_DB:-t5c}
+      MYSQL_USER: ${DATABASE_USER:-t5c}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:-t5c_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-t5c_root_password}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    expose:
+      - "3306"
+    networks:
+      - t5c_internal
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.13.1
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.external-url=https://${PROMETHEUS_DOMAIN:-prometheus.arkadii.game.local}
+    depends_on:
+      server:
+        condition: service_healthy
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    expose:
+      - "9090"
+    networks:
+      - t5c_internal
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:13.0.2
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SERVER_HTTP_PORT: 3001
+      GF_SERVER_DOMAIN: ${GRAFANA_DOMAIN:-grafana.arkadii.game.local}
+      GF_SERVER_ROOT_URL: https://${GRAFANA_DOMAIN:-grafana.arkadii.game.local}
+      GF_ANALYTICS_CHECK_FOR_UPDATES: false
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: false
+      GF_PLUGINS_PREINSTALL_DISABLED: true
+      GF_PLUGINS_PREINSTALL_AUTO_UPDATE: false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    expose:
+      - "3001"
+    networks:
+      - t5c_internal
+    restart: unless-stopped
+
+networks:
+  t5c_internal:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  prometheus_data:
+  grafana_data:
