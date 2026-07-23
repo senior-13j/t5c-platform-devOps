@@ -113,11 +113,9 @@ export class ChatBox {
         chatScrollViewer.addControl(chatStackPanel);
         this._chatUI = chatStackPanel;
 
-        // focus chat
-        chatInput.focus();
-
         // intial refresh chatbox
         this._refreshChatBox();
+        this.resize();
     }
 
     _createEvents() {
@@ -249,5 +247,16 @@ export class ChatBox {
             roomTxt.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             headlineRect.addControl(roomTxt);
         });
+    }
+
+    public resize() {
+        const compact = window.innerWidth < 700;
+        this.chatPanel.width = compact ? Math.min(240, window.innerWidth - 24) + "px" : "350px";
+        this.chatPanel.height = compact ? "128px" : "200px";
+        this.chatPanel.left = compact ? "8px" : "15px";
+        this.chatPanel.top = compact ? "-82px" : window.innerWidth < 1100 ? "-115px" : "-30px";
+        this._chatUIScroll.height = compact ? "96px" : "168px";
+        this._chatInput.width = compact ? 0.7 : 0.8;
+        this._chatButton.width = compact ? 0.3 : 0.2;
     }
 }

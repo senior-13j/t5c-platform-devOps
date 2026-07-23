@@ -110,6 +110,25 @@ Important local defaults:
 When `CLIENT_API_URL` and `CLIENT_WS_URL` are empty, the production client uses
 the current HTTPS origin and `wss://` host.
 
+## Host Development with SQLite
+
+The container profile uses MySQL, but a host-only development server can use the
+SQLite fallback. Start the server and Webpack client in separate terminals:
+
+```bash
+APP_DATABASE=sqllite npm run server-dev
+```
+
+```bash
+npm run client-dev
+```
+
+The spelling `sqllite` matches the existing runtime configuration. The server
+uses `./database.db`; this file is local runtime state and must not be committed.
+The dev client at `http://localhost:8080` enters the game scene directly, while
+the built client served at `http://localhost:3000` uses the production login
+flow.
+
 ## Local DNS and TLS
 
 Run this once per machine:
@@ -162,6 +181,21 @@ Validate the Compose file before starting containers:
 docker compose config
 ```
 
+Validate source, browser discovery files, and both production builds:
+
+```bash
+npm run check:web-quality
+npx tsc --noEmit
+npm run client-build
+npm run server-build
+npm audit --omit=dev
+```
+
+`client-build` currently emits size warnings for the 2.7 MiB entrypoint and
+large world/VAT/audio assets. Those warnings are tracked performance debt, not a
+failed build. The production audit should report no high or critical findings;
+remaining moderate/low advisories are documented in the quality audit.
+
 After the stack is running, check service state and browser-facing health:
 
 ```bash
@@ -187,6 +221,28 @@ Expected local result:
 
 ```text
 127.0.0.1:443
+```
+
+## HTTP Delivery
+
+The Node.js server applies compression and static cache headers even without a
+reverse proxy. nginx or Caddy remains responsible for TLS and public security
+headers.
+
+| Resource Type | Cache Behavior |
+| --- | --- |
+| `index.html`, `robots.txt`, `sitemap.xml`, `manifest.webmanifest` | `no-cache` so metadata can be revalidated |
+| JavaScript, CSS, models, textures, audio, docs content | One hour plus one-day `stale-while-revalidate` |
+| API responses | No static cache policy |
+
+Express disables `X-Powered-By`, limits JSON bodies to 32 KiB, and compresses
+eligible responses. Verify delivery locally:
+
+```bash
+curl -sS -D - -o /dev/null \
+  -H 'Accept-Encoding: gzip' \
+  http://127.0.0.1:3000/js/bundle.js
+curl -I http://127.0.0.1:3000/robots.txt
 ```
 
 ## WebSocket Smoke Test
@@ -261,6 +317,14 @@ docker compose up -d --build
 
 Only use `down -v` when you intentionally want to remove local MySQL data.
 
+### Credential Migration
+
+New account passwords are stored with salted `scrypt`. A successful login with
+an older plaintext row upgrades that row automatically. Back up MySQL before
+deploying the new server over an existing user database, and define a password
+reset plan for dormant accounts that cannot self-migrate. Authentication
+responses no longer include the password column.
+
 ## Operations
 
 | Task | Command |
@@ -272,6 +336,8 @@ Only use `down -v` when you intentionally want to remove local MySQL data.
 | Show server logs | `docker compose logs --tail=100 server` |
 | Rebuild only the game image | `docker compose build server` |
 | Validate public profile syntax | `docker compose --env-file .env.public -f docker-compose.public.yml config` |
+| Validate Caddy syntax | `docker run --rm -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile` |
+| Validate web metadata/docs | `npm run check:web-quality` |
 
 ## Public Deployment Link
 
@@ -328,6 +394,14 @@ docker compose logs --tail=100 web
 
 The nginx config forwards `Upgrade` and `Connection` headers for Colyseus
 WebSocket traffic.
+
+### Browser Shows the Startup Fallback
+
+The client now replaces an indefinite loader with an actionable error when
+WebGL or a required asset fails. Confirm that hardware acceleration and WebGL
+are enabled, inspect the browser console and network panel, and verify that
+models and VAT files return `200` through the proxy. The Retry action reloads
+the complete client state.
 
 ### MySQL Data Disappeared
 

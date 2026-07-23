@@ -1,6 +1,8 @@
 const documents = [
     { file: "README.md", title: "Documentation Home" },
     { file: "PROJECT.md", title: "Project Overview" },
+    { file: "API_AND_SECURITY.md", title: "API and Security" },
+    { file: "GAME_QUALITY_AUDIT.md", title: "Game Quality Audit" },
     { file: "INFRASTRUCTURE_AND_DEPLOYMENT.md", title: "Infrastructure and Deployment" },
     { file: "PUBLIC_DEPLOYMENT.md", title: "Public Deployment" },
 ];
@@ -8,6 +10,7 @@ const documents = [
 const content = document.getElementById("content");
 const pageTitle = document.getElementById("page-title");
 const navButtons = Array.from(document.querySelectorAll("[data-doc]"));
+let activeLoadRequest = 0;
 
 function escapeHtml(value) {
     return value
@@ -53,13 +56,14 @@ function parseTable(lines, start) {
     const header = cells(rows[0]);
     const body = rows.slice(2).map(cells);
     const html = [
+        '<div class="table-scroll" role="region" aria-label="Scrollable table" tabindex="0">',
         "<table>",
         "<thead><tr>",
         ...header.map((cell) => `<th>${cell}</th>`),
         "</tr></thead>",
         "<tbody>",
         ...body.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`),
-        "</tbody></table>",
+        "</tbody></table></div>",
     ].join("");
 
     return { html, next: index };
@@ -163,11 +167,19 @@ function renderMarkdown(markdown) {
 }
 
 async function loadDocument(file) {
+    const requestId = ++activeLoadRequest;
     const selected = documents.find((doc) => doc.file === file) || documents[0];
     pageTitle.textContent = selected.title;
     navButtons.forEach((button) => {
-        button.classList.toggle("active", button.dataset.doc === selected.file);
+        const isActive = button.dataset.doc === selected.file;
+        button.classList.toggle("active", isActive);
+        if (isActive) {
+            button.setAttribute("aria-current", "page");
+        } else {
+            button.removeAttribute("aria-current");
+        }
     });
+    content.innerHTML = `<p role="status">Loading ${escapeHtml(selected.title)}...</p>`;
 
     try {
         const response = await fetch(`./content/${selected.file}`, { cache: "no-cache" });
@@ -175,9 +187,15 @@ async function loadDocument(file) {
             throw new Error(`HTTP ${response.status}`);
         }
         const markdown = await response.text();
+        if (requestId !== activeLoadRequest) {
+            return;
+        }
         content.innerHTML = renderMarkdown(markdown);
         history.replaceState(null, "", `#${selected.file.replace(/\.md$/, "").toLowerCase()}`);
     } catch (error) {
+        if (requestId !== activeLoadRequest) {
+            return;
+        }
         content.innerHTML = `<p class="error">Could not load ${escapeHtml(selected.file)}: ${escapeHtml(error.message)}</p>`;
     }
 }

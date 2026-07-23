@@ -18,6 +18,7 @@ export class HotBar {
     private _loadedAssets;
     private _currentPlayer: Player;
     private _UITooltip;
+    private _layoutWidth = 0;
 
     constructor(_UI: UserInterface, _currentPlayer) {
         this._playerUI = _UI._playerUI;
@@ -46,14 +47,22 @@ export class HotBar {
     }
 
     _createUI() {
-        let width = 460;
+        const compact = window.innerWidth < 700;
+        const width = this.getLayoutWidth();
+        this._layoutWidth = width;
         let abilityRect: Rectangle[] = [];
 
         if (this._abilityUI) {
             this._abilityUI.dispose();
         }
 
-        const abilityMainPanel = generatePanel("abilityPanel", "470px;", "62px", "-35px", "0px");
+        const abilityMainPanel = generatePanel(
+            "abilityPanel",
+            width + 10 + "px",
+            compact ? "52px" : "62px",
+            compact ? "-28px" : "-35px",
+            "0px"
+        );
         abilityMainPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         abilityMainPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         abilityMainPanel.isPointerBlocker = true;
@@ -188,5 +197,16 @@ export class HotBar {
 
     hideTooltip() {
         this._UI._Tooltip.close();
+    }
+
+    public resize() {
+        const nextWidth = this.getLayoutWidth();
+        if (nextWidth !== this._layoutWidth) {
+            this._createUI();
+        }
+    }
+
+    private getLayoutWidth(): number {
+        return window.innerWidth < 700 ? Math.max(270, Math.min(460, window.innerWidth - 20)) : 460;
     }
 }

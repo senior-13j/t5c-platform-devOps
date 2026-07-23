@@ -21,6 +21,10 @@ export class MainMenu {
     private _currentPlayer;
 
     private _mainPanel: Rectangle;
+    private _dropdownMenu: Rectangle;
+    private _dropdownButton;
+    private _menuGrid: StackPanel;
+    private _menuButtons = [];
 
     constructor(_UI: UserInterface, _currentPlayer) {
         this._UI = _UI;
@@ -46,6 +50,7 @@ export class MainMenu {
 
         this._createUI();
         this._createDropdownMenu();
+        this.resize();
     }
 
     takeScreenshot() {
@@ -105,6 +110,7 @@ export class MainMenu {
         button.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         button.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         this._mainPanel.addControl(button);
+        this._dropdownButton = button;
 
         var b1 = new Image("b1", "./images/ui/gear-solid.png");
         b1.stretch = Image.STRETCH_UNIFORM;
@@ -115,12 +121,13 @@ export class MainMenu {
         drowpdownMenu.left = "-15px;";
         drowpdownMenu.width = "150px;";
         drowpdownMenu.height = "100px";
-        drowpdownMenu.isVisible = true;
+        drowpdownMenu.isVisible = false;
         drowpdownMenu.adaptHeightToChildren = true;
         drowpdownMenu.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         drowpdownMenu.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         applyTheme(drowpdownMenu);
         this._playerUI.addControl(drowpdownMenu);
+        this._dropdownMenu = drowpdownMenu;
 
         const grid = new StackPanel("drowpdownStack");
         grid.top = "0px";
@@ -146,6 +153,7 @@ export class MainMenu {
             if (menuItem.click) {
                 button.onPointerDownObservable.add(() => {
                     menuItem.click();
+                    drowpdownMenu.isVisible = false;
                 });
             }
             i++;
@@ -200,6 +208,7 @@ export class MainMenu {
         grid.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         grid.isVertical = false;
         this._mainPanel.addControl(grid);
+        this._menuGrid = grid;
 
         // add menu tooltip
         const buttonTooltip = createButton("button_tooltip", "", "100px", "30px", "");
@@ -213,6 +222,7 @@ export class MainMenu {
             let menuItem = menuItems[index];
             const button = createButton("button_" + i, "", "35px", "30px", menuItem.icon);
             grid.addControl(button);
+            this._menuButtons.push(button);
 
             if (menuItem.click) {
                 button.onPointerDownObservable.add(() => {
@@ -252,5 +262,26 @@ export class MainMenu {
                 this._UI.panelQuests.open();
                 break;
         }
+    }
+
+    public resize() {
+        const compact = window.innerWidth < 700;
+        this._mainPanel.top = compact ? "80px" : "15px";
+        this._mainPanel.left = compact ? "-8px" : "-15px";
+        this._mainPanel.width = compact ? "280px" : "400px";
+        this._mainPanel.height = compact ? "44px" : "60px";
+
+        this._menuGrid.left = compact ? "-45px" : "-40px";
+        this._menuGrid.height = compact ? "40px" : "30px";
+        this._dropdownButton.width = compact ? "40px" : "30px";
+        this._dropdownButton.height = compact ? "40px" : "30px";
+
+        this._menuButtons.forEach((button) => {
+            button.width = compact ? "40px" : "35px";
+            button.height = compact ? "40px" : "30px";
+        });
+
+        this._dropdownMenu.top = compact ? "128px" : "60px";
+        this._dropdownMenu.left = compact ? "-8px" : "-15px";
     }
 }

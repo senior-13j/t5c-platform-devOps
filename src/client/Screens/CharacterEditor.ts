@@ -39,6 +39,10 @@ export class CharacterEditor {
 
     private leftStackPanel: StackPanel;
     private rightStackPanel: StackPanel;
+    private leftColumnRect: Rectangle;
+    private rightColumnRect: Rectangle;
+    private centerColumnRect: Rectangle;
+    private camera: ArcRotateCamera;
 
     private all_races: Race[] = [];
 
@@ -68,6 +72,10 @@ export class CharacterEditor {
         this._newState = State.NULL;
     }
 
+    private isCompact(): boolean {
+        return window.innerWidth < 700;
+    }
+
     public async createScene(game) {
         this._game = game;
         this._engine = game.engine;
@@ -79,9 +87,9 @@ export class CharacterEditor {
         this._scene = scene;
 
         // camera
-        var camera = new ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 2, 10, new Vector3(0, 1, 0), scene);
-        camera.attachControl(game.canvas, true);
-        camera.wheelDeltaPercentage = 0.01;
+        this.camera = new ArcRotateCamera("camera1", Math.PI / 2, Math.PI / 2, 10, new Vector3(0, 1, 0), scene);
+        this.camera.attachControl(game.canvas, true);
+        this.camera.wheelDeltaPercentage = 0.01;
 
         // scene light
         var sun = new HemisphericLight("light1", new Vector3(0, 1, 0), scene);
@@ -132,21 +140,24 @@ export class CharacterEditor {
         const guiMenu = AdvancedDynamicTexture.CreateFullscreenUI("UI");
         this._ui = guiMenu;
 
+        const compact = this.isCompact();
+
         // left columm
         const leftColumnRect = new Rectangle("columnLeft");
         leftColumnRect.top = 0;
         leftColumnRect.left = "0";
-        leftColumnRect.width = 0.2;
+        leftColumnRect.width = compact ? 0.34 : 0.2;
         leftColumnRect.height = 1;
-        leftColumnRect.background = "#000000";
+        leftColumnRect.background = "#0d1419";
         leftColumnRect.thickness = 0;
         leftColumnRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         leftColumnRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         guiMenu.addControl(leftColumnRect);
+        this.leftColumnRect = leftColumnRect;
 
         const leftStackPanel = new StackPanel("leftStackPanel");
         leftStackPanel.top = 0;
-        leftStackPanel.width = 0.8;
+        leftStackPanel.width = compact ? 0.92 : 0.8;
         leftStackPanel.height = 0.6;
         leftStackPanel.background = "";
         leftStackPanel.spacing = 5;
@@ -165,11 +176,13 @@ export class CharacterEditor {
         rightColumnRect.left = 0;
         rightColumnRect.width = 0.2;
         rightColumnRect.height = 1;
-        rightColumnRect.background = "#000000";
+        rightColumnRect.background = "#0d1419";
         rightColumnRect.thickness = 0;
         rightColumnRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         rightColumnRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        rightColumnRect.isVisible = !compact;
         guiMenu.addControl(rightColumnRect);
+        this.rightColumnRect = rightColumnRect;
 
         const rightStackPanel = new StackPanel("rightStackPanel");
         rightStackPanel.top = 0;
@@ -218,6 +231,7 @@ export class CharacterEditor {
 
         // load character
         await this.initialize(this.selected_race);
+        this.resize();
     }
 
     cleanup(previousChoice) {
@@ -291,6 +305,8 @@ export class CharacterEditor {
         this.rightStackPanel.getDescendants().forEach((el) => {
             el.dispose();
         });
+        this.btnsFace = [];
+        this.btnsColor = [];
     }
 
     refreshUI() {
@@ -315,13 +331,15 @@ export class CharacterEditor {
     }
 
     sectionRace() {
-        const sectionTitle = new TextBlock("sectionTitle", "Choose Class");
-        sectionTitle.width = 0.8;
-        sectionTitle.height = "40px";
+        const compact = this.isCompact();
+        const sectionTitle = new TextBlock("sectionTitle", compact ? "Class" : "Choose Class");
+        sectionTitle.width = 1;
+        sectionTitle.height = compact ? "34px" : "40px";
         sectionTitle.color = "white";
         sectionTitle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         sectionTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         sectionTitle.fontWeight = "bold";
+        sectionTitle.fontSize = compact ? "15px" : "18px";
         this.leftStackPanel.addControl(sectionTitle);
 
         for (let raceKey in this.all_races) {
@@ -330,16 +348,17 @@ export class CharacterEditor {
             const btnChoice = Button.CreateSimpleButton("btnChoice", choice.title);
             btnChoice.top = "0px";
             btnChoice.width = 1;
-            btnChoice.height = "30px";
+            btnChoice.height = compact ? "32px" : "30px";
             btnChoice.color = "white";
-            btnChoice.background = "gray";
+            btnChoice.background = "#26313a";
             btnChoice.thickness = 1;
+            btnChoice.fontSize = compact ? "15px" : "18px";
             btnChoice.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
             btnChoice.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
             this.leftStackPanel.addControl(btnChoice);
 
             if (this.selected_race && this.selected_race.title === choice.title) {
-                btnChoice.background = "green";
+                btnChoice.background = "#147a46";
             }
 
             btnChoice.onPointerDownObservable.add(() => {
@@ -352,39 +371,45 @@ export class CharacterEditor {
     }
 
     sectionFaces() {
+        const compact = this.isCompact();
         let selectedChoices = this.selected_race.vat.meshes.HEAD;
 
-        const sectionTitle = new TextBlock("sectionTitle", "Choose Face");
-        sectionTitle.width = 0.8;
-        sectionTitle.height = "40px";
+        const sectionTitle = new TextBlock("sectionTitle", compact ? "Face" : "Choose Face");
+        sectionTitle.width = 1;
+        sectionTitle.height = compact ? "34px" : "40px";
         sectionTitle.color = "white";
-        sectionTitle.top = "100px";
         sectionTitle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         sectionTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        sectionTitle.fontSize = compact ? "15px" : "18px";
+        sectionTitle.fontWeight = "bold";
         this.leftStackPanel.addControl(sectionTitle);
 
         // add scrollable container
         const chatScrollViewer = new ScrollViewer("chatScrollViewer");
         chatScrollViewer.width = 1;
-        chatScrollViewer.height = "150px;";
+        chatScrollViewer.height = compact ? "122px" : "150px";
         chatScrollViewer.thickness = 1;
+        chatScrollViewer.background = "#151d23";
+        chatScrollViewer.barSize = compact ? 8 : 10;
         this.leftStackPanel.addControl(chatScrollViewer);
 
         const chatStackPanel = new StackPanel("chatStackPanel");
         chatStackPanel.width = "100%";
         chatStackPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         chatStackPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-        chatStackPanel.paddingTop = "5px;";
+        chatStackPanel.paddingTop = "5px";
         chatScrollViewer.addControl(chatStackPanel);
 
         selectedChoices.forEach((faceKey) => {
-            const btnChoice = Button.CreateSimpleButton("btnChoice", faceKey);
+            const faceLabel = faceKey.replace(/^Head_/, "").replace(/_/g, " ");
+            const btnChoice = Button.CreateSimpleButton("btnChoice", faceLabel);
             btnChoice.top = "0px";
             btnChoice.width = 1;
-            btnChoice.height = "30px";
+            btnChoice.height = compact ? "32px" : "30px";
             btnChoice.color = "white";
-            btnChoice.background = "gray";
+            btnChoice.background = "#26313a";
             btnChoice.thickness = 1;
+            btnChoice.fontSize = compact ? "15px" : "18px";
             btnChoice.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
             btnChoice.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             chatStackPanel.addControl(btnChoice);
@@ -392,52 +417,57 @@ export class CharacterEditor {
             this.btnsFace.push(btnChoice);
 
             if (this.entity.head === faceKey) {
-                btnChoice.background = "green";
+                btnChoice.background = "#147a46";
             }
 
             btnChoice.onPointerDownObservable.add(() => {
                 this.entity.head = faceKey;
                 this.loadCharacter(this.selected_race);
                 this.resetButtons(this.btnsFace);
-                btnChoice.background = "green";
+                btnChoice.background = "#147a46";
             });
         });
     }
 
     sectionVariant() {
+        const compact = this.isCompact();
         let selectedChoices = this.selected_race.materials;
 
-        const sectionTitle = new TextBlock("sectionTitle", "Choose Color");
-        sectionTitle.width = 0.8;
-        sectionTitle.height = "40px";
+        const sectionTitle = new TextBlock("sectionTitle", compact ? "Style" : "Choose Style");
+        sectionTitle.width = 1;
+        sectionTitle.height = compact ? "34px" : "40px";
         sectionTitle.color = "white";
-        sectionTitle.top = "100px";
         sectionTitle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         sectionTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        sectionTitle.fontSize = compact ? "15px" : "18px";
+        sectionTitle.fontWeight = "bold";
         this.leftStackPanel.addControl(sectionTitle);
 
         // add scrollable container
         const chatScrollViewer = new ScrollViewer("chatScrollViewer");
         chatScrollViewer.width = 1;
-        chatScrollViewer.height = "150px;";
+        chatScrollViewer.height = compact ? "122px" : "150px";
         chatScrollViewer.thickness = 1;
+        chatScrollViewer.background = "#151d23";
+        chatScrollViewer.barSize = compact ? 8 : 10;
         this.leftStackPanel.addControl(chatScrollViewer);
 
         const chatStackPanel = new StackPanel("chatStackPanel");
         chatStackPanel.width = "100%";
         chatStackPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         chatStackPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-        chatStackPanel.paddingTop = "5px;";
+        chatStackPanel.paddingTop = "5px";
         chatScrollViewer.addControl(chatStackPanel);
 
         selectedChoices.forEach((mat, index) => {
-            const btnChoice = Button.CreateSimpleButton("btnChoice_" + index, mat.material);
+            const btnChoice = Button.CreateSimpleButton("btnChoice_" + index, "Style " + (index + 1));
             btnChoice.top = "0px";
             btnChoice.width = 1;
-            btnChoice.height = "30px";
+            btnChoice.height = compact ? "32px" : "30px";
             btnChoice.color = "white";
-            btnChoice.background = "gray";
+            btnChoice.background = "#26313a";
             btnChoice.thickness = 1;
+            btnChoice.fontSize = compact ? "15px" : "18px";
             btnChoice.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
             btnChoice.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             chatStackPanel.addControl(btnChoice);
@@ -445,42 +475,49 @@ export class CharacterEditor {
             this.btnsColor.push(btnChoice);
 
             if (this.entity.material === index) {
-                btnChoice.background = "green";
+                btnChoice.background = "#147a46";
             }
 
             btnChoice.onPointerDownObservable.add(() => {
                 this.entity.material = index;
                 this.loadCharacter(this.selected_race);
                 this.resetButtons(this.btnsColor);
-                btnChoice.background = "green";
+                btnChoice.background = "#147a46";
             });
         });
     }
 
     resetButtons(btns) {
         btns.forEach((btnChoice) => {
-            btnChoice.background = "gray";
+            btnChoice.background = "#26313a";
         });
     }
 
     loadCenterPanel() {
+        if (this.centerColumnRect) {
+            this.centerColumnRect.dispose();
+        }
+
+        const compact = this.isCompact();
+
         ////////////////////////////////////////////////
         // center columm
         const centerColumnRect = new Rectangle("centerColumnRect");
-        centerColumnRect.top = "0px;";
+        centerColumnRect.top = "0px";
         centerColumnRect.left = 0;
-        centerColumnRect.width = "300px";
-        centerColumnRect.height = "200px";
+        centerColumnRect.width = compact ? 0.66 : "300px";
+        centerColumnRect.height = "176px";
         centerColumnRect.thickness = 0;
-        centerColumnRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        centerColumnRect.horizontalAlignment = compact ? Control.HORIZONTAL_ALIGNMENT_RIGHT : Control.HORIZONTAL_ALIGNMENT_CENTER;
         centerColumnRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         this._ui.addControl(centerColumnRect);
+        this.centerColumnRect = centerColumnRect;
 
         ////////////////////////////////////////
         const usernameInput = new InputText("newCharacterInput");
-        usernameInput.top = "-110px;";
-        usernameInput.width = "200px";
-        usernameInput.height = "30px;";
+        usernameInput.top = "-112px";
+        usernameInput.width = compact ? 0.86 : "200px";
+        usernameInput.height = compact ? "36px" : "30px";
         usernameInput.color = "#FFF";
         usernameInput.text = this.randomPlayerName;
         usernameInput.placeholderText = "Enter username";
@@ -490,11 +527,11 @@ export class CharacterEditor {
 
         // PLAY BUTTON
         const playBtn = Button.CreateSimpleButton("playBtn", "Create");
-        playBtn.top = "-70px";
-        playBtn.width = "200px";
-        playBtn.height = "30px";
+        playBtn.top = "-68px";
+        playBtn.width = compact ? 0.86 : "200px";
+        playBtn.height = compact ? "36px" : "30px";
         playBtn.color = "white";
-        playBtn.background = "orange";
+        playBtn.background = "#d38b16";
         playBtn.thickness = 1;
         playBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         playBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -502,6 +539,9 @@ export class CharacterEditor {
         playBtn.onPointerDownObservable.add(() => {
             // create new character via database
             this.createCharacter(this._game.currentUser.token, usernameInput.text).then((char) => {
+                if (!char) {
+                    return;
+                }
                 // login as this character
                 this._game.setCharacter(char);
                 this._game.setScene(State.CHARACTER_SELECTION);
@@ -512,11 +552,11 @@ export class CharacterEditor {
 
         // BACK BUTTON
         const backBtn = Button.CreateSimpleButton("backBtn", "CANCEL");
-        backBtn.top = "-30px";
-        backBtn.width = "200px";
-        backBtn.height = "30px";
+        backBtn.top = "-24px";
+        backBtn.width = compact ? 0.86 : "200px";
+        backBtn.height = compact ? "36px" : "30px";
         backBtn.color = "white";
-        backBtn.background = "gray";
+        backBtn.background = "#46525b";
         backBtn.thickness = 1;
         backBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         backBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -566,7 +606,7 @@ export class CharacterEditor {
 
     // create character
     async createCharacter(token, name) {
-        // make sure both the username and password is entered.
+        // A character name is required before submitting the request.
         if (!name) {
             return false;
         }
@@ -574,7 +614,7 @@ export class CharacterEditor {
         // check user exists else send back to login
         const req = await axios.request({
             method: "POST",
-            params: {
+            data: {
                 token: token,
                 name: name,
                 race: this.entity.race,
@@ -589,6 +629,28 @@ export class CharacterEditor {
             return req.data.character;
         } else {
             return false;
+        }
+    }
+
+    public resize() {
+        if (!this.leftColumnRect || !this.rightColumnRect) {
+            return;
+        }
+
+        const compact = this.isCompact();
+        this.leftColumnRect.width = compact ? 0.34 : 0.2;
+        this.leftStackPanel.width = compact ? 0.92 : 0.8;
+        this.rightColumnRect.isVisible = !compact;
+        if (this.camera) {
+            this.camera.target.x = compact ? 1 : 0;
+            this.camera.radius = compact ? 9 : 10;
+        }
+
+        if (this.centerColumnRect) {
+            this.centerColumnRect.width = compact ? 0.66 : "300px";
+            this.centerColumnRect.horizontalAlignment = compact
+                ? Control.HORIZONTAL_ALIGNMENT_RIGHT
+                : Control.HORIZONTAL_ALIGNMENT_CENTER;
         }
     }
 }

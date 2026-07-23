@@ -21,15 +21,20 @@ export class CharacterSelectionScene {
     public _engine: Engine;
     private _ui: AdvancedDynamicTexture;
     public _button: Button;
-    private leftColumnRect;
+    private selectionPanel: Rectangle;
+    private leftColumnRect: Rectangle;
     private rightColumnRect;
-    private characterPanel;
-    private scrollViewerBloc;
+    private characterPanel: StackPanel;
+    private scrollViewerBloc: ScrollViewer;
 
     private charactersUI: Rectangle[] = [];
     private selectedCharacter;
 
     public sceneRendered = false;
+
+    private isCompact(): boolean {
+        return window.innerWidth < 700;
+    }
 
     public async createScene(game) {
         this._game = game;
@@ -39,7 +44,7 @@ export class CharacterSelectionScene {
         let scene = new Scene(this._engine);
 
         // set color
-        scene.clearColor = new Color4(0.1, 0.1, 0.1, 1);
+        scene.clearColor = new Color4(0.035, 0.055, 0.05, 1);
 
         //creates and positions a free camera
         let camera = new FreeCamera("camera1", new Vector3(0, 0, 0), scene);
@@ -79,21 +84,26 @@ export class CharacterSelectionScene {
     }
 
     generateleftPanel() {
+        const compact = this.isCompact();
+
         // left columm
         const leftColumnRect = new Rectangle("columnLeft");
         leftColumnRect.top = 0;
         leftColumnRect.left = 0;
-        leftColumnRect.width = "320px";
-        leftColumnRect.height = 1;
-        leftColumnRect.background = "#000000";
-        leftColumnRect.thickness = 0;
+        leftColumnRect.width = compact ? 0.92 : "400px";
+        leftColumnRect.height = compact ? 0.96 : Math.min(720, window.innerHeight * 0.9) + "px";
+        leftColumnRect.background = "#0d1519";
+        leftColumnRect.color = "#61746a";
+        leftColumnRect.cornerRadius = 6;
+        leftColumnRect.thickness = 1;
         leftColumnRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-        leftColumnRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        leftColumnRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         this._ui.addControl(leftColumnRect);
+        this.selectionPanel = leftColumnRect;
 
         const leftColumnRectPad = new Rectangle("leftColumnRectPad");
         leftColumnRectPad.top = 0;
-        leftColumnRectPad.width = 0.9;
+        leftColumnRectPad.width = compact ? 0.92 : 0.9;
         leftColumnRectPad.height = 1;
         leftColumnRectPad.thickness = 0;
         leftColumnRectPad.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
@@ -102,31 +112,44 @@ export class CharacterSelectionScene {
         this.leftColumnRect = leftColumnRectPad;
 
         // welcome text
-        const welcomeText = new TextBlock("infotext", "Welcome " + this._game.currentUser.username);
+        const welcomeText = new TextBlock("infotext", "Choose your adventurer");
         welcomeText.width = 1;
-        welcomeText.height = "100px;";
+        welcomeText.height = "40px";
         welcomeText.color = "white";
-        welcomeText.top = "0px";
+        welcomeText.top = "12px";
+        welcomeText.fontSize = compact ? "19px" : "24px";
+        welcomeText.fontWeight = "bold";
         welcomeText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         welcomeText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        leftColumnRect.addControl(welcomeText);
+        leftColumnRectPad.addControl(welcomeText);
+
+        const accountText = new TextBlock("accountText", "Signed in as " + this._game.currentUser.username);
+        accountText.width = 1;
+        accountText.height = "24px";
+        accountText.color = "#b7c8c0";
+        accountText.top = "50px";
+        accountText.fontSize = compact ? "12px" : "13px";
+        accountText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        accountText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        leftColumnRectPad.addControl(accountText);
 
         // BOTTOM ACTIONS
         const leftColumnBottomActions = new Rectangle("leftColumnBottomActions");
-        leftColumnBottomActions.top = "-15px";
+        leftColumnBottomActions.top = "-10px";
         leftColumnBottomActions.width = 1;
-        leftColumnBottomActions.height = "70px;";
+        leftColumnBottomActions.height = compact ? "92px" : "82px";
         leftColumnBottomActions.thickness = 0;
         leftColumnBottomActions.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         leftColumnBottomActions.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         leftColumnRectPad.addControl(leftColumnBottomActions);
 
         // logout btn
-        const logoutBtn = Button.CreateSimpleButton("logoutBtn", "LOGOUT");
+        const logoutBtn = Button.CreateSimpleButton("logoutBtn", "Sign out");
         logoutBtn.top = "0px";
         logoutBtn.width = 1;
-        logoutBtn.height = "30px";
+        logoutBtn.height = compact ? "36px" : "32px";
         logoutBtn.color = "white";
+        logoutBtn.background = "#26323a";
         logoutBtn.thickness = 1;
         logoutBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         logoutBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -135,12 +158,12 @@ export class CharacterSelectionScene {
             this._game.logout();
         });
 
-        const characterEditorBtn = Button.CreateSimpleButton("characterEditorBtn", "CREATE NEW CHARACTER");
-        characterEditorBtn.top = "-40px";
+        const characterEditorBtn = Button.CreateSimpleButton("characterEditorBtn", "Create adventurer");
+        characterEditorBtn.top = compact ? "-46px" : "-40px";
         characterEditorBtn.width = 1;
-        characterEditorBtn.height = "30px";
+        characterEditorBtn.height = compact ? "36px" : "32px";
         characterEditorBtn.color = "white";
-        characterEditorBtn.background = "orange";
+        characterEditorBtn.background = "#d38b16";
         characterEditorBtn.thickness = 1;
         characterEditorBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         characterEditorBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -154,14 +177,18 @@ export class CharacterSelectionScene {
     }
 
     generateCharacters() {
+        const compact = this.isCompact();
+
         // add scrollable container
         var scrollViewerBloc = new ScrollViewer("chat-scroll-viewer");
         scrollViewerBloc.width = 1;
-        scrollViewerBloc.height = 0.8;
+        scrollViewerBloc.height = compact ? 0.7 : 0.72;
         scrollViewerBloc.left = "0px";
-        scrollViewerBloc.top = "80px";
-        scrollViewerBloc.thickness = 0;
-        scrollViewerBloc.background = "gray";
+        scrollViewerBloc.top = "82px";
+        scrollViewerBloc.thickness = 1;
+        scrollViewerBloc.color = "#35443d";
+        scrollViewerBloc.background = "#111a1f";
+        scrollViewerBloc.barSize = compact ? 8 : 10;
         scrollViewerBloc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         scrollViewerBloc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         this.leftColumnRect.addControl(scrollViewerBloc);
@@ -182,7 +209,7 @@ export class CharacterSelectionScene {
         this.characterPanel = rightStackPanel;
 
         let user = this._game.currentUser;
-        let bgColor = "#222222";
+        let bgColor = "#1c272d";
 
         if (user.characters.length > 0) {
             let i = 0;
@@ -191,8 +218,10 @@ export class CharacterSelectionScene {
 
                 const characterBloc = new Rectangle("characterBloc" + char.id);
                 characterBloc.width = 1;
-                characterBloc.height = "100px;";
+                characterBloc.height = compact ? "106px" : "104px";
                 characterBloc.background = bgColor;
+                characterBloc.color = "#3e4d46";
+                characterBloc.cornerRadius = 4;
                 characterBloc.thickness = 1;
                 characterBloc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 characterBloc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -201,37 +230,38 @@ export class CharacterSelectionScene {
                 this.charactersUI.push(characterBloc);
 
                 if (this.selectedCharacter && this.selectedCharacter.id === char.id) {
-                    characterBloc.background = "green";
+                    characterBloc.background = "#145d3b";
                 }
 
                 var img = new Image("itemImage_" + char.id, "./images/portrait/" + race.icon + ".png");
-                img.width = "40px;";
-                img.height = "40px;";
-                img.left = "20px";
-                img.top = "20px";
+                img.width = compact ? "46px" : "48px";
+                img.height = compact ? "46px" : "48px";
+                img.left = compact ? "14px" : "18px";
+                img.top = "16px";
                 img.stretch = Image.STRETCH_FILL;
                 img.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 img.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
                 characterBloc.addControl(img);
 
                 const characterName = new TextBlock("characterName", char.name);
-                characterName.width = 0.5;
+                characterName.width = 0.64;
                 characterName.height = "30px";
                 characterName.color = "white";
-                characterName.left = "80px";
-                characterName.top = "10px";
+                characterName.left = compact ? "70px" : "82px";
+                characterName.top = "12px";
                 characterName.fontWeight = "bold";
+                characterName.fontSize = compact ? "16px" : "18px";
                 characterName.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 characterName.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
                 characterName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 characterBloc.addControl(characterName);
 
                 const characterDetails = new TextBlock("characterDetails", "Level: " + char.level);
-                characterDetails.width = 0.5;
+                characterDetails.width = 0.6;
                 characterDetails.height = "40px";
-                characterDetails.color = "white";
-                characterDetails.left = "80px";
-                characterDetails.top = "25px";
+                characterDetails.color = "#c2d0ca";
+                characterDetails.left = compact ? "70px" : "82px";
+                characterDetails.top = "38px";
                 characterDetails.fontSize = "12px";
                 characterDetails.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 characterDetails.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -239,11 +269,11 @@ export class CharacterSelectionScene {
                 characterBloc.addControl(characterDetails);
 
                 const createBtn = Button.CreateSimpleButton("characterBtn-" + char.id, "PLAY");
-                createBtn.left = "80px;";
-                createBtn.top = "60px";
-                createBtn.width = "100px";
-                createBtn.height = "30px";
-                createBtn.background = "orange";
+                createBtn.left = compact ? "70px" : "82px";
+                createBtn.top = compact ? "66px" : "64px";
+                createBtn.width = compact ? "112px" : "120px";
+                createBtn.height = compact ? "32px" : "30px";
+                createBtn.background = "#d38b16";
                 createBtn.color = "white";
                 createBtn.thickness = 1;
                 createBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -265,10 +295,22 @@ export class CharacterSelectionScene {
 
         // reset selection
         this.charactersUI.forEach((element) => {
-            element.background = "black";
+            element.background = "#1c272d";
         });
 
         // set current selected
-        this.charactersUI[index].background = "green";
+        this.charactersUI[index].background = "#145d3b";
+    }
+
+    public resize() {
+        if (!this.selectionPanel || !this.leftColumnRect) {
+            return;
+        }
+
+        const compact = this.isCompact();
+        this.selectionPanel.width = compact ? 0.92 : "400px";
+        this.selectionPanel.height = compact ? 0.96 : Math.min(720, window.innerHeight * 0.9) + "px";
+        this.leftColumnRect.width = compact ? 0.92 : 0.9;
+        this.scrollViewerBloc.height = compact ? 0.7 : 0.72;
     }
 }

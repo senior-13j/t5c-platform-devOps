@@ -1,0 +1,22 @@
+{
+    "name": "T5C - The 5th Continent",
+    "short_name": "T5C",
+    "description": "A free multiplayer 3D browser RPG set in the continent of Eldoria.",
+    "id": "./",
+    "start_url": "./",
+    "scope": "./",
+    "display": "fullscreen",
+    "orientation": "any",
+    "background_color": "#111815",
+    "theme_color": "#111815",
+    "lang": "en",
+    "categories": ["games", "entertainment"],
+    "icons": [
+        {
+            "src": "./images/logo_SQUARE.jpg",
+            "sizes": "300x300",
+            "type": "image/jpeg",
+            "purpose": "any"
+        }
+    ]
+}

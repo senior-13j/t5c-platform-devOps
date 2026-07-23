@@ -1,13 +1,16 @@
 # Project Overview
 
 T5C, The 5th Continent, is a multiplayer 3D top-down RPG prototype built with
-Babylon.js, Colyseus, Express, TypeScript, and SQL persistence.
+Babylon.js, Colyseus, Express, TypeScript, and SQL persistence. It includes a
+responsive browser client, native HTML entry and failure states, a real-time
+game server, local and public container profiles, observability, and served
+project documentation.
 
 ## Runtime Shape
 
 The application has one browser client and one Node.js runtime service. In the
-Docker profiles, the Node.js service serves the built client, REST API,
-Colyseus WebSocket rooms, health checks, Prometheus metrics, and rendered docs.
+Docker profiles, the Node.js service serves the built client and docs, REST API,
+Colyseus WebSocket rooms, health checks, and Prometheus metrics.
 
 ```text
 Browser
@@ -19,123 +22,207 @@ reverse proxy
   v
 server:3000
   |
-  +-- Express API
-  +-- Colyseus rooms
-  +-- static client and docs
-  +-- /health
-  +-- /metrics
+  +-- Express API and static delivery
+  +-- Colyseus game_room and chat_room
+  +-- /health and /metrics
+  +-- built game client and rendered docs
   |
   v
-mysql:3306
+MySQL in Docker or SQLite for host development
 ```
 
 ## Source Areas
 
 | Area | Main Paths | Responsibility |
 | --- | --- | --- |
-| Client | `src/client`, `public` | Babylon.js game client, screens, UI, assets, networking |
-| Shared | `src/shared` | Config, types, utility classes, game math helpers |
-| Server | `src/server` | Express API, Colyseus rooms, game state, persistence |
-| Data | `database` | MySQL and SQLite schema files |
-| Infrastructure | `Dockerfile`, `docker-compose*.yml`, `docker` | Local and public container profiles |
-| Documentation | `README.md`, `docs`, `public/docs` | Repository docs and served docs UI |
+| Client | `src/client` | Babylon.js scenes, responsive GUI, entities, input, asset loading, and networking |
+| Web shell | `public/index.html`, `public/styles.css` | Semantic entry page, login form, loading/error states, metadata, and static assets |
+| Shared | `src/shared` | Runtime config, types, utility classes, and game math helpers |
+| Server | `src/server` | Express API, Colyseus rooms, game state, authentication, persistence, and static delivery |
+| Data | `database` | MySQL and SQLite schema bootstrap files |
+| Quality | `scripts/check-web-quality.mjs` | Metadata, structured data, discovery, manifest, and local-reference assertions |
+| Infrastructure | `Dockerfile`, `docker-compose*.yml`, `docker` | Local and public container profiles, proxies, metrics, and dashboards |
+| Documentation | `README.md`, `docs`, `public/docs` | Repository guides and the browser documentation viewer |
 
 ## Build Output
 
-The production build creates two runtime outputs:
+The production build creates these runtime outputs:
 
 | Output | Created By | Contents |
 | --- | --- | --- |
-| `dist/client` | `npm run client-build` | Webpack bundle, public assets, and copied docs content |
-| `dist/server` | `npm run server-build` | Compiled TypeScript server and copied public assets |
+| `dist/client` | `npm run client-build` | Minified Webpack bundle, public assets, metadata/discovery files, docs shell, and copied Markdown |
+| `dist/server` | `npm run server-build` | Compiled TypeScript server |
+| `dist/public` | `npm run server-build` | Server-side public files used by compiled runtime paths such as navmesh loading |
 
-The Dockerfile builds both outputs, prunes development dependencies, and runs:
+The Dockerfile uses Node.js 22 for dependency, build, and runtime stages. It
+builds both outputs, prunes development dependencies, and starts:
 
 ```bash
 node dist/server/server/index.js
 ```
 
-## Game Runtime
+## Client Scene Flow
 
-In the local Docker stack, the browser loads the game from:
+The production browser flow is:
+
+```text
+HTML loading shell
+  -> Login or Quick Play
+  -> Character selection
+  -> Character editor when requested
+  -> Connected game scene
+```
+
+The Webpack development origin opens the game scene directly to shorten local
+iteration. The production client served from port `3000` starts at login.
+
+Native HTML owns the initial interaction states:
+
+- labeled username and password controls with browser validation;
+- keyboard focus and live login feedback;
+- loading text and an ARIA progress bar;
+- a focused Retry action for WebGL, startup, or asset failures;
+- semantic game title, description, instructions, and announcements.
+
+Babylon GUI owns character management and in-game interaction. Compact viewport
+logic adapts the menu, chat, hotbar, status bars, draggable panels, character
+selection, and character editor at widths below 700 pixels or on coarse-pointer
+devices. Compact rendering uses a higher hardware scaling level and disables
+scene shadows to reduce GPU cost.
+
+## Asset Loading
+
+The client first loads public game data, then builds asset queues for the active
+scene. The asset controller:
+
+1. Groups entries by type, extension, and source filename.
+2. Assigns one loaded value to every logical alias that shares the source.
+3. Skips aliases already present in the game asset cache.
+4. Reports progress through the native loading UI.
+5. Promotes failed required assets to the actionable fatal-error state.
+
+The current production entrypoint is about 2.7 MiB and the first world transfer
+is still about 17.8 MiB. Large VAT files, models, audio, and dormant race assets
+remain candidates for route-based loading and provenance review. See
+[Game Quality Audit](./GAME_QUALITY_AUDIT.md).
+
+## Browser URL Resolution
+
+Local Docker serves the game from:
 
 ```text
 https://arkadii.game.local
 ```
 
-In the public deployment profile, the browser loads the game from:
+The public profile serves it from:
 
 ```text
 https://arkadii.world/game/
 ```
 
-Production client URL resolution is same-origin by default:
+Production URL resolution is same-origin by default:
 
 | Setting | Default Behavior |
 | --- | --- |
 | `CLIENT_API_URL` empty | API calls use `window.location.origin` plus `CLIENT_BASE_PATH` |
-| `CLIENT_WS_URL` empty | Colyseus connects with `wss://` and the current host plus `CLIENT_BASE_PATH` |
+| `CLIENT_WS_URL` empty | Colyseus uses `wss://`, the current host, and `CLIENT_BASE_PATH` |
 | `CLIENT_BASE_PATH` empty | Local Docker serves from `/` |
-| `CLIENT_BASE_PATH=/game` | Public Docker serves from `/game` |
+| `CLIENT_BASE_PATH=/game` | Public Docker serves client, API, docs, and WebSockets under `/game` |
 
-This keeps browser-facing URLs stable behind nginx or Caddy and avoids exposing
-the raw Node.js server port.
+This keeps raw Node.js ports private and lets nginx or Caddy own browser-facing
+TLS and paths.
 
 ## Server Runtime
 
 The server process starts:
 
-- the MySQL-backed database adapter;
-- the Express API;
-- the Colyseus game server;
-- `game_room` and `chat_room`;
-- static file serving from `dist/client`;
-- `/health` for container health checks;
-- `/metrics` for Prometheus scraping;
-- `/docs` for rendered project documentation.
+- the selected SQL database adapter;
+- Express with a 32 KiB JSON limit, compression, CORS, and static cache policy;
+- the Colyseus game server and `game_room` / `chat_room` handlers;
+- static client and docs delivery from `dist/client`;
+- `/health` and `/metrics` operational endpoints;
+- authentication, character, game-data, and help routes.
 
-The server listens on internal port `3000` inside Docker. It is not published to
-the host directly.
+Authentication requests use JSON bodies in the current client. New passwords
+are stored with salted `scrypt`; a valid login automatically upgrades a legacy
+plaintext row. Password fields are removed from every authentication response.
+See [API and Security](./API_AND_SECURITY.md) for endpoint behavior and remaining
+hardening work.
 
 ## Persistence
 
-The project supports both SQLite and MySQL in code. The Docker profiles use
-MySQL by default.
+The Docker profiles use MySQL by default:
 
 ```env
 APP_DATABASE=mysql
 DATABASE_HOST=mysql
 DATABASE_DB=t5c
 DATABASE_USER=t5c
-DATABASE_PASSWORD=t5c_password
+DATABASE_PASSWORD=replace-with-a-secret
 ```
 
-The schema bootstrap is guarded. If the expected schema already exists, the
-server skips importing `database/mysql.sql` so persistent volume data is not
-dropped on restart.
+Host development can use the SQLite adapter without MySQL:
+
+```bash
+APP_DATABASE=sqllite npm run server-dev
+```
+
+`sqllite` is intentionally documented with the spelling used by the existing
+configuration branch. SQLite defaults to `./database.db`.
+
+Schema bootstrap is guarded for both adapters. If the expected user table
+already exists, startup skips importing the schema so container restarts do not
+drop persistent data. Database backups are still required before deployment,
+especially when rolling out credential migration behavior.
+
+## Search and Discovery
+
+The game entry document includes:
+
+- a canonical URL and descriptive title/description;
+- Open Graph and Twitter metadata using an existing game screenshot;
+- Schema.org `VideoGame` JSON-LD;
+- a web app manifest and theme metadata;
+- semantic content available before WebGL starts.
+
+The public profile exposes root discovery files while the application remains
+under `/game/`:
+
+| File | Public URL |
+| --- | --- |
+| `robots.txt` | `https://arkadii.world/robots.txt` |
+| `sitemap.xml` | `https://arkadii.world/sitemap.xml` |
+| `llms.txt` | `https://arkadii.world/llms.txt` |
+| `manifest.webmanifest` | `https://arkadii.world/game/manifest.webmanifest` |
+
+Analytics does not load on localhost or `127.0.0.1`, and it is skipped when the
+browser reports Do Not Track.
 
 ## Important Scripts
 
 | Command | Purpose |
 | --- | --- |
-| `npm run client-dev` | Run Webpack dev server for local client development |
-| `npm run server-dev` | Run the TypeScript server with reload/debug tooling |
-| `npm run client-build` | Build the production client bundle and copy static assets/docs |
-| `npm run server-build` | Compile the server and copy public assets |
+| `npm run client-dev` | Run the Webpack client with hot reload on port `8080` |
+| `APP_DATABASE=sqllite npm run server-dev` | Run the host server with reload and SQLite on port `3000` |
+| `npm run client-build` | Build the production client and copy assets/docs |
+| `npm run server-build` | Compile the server and copy server-side public files |
+| `npm run check:web-quality` | Validate HTML semantics, JSON-LD, manifest, crawler files, and references |
+| `npx tsc --noEmit` | Type-check client and server without writing output |
 | `npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS |
 | `npm run loadtest` | Run the Colyseus chat-room load test |
 | `npm run check:public` | Check DNS and host readiness for `arkadii.world` |
+| `npm audit --omit=dev` | Audit the production dependency tree |
 | `scripts/setup-local-domain.sh` | Prepare local HTTPS domains and certificates |
-| `docker compose up -d --build` | Build and run the full local container stack |
+| `docker compose up -d --build` | Build and run the complete local container stack |
 
 ## Repository Documentation
 
-The Markdown source for project documentation lives in `docs/`. Webpack copies
-those files into the served docs content directory:
+Markdown sources live in `docs/`. Webpack copies them to:
 
 ```text
-/docs/content/*.md
+dist/client/docs/content/*.md
 ```
 
-The browser docs shell lives in `public/docs` and fetches Markdown from that
-copied content directory at runtime.
+The browser shell in `public/docs` fetches that Markdown at runtime. Its
+navigation covers the project overview, API/security reference, quality audit,
+local infrastructure runbook, and public deployment runbook.
