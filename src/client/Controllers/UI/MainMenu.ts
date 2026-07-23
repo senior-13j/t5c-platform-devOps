@@ -74,13 +74,13 @@ export class MainMenu {
             menuTitle: "O",
             children: {
                 reset: {
-                    menuTitle: "Stuck?",
+                    menuTitle: this._game.t("menu.stuck"),
                     click: () => {
                         this._game.sendMessage(ServerMsg.PLAYER_RESET_POSITION);
                     },
                 },
                 screenshot: {
-                    menuTitle: "Take a picture",
+                    menuTitle: this._game.t("menu.screenshot"),
                     click: () => {
                         this.takeScreenshot();
                     },
@@ -96,7 +96,7 @@ export class MainMenu {
                     },
                 },*/
                 quit: {
-                    menuTitle: "Quit",
+                    menuTitle: this._game.t("menu.quit"),
                     click: () => {
                         this._currentPlayer.quit();
                     },
@@ -163,35 +163,35 @@ export class MainMenu {
     _createUI() {
         let menuItems = {
             inventory: {
-                menuTitle: "Inventory",
+                menuTitle: this._game.t("menu.inventory"),
                 icon: "ICON_MENU_inventory",
                 click: () => {
                     this.openPanel("inventory");
                 },
             },
             quests: {
-                menuTitle: "Quests",
+                menuTitle: this._game.t("menu.quests"),
                 icon: "ICON_MENU_quest",
                 click: () => {
                     this.openPanel("quests");
                 },
             },
             abilities: {
-                menuTitle: "Abilities",
+                menuTitle: this._game.t("menu.abilities"),
                 icon: "ICON_MENU_abilities",
                 click: () => {
                     this.openPanel("abilities");
                 },
             },
             character: {
-                menuTitle: "Character",
+                menuTitle: this._game.t("menu.character"),
                 icon: "ICON_MENU_character",
                 click: () => {
                     this.openPanel("character");
                 },
             },
             help: {
-                menuTitle: "Help",
+                menuTitle: this._game.t("menu.help"),
                 icon: "ICON_MENU_help",
                 click: () => {
                     this.openPanel("help");
@@ -264,24 +264,54 @@ export class MainMenu {
         }
     }
 
-    public resize() {
-        const compact = window.innerWidth < 700;
-        this._mainPanel.top = compact ? "80px" : "15px";
-        this._mainPanel.left = compact ? "-8px" : "-15px";
-        this._mainPanel.width = compact ? "280px" : "400px";
-        this._mainPanel.height = compact ? "44px" : "60px";
+    public setVisible(visible: boolean): void {
+        this._mainPanel.isVisible = visible;
+        if (!visible) {
+            this._dropdownMenu.isVisible = false;
+        }
+    }
 
-        this._menuGrid.left = compact ? "-45px" : "-40px";
-        this._menuGrid.height = compact ? "40px" : "30px";
-        this._dropdownButton.width = compact ? "40px" : "30px";
-        this._dropdownButton.height = compact ? "40px" : "30px";
+    public resize() {
+        const compact = this._game.controlMode === "touch" || window.innerWidth < 700;
+        if (!compact) {
+            this._mainPanel.top = "15px";
+            this._mainPanel.left = "-15px";
+            this._mainPanel.width = "400px";
+            this._mainPanel.height = "60px";
+            this._menuGrid.left = "-40px";
+            this._menuGrid.height = "30px";
+            this._menuGrid.spacing = 5;
+            this._dropdownButton.width = "30px";
+            this._dropdownButton.height = "30px";
+            this._menuButtons.forEach((button) => {
+                button.width = "35px";
+                button.height = "30px";
+            });
+            this._dropdownMenu.top = "60px";
+            this._dropdownMenu.left = "-15px";
+            return;
+        }
+
+        const viewport = this._UI.getGuiViewport();
+        const x = (value: number) => value * viewport.scaleX + "px";
+        const y = (value: number) => value * viewport.scaleY + "px";
+        this._mainPanel.top = y(80);
+        this._mainPanel.left = x(-8);
+        this._mainPanel.width = x(Math.min(300, window.innerWidth - 8));
+        this._mainPanel.height = y(48);
+
+        this._menuGrid.left = x(-48);
+        this._menuGrid.height = y(44);
+        this._menuGrid.spacing = 4 * viewport.scaleX;
+        this._dropdownButton.width = x(44);
+        this._dropdownButton.height = y(44);
 
         this._menuButtons.forEach((button) => {
-            button.width = compact ? "40px" : "35px";
-            button.height = compact ? "40px" : "30px";
+            button.width = x(44);
+            button.height = y(44);
         });
 
-        this._dropdownMenu.top = compact ? "128px" : "60px";
-        this._dropdownMenu.left = compact ? "-8px" : "-15px";
+        this._dropdownMenu.top = y(132);
+        this._dropdownMenu.left = x(-8);
     }
 }

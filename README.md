@@ -4,8 +4,9 @@ T5C is a multiplayer 3D top-down RPG prototype built with Babylon.js, Colyseus,
 Express, TypeScript, and SQL persistence. The repository includes the original
 game client/server plus a containerized local stack, observability services, and
 a public deployment profile for `https://arkadii.world/game/`. The browser shell
-also includes responsive game UI, native login controls, accessible loading and
-failure states, and search/discovery metadata.
+also includes an English/Russian entry flow, dedicated keyboard/mouse and touch
+profiles, responsive game UI, accessible loading/failure states, and
+search/discovery metadata.
 
 ![Screenshot of T5C showing a mythical knight in a green lush forest.](https://us1.discourse-cdn.com/flex024/uploads/babylonjs/original/3X/7/3/730ef766396a083a3e3f97c0af46c443b4eba22b.jpeg)
 ![Screen of Eldoria, the imaginary land of T5C](https://github.com/user-attachments/assets/36710dd5-180b-4395-85db-7f98bfd6e08c)
@@ -14,7 +15,7 @@ failure states, and search/discovery metadata.
 
 | Area | Stack | Notes |
 | --- | --- | --- |
-| Client | Babylon.js, TypeScript, Webpack | 3D game client, responsive UI, native login shell, assets, networking |
+| Client | Babylon.js, TypeScript, Webpack | 3D game client, bilingual content, adaptive controls/UI, assets, networking |
 | Server | Node.js, Express, Colyseus | REST API, WebSocket rooms, compressed static delivery, health checks, metrics |
 | Data | MySQL, SQLite fallback | Docker uses MySQL; non-Docker development can still use SQLite |
 | Infrastructure | Docker Compose, nginx, Caddy, Prometheus, Grafana | Local HTTPS stack and public deployment profile |
@@ -22,7 +23,10 @@ failure states, and search/discovery metadata.
 ## Current Gameplay
 
 - VAT animations and instanced animated characters.
-- Player-authoritative click-to-move controls with client-side prediction and server reconciliation.
+- Camera-relative keyboard movement with WASD/arrows, number-row abilities,
+  panel hotkeys, nearest interaction/targeting, and mouse camera controls.
+- Native touch profile with an analog joystick, world-swipe camera rotation,
+  contextual action/chat/zoom controls, and touch hotbar actions.
 - Scene flow for native login, Quick Play, character selection, and character creation.
 - Map transitions, including teleporting to dungeon-style areas.
 - Global chat across zones.
@@ -36,18 +40,24 @@ failure states, and search/discovery metadata.
 - Player leveling with experience and ability points.
 - Functional RPG UI: experience bar, ability bar, draggable panels, inventory, quests, help, and character panels.
 - Simple quest, trainer, vendor, buy, and sell systems.
-- Responsive mobile HUD with compact chat, hotbar, menu, status bars, and panels.
+- English and Russian localization for active UI, game data, dialogs, entity
+  names, help, metadata, accessibility text, and supported server notifications.
+- Responsive mobile HUD with compact chat, hotbar, menu, status bars, panels,
+  and separate portrait/short-landscape layouts.
 - Actionable loading and WebGL failure states instead of an indefinite loading screen.
 
 ## Web Quality
 
-- Native labeled login controls with keyboard focus, validation, and live status.
+- Accessible pre-game language/control dialog and native labeled login controls
+  with keyboard focus, validation, and live status.
 - Semantic HTML shell with language, main and heading landmarks, skip navigation,
   canvas instructions, reduced-motion support, and screen-reader announcements.
 - Canonical metadata, Open Graph/Twitter cards, `VideoGame` JSON-LD, a web app
   manifest, and crawler/answer-engine discovery files.
 - Runtime asset deduplication, mobile render scaling, mobile shadow reduction,
   gzip compression, and explicit cache policy.
+- Automated catalog/data translation checks plus real WebGL desktop/touch
+  Playwright flows for movement, camera, hotkeys, chat, targeting, and layout.
 - `scrypt` password hashing with automatic migration of valid legacy plaintext
   credentials; authentication responses never include password data.
 
@@ -62,6 +72,8 @@ asset review, and remaining risks.
 - npm, installed with Node.js.
 - Docker with Docker Compose support for the containerized stack.
 - `openssl` and `sudo` for the local HTTPS domain setup script.
+- Chromium for browser E2E tests; install it with
+  `npx playwright install chromium` when no compatible browser is available.
 
 Install dependencies once:
 
@@ -125,7 +137,9 @@ The default local URLs are:
 | --- | --- |
 | `npm run client-build` | Build the production browser bundle into `dist/client` |
 | `npm run server-build` | Compile the TypeScript server and copy public assets |
+| `npm run check:localization` | Validate English/Russian key, placeholder, game-data, dialog, HTML, and typed-call coverage |
 | `npm run check:web-quality` | Validate metadata, structured data, manifest, crawler files, and local references |
+| `npm run test:e2e` | Run real WebGL desktop keyboard/mouse and mobile touch Playwright projects |
 | `npx tsc --noEmit` | Type-check the complete client/server source tree without writing output |
 | `npm audit --omit=dev` | Review vulnerabilities in the production dependency tree |
 | `docker compose config` | Validate the local Compose file after env interpolation |
@@ -165,6 +179,7 @@ under `/game/`:
 | --- | --- |
 | [`docs/README.md`](docs/README.md) | Documentation index and runtime URL map |
 | [`docs/PROJECT.md`](docs/PROJECT.md) | Project architecture, runtime shape, persistence, and scripts |
+| [`docs/LOCALIZATION_AND_CONTROLS.md`](docs/LOCALIZATION_AND_CONTROLS.md) | Language flow, keyboard/mouse and touch controls, translation architecture, QA, and patch notes |
 | [`docs/API_AND_SECURITY.md`](docs/API_AND_SECURITY.md) | REST endpoints, authentication, password migration, delivery policy, and security boundaries |
 | [`docs/GAME_QUALITY_AUDIT.md`](docs/GAME_QUALITY_AUDIT.md) | UX, visual, accessibility, SEO/AEO, asset, performance, and dependency audit |
 | [`docs/INFRASTRUCTURE_AND_DEPLOYMENT.md`](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local Docker stack, TLS, validation, observability, and troubleshooting |

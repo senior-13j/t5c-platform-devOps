@@ -75,6 +75,9 @@ Only this host binding is expected in the local profile:
 - Node.js 22 and npm.
 - Docker with Docker Compose support.
 - `openssl` for local certificate generation.
+- Chromium for end-to-end input/layout QA. Install the Playwright-managed build
+  with `npx playwright install chromium` when the host has no compatible
+  browser.
 - `sudo` access when the setup script needs to update `/etc/hosts` or the trust
   store.
 
@@ -125,7 +128,8 @@ npm run client-dev
 
 The spelling `sqllite` matches the existing runtime configuration. The server
 uses `./database.db`; this file is local runtime state and must not be committed.
-The dev client at `http://localhost:8080` enters the game scene directly, while
+Both clients first show language and control-mode selection. After that setup,
+the dev client at `http://localhost:8080` enters the game scene directly, while
 the built client served at `http://localhost:3000` uses the production login
 flow.
 
@@ -184,10 +188,12 @@ docker compose config
 Validate source, browser discovery files, and both production builds:
 
 ```bash
+npm run check:localization
 npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 npm audit --omit=dev
 ```
 
@@ -195,6 +201,18 @@ npm audit --omit=dev
 large world/VAT/audio assets. Those warnings are tracked performance debt, not a
 failed build. The production audit should report no high or critical findings;
 remaining moderate/low advisories are documented in the quality audit.
+
+The Playwright configuration starts an isolated SQLite server and Webpack dev
+client when ports `3000` and `8080` are free. It runs one English desktop
+keyboard/mouse project at `1440x900` and one Russian touch project at `412x915`,
+including a short-landscape resize. Omit
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when using the browser installed by
+Playwright.
+
+The browser checks exercise real WebGL movement/camera input, hotkeys, chat,
+targeting, translated names, touch target sizes, and panel/HUD separation. Test
+artifacts are written to ignored `test-results/` and `playwright-report/`
+directories only when applicable.
 
 After the stack is running, check service state and browser-facing health:
 

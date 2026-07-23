@@ -140,9 +140,8 @@ export class AssetsController {
     }
 
     public async loadNavMesh() {
-        this.showLoadingMessage("navmesh: loading");
+        this.showLoadingMessage(this._game.t("loading.navmesh"));
         let navmesh = await loadNavMeshFromString(this._auth.currentLocation.key);
-        this.showLoadingMessage("navmesh: loaded");
         return navmesh;
     }
 
@@ -323,7 +322,7 @@ export class AssetsController {
             assetTask.onError = (task, message, exception) => {
                 console.error(message, exception);
                 failures.push(obj.filename);
-                this.showLoadingMessage("Unable to load " + obj.filename);
+                this.showLoadingMessage(this._game.t("loading.assetFailed", { asset: obj.filename }));
             };
         });
 

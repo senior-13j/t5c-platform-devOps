@@ -16,7 +16,9 @@
         "server-build": "tsc && cp -r public dist",
         "smoke:ws": "NODE_OPTIONS=--use-system-ca node scripts/smoke-websocket.js",
         "check:public": "scripts/check-public-readiness.sh",
+        "check:localization": "tsx scripts/check-localization.ts",
         "check:web-quality": "node scripts/check-web-quality.mjs",
+        "test:e2e": "env -u DISPLAY playwright test",
         "loadtest": "NODE_OPTIONS=--use-system-ca npx tsx loadtest/chat.ts --room chat_room --numClients 10 --endpoint wss://arkadii.game.local"
     },
     "author": "Orion3d",
@@ -30,6 +32,7 @@
         "@colyseus/monitor": "^0.15.8",
         "@colyseus/schema": "^2.0.37",
         "@colyseus/ws-transport": "^0.15.3",
+        "@playwright/test": "^1.61.1",
         "@types/compression": "^1.8.1",
         "@types/node": "^20.12.12",
         "@types/react": "^18.3.2",

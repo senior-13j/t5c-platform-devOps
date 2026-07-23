@@ -318,6 +318,9 @@ export class GameScene {
 
                 // hide
                 this._game.engine.hideLoadingUI();
+                if (this._game.controlMode === "keyboard") {
+                    this._game.engine.getRenderingCanvas()?.focus();
+                }
 
                 // only do it once
                 this.playerIsSpawned = true;

@@ -5,6 +5,7 @@ import { Rectangle } from "@babylonjs/gui/2D/controls/rectangle";
 
 export class CastingBar {
     private _UI;
+    private _game;
     private _playerUI;
     private _currentPlayer;
 
@@ -15,6 +16,7 @@ export class CastingBar {
 
     constructor(_UI, _currentPlayer) {
         this._UI = _UI;
+        this._game = _UI._game;
         this._playerUI = _UI._playerUI;
         this._currentPlayer = _currentPlayer;
         this._createUI();
@@ -66,7 +68,7 @@ export class CastingBar {
 
     public open() {
         this._UICastingTimer.isVisible = true;
-        this._UICastingTimerText.text = "Start Casting";
+        this._UICastingTimerText.text = this._game.t("casting.start");
     }
 
     public close() {

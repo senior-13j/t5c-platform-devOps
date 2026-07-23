@@ -34,8 +34,10 @@ export class GameRoom extends Room<GameRoomState> {
         this.navMesh = navMesh;
         Logger.info("[gameroom][onCreate] navmesh " + options.location + " initialized.");
 
-        // Set initial state
-        this.setState(new GameRoomState(this, this.navMesh, options));
+        // Publish the room state only after all asynchronous controllers are ready.
+        const state = new GameRoomState(this, this.navMesh, options);
+        await state.init();
+        this.setState(state);
 
         // Register message handlers for messages from the client
         this.registerMessageHandlers();
@@ -106,20 +108,22 @@ export class GameRoom extends Room<GameRoomState> {
     //////////////////////////////////////////////////////////////////////////
     // when a client leaves the room
     async onLeave(client: Client, consented: boolean) {
-        // remove from state
-        this.state.deleteEntity(client.sessionId);
+        if (this.state?.entityCTRL) {
+            if (this.state.getEntity(client.sessionId)) {
+                this.state.deleteEntity(client.sessionId);
+            }
 
-        // make sure no one has this entity as a target
-        this.state.removeTarget(client.sessionId);
-
-        // colyseus client leave
-        client.leave();
+            // Make sure no remaining entity still targets the departing player.
+            this.state.removeTarget(client.sessionId);
+        }
 
         // set character as not online
-        this.database.toggleOnlineStatus(client.auth.id, 0);
+        if (this.database && client.auth?.id) {
+            await this.database.toggleOnlineStatus(client.auth.id, 0);
+        }
 
         // log
-        Logger.info(`[onLeave] player ${client.auth.name} left`);
+        Logger.info(`[onLeave] player ${client.auth?.name ?? client.sessionId} left`);
     }
 
     //////////////////////////////////////////////////////////////////////////

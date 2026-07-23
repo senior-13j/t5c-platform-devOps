@@ -35,6 +35,10 @@ export class Panel_Dialog extends Panel {
         this.createContent();
     }
 
+    public getActionHeight(): string {
+        return this._game.controlMode === "touch" ? "44px" : "24px";
+    }
+
     public open(entity?: any) {
         super.open();
 
@@ -81,6 +85,7 @@ export class Panel_Dialog extends Panel {
     public nextStep(step) {
         if (!this.currentDialog[step]) {
             this.close();
+            return;
         }
 
         // clear dialog
@@ -123,7 +128,7 @@ export class Panel_Dialog extends Panel {
                 createBtn.left = "0px;";
                 createBtn.top = "0px";
                 createBtn.width = 1;
-                createBtn.height = "24px";
+                createBtn.height = this.getActionHeight();
                 createBtn.background = color;
                 createBtn.color = "white";
                 createBtn.thickness = 0;
@@ -137,11 +142,11 @@ export class Panel_Dialog extends Panel {
 
         // create any trainer buttons
         if (currentDialog.trainer) {
-            const createBtn = Button.CreateSimpleButton("gotoVendor", "Can you train me?");
+            const createBtn = Button.CreateSimpleButton("gotoVendor", this._game.t("dialog.train"));
             createBtn.left = "0px;";
             createBtn.top = "0px";
             createBtn.width = 1;
-            createBtn.height = "24px";
+            createBtn.height = this.getActionHeight();
             createBtn.background = "black";
             createBtn.color = "white";
             createBtn.thickness = 0;
@@ -153,11 +158,11 @@ export class Panel_Dialog extends Panel {
 
         // create any vendor buttons
         if (currentDialog.vendor) {
-            const createBtn = Button.CreateSimpleButton("gotoVendor", "Can I see your wares?");
+            const createBtn = Button.CreateSimpleButton("gotoVendor", this._game.t("dialog.vendor"));
             createBtn.left = "0px;";
             createBtn.top = "0px";
             createBtn.width = 1;
-            createBtn.height = "24px";
+            createBtn.height = this.getActionHeight();
             createBtn.background = "black";
             createBtn.color = "white";
             createBtn.thickness = 0;
@@ -173,14 +178,14 @@ export class Panel_Dialog extends Panel {
             currentDialog.buttons.forEach((btn: any) => {
                 let label = btn.label;
                 if (btn.isQuest) {
-                    label = label + " (QUEST)";
+                    label = label + " (" + this._game.t("dialog.questMarker") + ")";
                 }
 
                 const createBtn = Button.CreateSimpleButton("characterBtn-" + i, label);
                 createBtn.left = "0px;";
                 createBtn.top = "0px";
                 createBtn.width = 1;
-                createBtn.height = "24px";
+                createBtn.height = this.getActionHeight();
                 createBtn.background = "black";
                 createBtn.color = "white";
                 createBtn.thickness = 0;
@@ -196,13 +201,13 @@ export class Panel_Dialog extends Panel {
 
         // if last dialog in array, show close button
         if (currentDialog.isEndOfDialog) {
-            let buttonName = currentDialog.buttonName ?? "Bye";
+            let buttonName = currentDialog.buttonName ?? this._game.t("common.bye");
 
             const createBtn = Button.CreateSimpleButton("characterBtn", buttonName);
             createBtn.left = "0px;";
             createBtn.top = "0px";
             createBtn.width = 1;
-            createBtn.height = "24px";
+            createBtn.height = this.getActionHeight();
             createBtn.background = "black";
             createBtn.color = "white";
             createBtn.thickness = 0;

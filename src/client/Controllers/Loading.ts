@@ -1,3 +1,5 @@
+import { PreferencesController } from "./PreferencesController";
+
 interface ILoadingScreen {
     displayLoadingUI: () => void;
     hideLoadingUI: () => void;
@@ -7,6 +9,7 @@ interface ILoadingScreen {
 
 class Loading implements ILoadingScreen {
     public loadingUIBackgroundColor: string;
+    public loadingUIText: string;
     public loadingScreenDiv: HTMLElement;
     public loadingScreenTxt: HTMLElement;
     public loadingTextDetailsTxt: HTMLElement;
@@ -17,7 +20,8 @@ class Loading implements ILoadingScreen {
     private fatalErrorMessage: HTMLElement;
     private announcements: HTMLElement;
 
-    constructor(public loadingUIText: string) {
+    constructor(private preferences: PreferencesController) {
+        this.loadingUIText = this.preferences.t("loading.title");
         this.loadingScreenDiv = window.document.getElementById("loadingScreen");
         this.loadingScreenTxt = window.document.getElementById("loadingText");
         this.loadingTextDetailsTxt = window.document.getElementById("loadingTextDetails");
@@ -31,15 +35,18 @@ class Loading implements ILoadingScreen {
     }
 
     public displayLoadingUI() {
+        this.preferences.applyDocumentTranslations();
         this.fatalError.hidden = true;
+        this.loadingScreenDiv.hidden = false;
         this.loadingScreenDiv.style.display = "grid";
         this.loadingScreenTxt.textContent = this.loadingUIText;
-        this.setProgress(0, "Loading game data...");
+        this.setProgress(0, this.preferences.t("loading.gameData"));
     }
 
     public hideLoadingUI() {
         this.loadingScreenDiv.style.display = "none";
-        this.announce("T5C is ready to play.");
+        this.loadingScreenDiv.hidden = true;
+        this.announce(this.preferences.t("loading.ready"));
     }
 
     public setProgress(value: number, details?: string) {
@@ -58,14 +65,14 @@ class Loading implements ILoadingScreen {
     public showFatalError(error: unknown) {
         const rawMessage = error instanceof Error ? error.message : String(error || "Unknown startup error");
         const isWebGlError = /webgl|rendering context|engine/i.test(rawMessage);
-        const message = isWebGlError
-            ? "This browser could not create a WebGL graphics context. Enable hardware acceleration or try a current browser and reload the game."
-            : "The game could not finish loading. Check your connection and reload; if the problem continues, open technical help.";
+        const message = this.preferences.t(isWebGlError ? "fatal.webgl" : "fatal.default");
 
+        document.getElementById("entrySetupOverlay")?.setAttribute("hidden", "");
         this.loadingScreenDiv.style.display = "none";
+        this.loadingScreenDiv.hidden = true;
         this.fatalErrorMessage.textContent = message;
         this.fatalError.hidden = false;
-        this.announce("T5C could not start. " + message);
+        this.announce(this.preferences.t("fatal.announcement", { message }));
         window.document.getElementById("retryButton")?.focus();
     }
 

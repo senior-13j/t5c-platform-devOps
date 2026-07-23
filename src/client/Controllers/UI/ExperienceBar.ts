@@ -16,6 +16,7 @@ export class ExperienceBar {
 
     // experience bar
     private experienceBarUI;
+    private experienceBar;
     private experienceBarTextLeft;
     private experienceBarTextRight;
 
@@ -50,6 +51,7 @@ export class ExperienceBar {
         experienceBar.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         experienceBar.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         this._playerUI.addControl(experienceBar);
+        this.experienceBar = experienceBar;
 
         const experienceBarInside = new Rectangle("experienceBarInside");
         experienceBarInside.top = "0px;";
@@ -115,6 +117,12 @@ export class ExperienceBar {
             this.experienceBarTextRight.text = progress + "%";
             this.experienceBarTextLeft.text =
                 player_experience.toLocaleString() + " / " + Leveling.getTotalLevelXp(this._currentPlayer.level).toLocaleString() + " EXP";
+        }
+    }
+
+    public setVisible(visible: boolean): void {
+        if (this.experienceBar) {
+            this.experienceBar.isVisible = visible;
         }
     }
 }

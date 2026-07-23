@@ -85,7 +85,7 @@ export class Tooltip {
         tooltipName.left = "30px";
         tooltipName.fontSize = "16px;";
         tooltipName.resizeToFit = true;
-        tooltipName.text = "Item Name";
+        tooltipName.text = "";
         tooltipName.fontWeight = "bold";
         tooltipName.lineSpacing = "-2";
         tooltipName.textWrapping = TextWrapping.WordWrapEllipsis;
@@ -151,13 +151,13 @@ export class Tooltip {
         this.tooltipDescription.text = data.description;
 
         this.tooltipValue.isVisible = true;
-        this.tooltipValue.text = "Value: " + data.value;
+        this.tooltipValue.text = this._game.t("tooltip.value", { value: data.value });
 
         //
         let stats = "";
         for (let key in data.statModifiers) {
             for (let line of data.statModifiers[key]) {
-                let title = key.toUpperCase() + ": ";
+                let title = this.getStatLabel(key) + ": ";
                 if (line.type === CalculationTypes.ADD) {
                     stats += title + " + " + line.value + "\n";
                 } else if (line.type === CalculationTypes.MULTIPLY) {
@@ -168,7 +168,7 @@ export class Tooltip {
 
         // if damage
         if(data.damage){
-            stats += "Damage: "+data.damage.min+" - "+data.damage.max+" \n";
+            stats += this._game.t("tooltip.damage", { min: data.damage.min, max: data.damage.max }) + "\n";
         }
 
         stats = stats.slice(0, -1);
@@ -193,18 +193,23 @@ export class Tooltip {
         let stats = "";
         if (data.casterPropertyAffected.length > 0) {
             data.casterPropertyAffected.forEach((element) => {
-                stats += "Cost: " + element.min + "-" + element.max + " " + element.key.toUpperCase() + "\n";
+                stats +=
+                    this._game.t("tooltip.cost", {
+                        min: element.min,
+                        max: element.max,
+                        resource: this.getStatLabel(element.key),
+                    }) + "\n";
             });
         }
 
         if (data.cooldown > 0) {
-            stats += "Cooldown: " + data.cooldown / 1000 + "s\n";
+            stats += this._game.t("tooltip.cooldown", { seconds: data.cooldown / 1000 }) + "\n";
         }
 
         if (data.castTime > 0) {
-            stats += "Cast time: " + data.castTime / 1000 + "s\n";
+            stats += this._game.t("tooltip.castTime", { seconds: data.castTime / 1000 }) + "\n";
         } else {
-            stats += "Instant Cast\n";
+            stats += this._game.t("tooltip.instant") + "\n";
         }
 
         stats = stats.slice(0, -1);
@@ -213,6 +218,20 @@ export class Tooltip {
         // color based on rarity
         this.tooltipContainer.color = Rarity.getColor(false).color;
         this.tooltipName.color = Rarity.getTooltipColor(false, 1);
+    }
+
+    private getStatLabel(key: string): string {
+        const labels = {
+            strength: "attribute.strength",
+            endurance: "attribute.endurance",
+            agility: "attribute.agility",
+            intelligence: "attribute.intelligence",
+            wisdom: "attribute.wisdom",
+            ac: "attribute.ac",
+            health: "character.health",
+            mana: "character.mana",
+        } as const;
+        return labels[key] ? this._game.t(labels[key]) : key.toUpperCase();
     }
 
     /** called externally to refresh tooltip with content */

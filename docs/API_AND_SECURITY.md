@@ -106,6 +106,29 @@ The Express runtime applies these controls before API and static routes:
 | Help pages | Filename allowlist blocks traversal outside the help directory |
 | CORS | Currently permissive for compatibility |
 
+## Real-Time Input and Room Lifecycle
+
+Keyboard and touch movement use the same Colyseus player-input message. The
+server treats its horizontal and vertical components as untrusted values:
+
+- non-finite or missing components become zero;
+- vectors longer than one are normalized before speed is applied;
+- near-zero vectors do not move the player;
+- dead or server-blocked players cannot move;
+- navmesh clamping remains the final position boundary.
+
+This prevents a modified client from gaining diagonal speed or sending
+`NaN`/infinite coordinates through the ordinary movement path. It is not a
+complete anti-cheat system: movement rate, message frequency, teleport checks,
+and authoritative time-based speed limits remain future hardening work.
+
+Room startup now awaits game-data and controller initialization before
+publishing the Colyseus state or registering normal simulation work. This fixes
+a race where a fast join or update could observe a state whose `entityCTRL` and
+`spawnCTRL` were not ready. Leave handling also tolerates incomplete state,
+authentication, or database setup and only writes online status when a valid
+character ID exists.
+
 ## Current Security Boundaries
 
 The following items remain explicit follow-up work for a hardened public
@@ -113,6 +136,8 @@ service:
 
 - Add rate limiting for login and Quick Play account creation.
 - Restrict CORS to intended production and development origins.
+- Add per-client input-rate and authoritative displacement limits for stronger
+  movement abuse protection.
 - Replace the legacy unauthenticated `/get_character` route with an
   ownership-checked token flow before exposing character details beyond the
   current prototype.
@@ -127,6 +152,14 @@ Run the server with the SQLite fallback for host QA:
 
 ```bash
 APP_DATABASE=sqllite npm run server-dev
+```
+
+Run source, localization, and browser behavior checks before deployment:
+
+```bash
+npm run check:localization
+npm run server-build
+npm run test:e2e
 ```
 
 Then verify representative behavior:

@@ -5,6 +5,7 @@ import { Control } from "@babylonjs/gui/2D/controls/control";
 import { InputText } from "@babylonjs/gui/2D/controls/inputText";
 import { ScrollViewer } from "@babylonjs/gui/2D/controls/scrollViewers/scrollViewer";
 import { StackPanel } from "@babylonjs/gui/2D/controls/stackPanel";
+import { AdvancedDynamicTexture } from "@babylonjs/gui/2D/advancedDynamicTexture";
 import { PlayerMessage, ServerMsg } from "../../../shared/types";
 import { generatePanel, getBg, getPadding } from "./Theme";
 
@@ -17,6 +18,7 @@ export class ChatBox {
     private _currentPlayer;
     private _entities;
     private _colors;
+    private _uiTexture: AdvancedDynamicTexture;
 
     private _chatButton;
     private _chatInput;
@@ -24,12 +26,13 @@ export class ChatBox {
 
     public messages: PlayerMessage[] = [];
 
-    constructor(_playerUI, _chatRoom, _currentPlayer, _entities, _game) {
+    constructor(_playerUI, _chatRoom, _currentPlayer, _entities, _game, _uiTexture: AdvancedDynamicTexture) {
         this._playerUI = _playerUI;
         this._chatRoom = _chatRoom;
         this._game = _game;
         this._currentPlayer = _currentPlayer;
         this._entities = _entities;
+        this._uiTexture = _uiTexture;
 
         this._colors = {
             event: "orange",
@@ -45,10 +48,37 @@ export class ChatBox {
 
         // add messages
         this._refreshChatBox();
+        if (this._game.controlMode === "touch") {
+            this.setVisible(false);
+        }
     }
 
     get chatInput(): InputText {
         return this._chatInput;
+    }
+
+    public focus(): void {
+        this._currentPlayer?._input?.suspendMovement();
+        if (this._chatInput) {
+            this._uiTexture.focusedControl = this._chatInput;
+        }
+    }
+
+    public isFocused(): boolean {
+        return this._uiTexture.focusedControl === this._chatInput;
+    }
+
+    public setVisible(visible: boolean): void {
+        if (this.chatPanel) {
+            this.chatPanel.isVisible = visible;
+        }
+        if (!visible && this.isFocused()) {
+            this._uiTexture.focusedControl = null;
+        }
+    }
+
+    public isVisible(): boolean {
+        return Boolean(this.chatPanel?.isVisible);
     }
 
     _createUI() {
@@ -75,14 +105,14 @@ export class ChatBox {
         chatInput.fontSize = "12px";
         chatInput.thickness = 0;
         chatInput.background = getBg();
-        chatInput.placeholderText = "Write message here...";
+        chatInput.placeholderText = this._game.t("chat.placeholder");
         chatInput.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         chatInput.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         paddingPanel.addControl(chatInput);
         this._chatInput = chatInput;
 
         // add chat send button
-        const chatButton = Button.CreateSimpleButton("chatButton", "SEND");
+        const chatButton = Button.CreateSimpleButton("chatButton", this._game.t("chat.send"));
         chatButton.width = 0.2;
         chatButton.height = "24px;";
         chatButton.top = "0px";
@@ -133,7 +163,7 @@ export class ChatBox {
 
         this._chatRoom.onMessage(ServerMsg.SERVER_MESSAGE, (message: PlayerMessage) => {
             message.color = this._colors["chat"];
-            this.addNotificationMessage("system", message.message, new Date());
+            this.addNotificationMessage("system", this._game.translateServerMessage(message.message), new Date());
         });
 
         // receive message event
@@ -193,7 +223,8 @@ export class ChatBox {
             senderId: this._currentPlayer.sessionId,
         });
         this._chatInput.text = "";
-        this._chatInput.focus();
+        this._uiTexture.focusedControl = null;
+        this._game.engine.getRenderingCanvas()?.focus();
     }
 
     // chat refresh
@@ -228,9 +259,17 @@ export class ChatBox {
             headlineRect.adaptHeightToChildren = true;
             this._chatUI.addControl(headlineRect);
 
-            let prefix = "[GLOBAL] " + msg.name + ": ";
+            let prefix = this._game.t("chat.global", { name: msg.name });
+            if (msg.senderID === "SYSTEM") {
+                prefix = this._game.t("chat.system");
+            }
             if (this._currentPlayer) {
-                prefix = msg.senderID == this._currentPlayer.sessionId ? "You said: " : "[GLOBAL] " + msg.name + ": ";
+                prefix =
+                    msg.senderID == this._currentPlayer.sessionId
+                        ? this._game.t("chat.youSaid")
+                        : msg.senderID === "SYSTEM"
+                          ? this._game.t("chat.system")
+                          : this._game.t("chat.global", { name: msg.name });
             }
 
             // message
@@ -250,12 +289,33 @@ export class ChatBox {
     }
 
     public resize() {
-        const compact = window.innerWidth < 700;
-        this.chatPanel.width = compact ? Math.min(240, window.innerWidth - 24) + "px" : "350px";
-        this.chatPanel.height = compact ? "128px" : "200px";
-        this.chatPanel.left = compact ? "8px" : "15px";
-        this.chatPanel.top = compact ? "-82px" : window.innerWidth < 1100 ? "-115px" : "-30px";
-        this._chatUIScroll.height = compact ? "96px" : "168px";
+        const touchMode = this._game.controlMode === "touch";
+        const compact = touchMode || window.innerWidth < 700;
+        if (!compact) {
+            this.chatPanel.width = "350px";
+            this.chatPanel.height = "200px";
+            this.chatPanel.left = "15px";
+            this.chatPanel.top = window.innerWidth < 1100 ? "-115px" : "-30px";
+            this._chatUIScroll.height = "168px";
+            this._chatInput.height = "24px";
+            this._chatButton.height = "24px";
+            this._chatInput.width = 0.8;
+            this._chatButton.width = 0.2;
+            return;
+        }
+
+        const viewport = this._uiTexture.getSize();
+        const scaleX = viewport.width / (this._game.engine.getRenderingCanvas()?.clientWidth || window.innerWidth || 1);
+        const scaleY = viewport.height / (this._game.engine.getRenderingCanvas()?.clientHeight || window.innerHeight || 1);
+        const landscape = touchMode && window.innerHeight <= 520;
+        const panelHeight = landscape ? 100 : 128;
+        this.chatPanel.width = Math.min(240, window.innerWidth - 24) * scaleX + "px";
+        this.chatPanel.height = panelHeight * scaleY + "px";
+        this.chatPanel.left = 8 * scaleX + "px";
+        this.chatPanel.top = (touchMode ? (landscape ? -183 : -260) : -82) * scaleY + "px";
+        this._chatUIScroll.height = (landscape ? 50 : 78) * scaleY + "px";
+        this._chatInput.height = 44 * scaleY + "px";
+        this._chatButton.height = 44 * scaleY + "px";
         this._chatInput.width = compact ? 0.7 : 0.8;
         this._chatButton.width = compact ? 0.3 : 0.2;
     }

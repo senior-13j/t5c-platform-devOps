@@ -33,7 +33,7 @@ export class CharacterSelectionScene {
     public sceneRendered = false;
 
     private isCompact(): boolean {
-        return window.innerWidth < 700;
+        return this._game?.controlMode === "touch" || window.innerWidth < 700;
     }
 
     public async createScene(game) {
@@ -112,7 +112,7 @@ export class CharacterSelectionScene {
         this.leftColumnRect = leftColumnRectPad;
 
         // welcome text
-        const welcomeText = new TextBlock("infotext", "Choose your adventurer");
+        const welcomeText = new TextBlock("infotext", this._game.t("character.choose"));
         welcomeText.width = 1;
         welcomeText.height = "40px";
         welcomeText.color = "white";
@@ -123,7 +123,10 @@ export class CharacterSelectionScene {
         welcomeText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         leftColumnRectPad.addControl(welcomeText);
 
-        const accountText = new TextBlock("accountText", "Signed in as " + this._game.currentUser.username);
+        const accountText = new TextBlock(
+            "accountText",
+            this._game.t("character.signedIn", { name: this._game.currentUser.username })
+        );
         accountText.width = 1;
         accountText.height = "24px";
         accountText.color = "#b7c8c0";
@@ -144,7 +147,7 @@ export class CharacterSelectionScene {
         leftColumnRectPad.addControl(leftColumnBottomActions);
 
         // logout btn
-        const logoutBtn = Button.CreateSimpleButton("logoutBtn", "Sign out");
+        const logoutBtn = Button.CreateSimpleButton("logoutBtn", this._game.t("character.signOut"));
         logoutBtn.top = "0px";
         logoutBtn.width = 1;
         logoutBtn.height = compact ? "36px" : "32px";
@@ -158,7 +161,10 @@ export class CharacterSelectionScene {
             this._game.logout();
         });
 
-        const characterEditorBtn = Button.CreateSimpleButton("characterEditorBtn", "Create adventurer");
+        const characterEditorBtn = Button.CreateSimpleButton(
+            "characterEditorBtn",
+            this._game.t("character.createAdventurer")
+        );
         characterEditorBtn.top = compact ? "-46px" : "-40px";
         characterEditorBtn.width = 1;
         characterEditorBtn.height = compact ? "36px" : "32px";
@@ -256,7 +262,10 @@ export class CharacterSelectionScene {
                 characterName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 characterBloc.addControl(characterName);
 
-                const characterDetails = new TextBlock("characterDetails", "Level: " + char.level);
+                const characterDetails = new TextBlock(
+                    "characterDetails",
+                    this._game.t("character.level", { level: char.level })
+                );
                 characterDetails.width = 0.6;
                 characterDetails.height = "40px";
                 characterDetails.color = "#c2d0ca";
@@ -268,7 +277,7 @@ export class CharacterSelectionScene {
                 characterDetails.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 characterBloc.addControl(characterDetails);
 
-                const createBtn = Button.CreateSimpleButton("characterBtn-" + char.id, "PLAY");
+                const createBtn = Button.CreateSimpleButton("characterBtn-" + char.id, this._game.t("character.play"));
                 createBtn.left = compact ? "70px" : "82px";
                 createBtn.top = compact ? "66px" : "64px";
                 createBtn.width = compact ? "112px" : "120px";

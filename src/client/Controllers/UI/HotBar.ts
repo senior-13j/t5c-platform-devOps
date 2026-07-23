@@ -9,6 +9,15 @@ import { ServerMsg } from "../../../shared/types";
 import { Room } from "colyseus.js";
 import { UserInterface } from "../UserInterface";
 
+type HotbarLayout = {
+    columns: number;
+    contentHeight: number;
+    gutter: number;
+    iconSize: number;
+    offset: number;
+    width: number;
+};
+
 export class HotBar {
     private _playerUI;
     private _abilityUI;
@@ -18,7 +27,7 @@ export class HotBar {
     private _loadedAssets;
     private _currentPlayer: Player;
     private _UITooltip;
-    private _layoutWidth = 0;
+    private _layoutKey = "";
 
     constructor(_UI: UserInterface, _currentPlayer) {
         this._playerUI = _UI._playerUI;
@@ -47,9 +56,8 @@ export class HotBar {
     }
 
     _createUI() {
-        const compact = window.innerWidth < 700;
-        const width = this.getLayoutWidth();
-        this._layoutWidth = width;
+        const layout = this.getLayout();
+        this._layoutKey = this.getLayoutKey(layout);
         let abilityRect: Rectangle[] = [];
 
         if (this._abilityUI) {
@@ -58,9 +66,9 @@ export class HotBar {
 
         const abilityMainPanel = generatePanel(
             "abilityPanel",
-            width + 10 + "px",
-            compact ? "52px" : "62px",
-            compact ? "-28px" : "-35px",
+            layout.width + 10 + "px",
+            layout.contentHeight + 10 + "px",
+            layout.offset + "px",
             "0px"
         );
         abilityMainPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
@@ -79,26 +87,24 @@ export class HotBar {
         // add stack panel
         const abilityPanel = new Rectangle("abilityPanel");
         abilityPanel.top = "0px;";
-        abilityPanel.width = width + "px";
-        abilityPanel.adaptHeightToChildren = true;
+        abilityPanel.width = layout.width + "px";
+        abilityPanel.height = layout.contentHeight + "px";
         abilityPanel.thickness = 0;
         abilityPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         abilityPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         paddingPanel.addControl(abilityPanel);
 
         for (let i = 1; i <= this._game.config.PLAYER_HOTBAR_SIZE; i++) {
-            // calculate responsive width and height
-            let iconGutter = 4;
-            let iconWidth = width / this._game.config.PLAYER_HOTBAR_SIZE - iconGutter;
-            let iconLeft = iconWidth + iconGutter;
-            let leftMargin = i > 1 ? (i - 1) * iconLeft + "px" : "0px";
+            const column = (i - 1) % layout.columns;
+            const row = Math.floor((i - 1) / layout.columns);
+            const cellSize = layout.iconSize + layout.gutter;
 
             // container
             var headlineRect = new Rectangle("ability_" + i);
-            headlineRect.top = "0px";
-            headlineRect.left = leftMargin;
-            headlineRect.width = iconWidth + "px";
-            headlineRect.height = iconWidth + "px";
+            headlineRect.top = row * cellSize + "px";
+            headlineRect.left = column * cellSize + "px";
+            headlineRect.width = layout.iconSize + "px";
+            headlineRect.height = layout.iconSize + "px";
             headlineRect.thickness = 0;
             headlineRect.background = "rgba(255,255,255,.2)";
             headlineRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -131,13 +137,15 @@ export class HotBar {
         img.stretch = Image.STRETCH_FILL;
         headlineRect.addControl(img);
 
-        headlineRect.onPointerEnterObservable.add(() => {
-            this.showTooltip(hotbar.type, hotbarData, headlineRect);
-        });
+        if (this._game.controlMode !== "touch") {
+            headlineRect.onPointerEnterObservable.add(() => {
+                this.showTooltip(hotbar.type, hotbarData, headlineRect);
+            });
 
-        headlineRect.onPointerOutObservable.add(() => {
-            this.hideTooltip();
-        });
+            headlineRect.onPointerOutObservable.add(() => {
+                this.hideTooltip();
+            });
+        }
 
         headlineRect.onPointerClickObservable.add(() => {
             if (!this._currentPlayer.abilityController.isCasting) {
@@ -200,13 +208,43 @@ export class HotBar {
     }
 
     public resize() {
-        const nextWidth = this.getLayoutWidth();
-        if (nextWidth !== this._layoutWidth) {
+        const layout = this.getLayout();
+        if (this.getLayoutKey(layout) !== this._layoutKey) {
             this._createUI();
         }
     }
 
-    private getLayoutWidth(): number {
-        return window.innerWidth < 700 ? Math.max(270, Math.min(460, window.innerWidth - 20)) : 460;
+    public setVisible(visible: boolean): void {
+        if (this._abilityUI) {
+            this._abilityUI.isVisible = visible;
+        }
+    }
+
+    private getLayout(): HotbarLayout {
+        const size = this._game.config.PLAYER_HOTBAR_SIZE;
+        const touchMode = this._game.controlMode === "touch";
+        const narrowTouch = touchMode && window.innerWidth < 600;
+        const columns = narrowTouch ? 5 : size;
+        const viewport = this._UI.getGuiViewport();
+        const gutter = 4 * viewport.scaleX;
+        const targetWidth = narrowTouch
+            ? Math.min(282, window.innerWidth - 12)
+            : touchMode
+              ? Math.min(520, window.innerWidth - 24)
+              : window.innerWidth < 700
+                ? Math.min(460, window.innerWidth - 20)
+                : 460;
+        const width = Math.min(targetWidth * viewport.scaleX, viewport.width - 12 * viewport.scaleX);
+        const iconSize = width / columns - gutter;
+        const rows = Math.ceil(size / columns);
+        const contentHeight = rows * (iconSize + gutter) - gutter;
+        const offsetCss = touchMode ? (window.innerHeight <= 520 ? -130 : -150) : window.innerWidth < 700 ? -28 : -35;
+        const offset = offsetCss * viewport.scaleY;
+
+        return { columns, contentHeight, gutter, iconSize, offset, width };
+    }
+
+    private getLayoutKey(layout: HotbarLayout): string {
+        return [layout.columns, layout.contentHeight, layout.offset, layout.width].map((value) => Math.round(value)).join(":");
     }
 }

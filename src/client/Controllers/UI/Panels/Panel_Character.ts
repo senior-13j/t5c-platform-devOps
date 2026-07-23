@@ -25,66 +25,74 @@ export class Panel_Character extends Panel {
         //
         this.attributes = {
             strength: {
-                name: "Strength",
+                name: this._game.t("attribute.strength"),
                 button: true,
             },
             endurance: {
-                name: "Endurance",
+                name: this._game.t("attribute.endurance"),
                 button: true,
             },
             agility: {
-                name: "Agility",
+                name: this._game.t("attribute.agility"),
                 button: true,
             },
             intelligence: {
-                name: "Intelligence",
+                name: this._game.t("attribute.intelligence"),
                 button: true,
             },
             wisdom: {
-                name: "Wisdom",
+                name: this._game.t("attribute.wisdom"),
                 button: true,
             },
             ac: {
-                name: "AC",
+                name: this._game.t("attribute.ac"),
                 button: false,
             },
             points: {
-                name: "Available Points",
+                name: this._game.t("attribute.points"),
             },
         };
 
         //
         this.stats = {
             name: {
-                label: "Name",
+                label: this._game.t("character.name"),
                 value: this._currentPlayer.name,
             },
             sessionId: {
-                label: "ID",
+                label: this._game.t("character.id"),
                 value: this._currentPlayer.sessionId,
             },
             level: {
-                label: "Level",
+                label: this._game.t("common.level"),
                 value: this._currentPlayer.level,
             },
             race: {
-                label: "Race",
-                value: this._currentPlayer.race,
+                label: this._game.t("character.race"),
+                value: this._game.getGameData("race", this._currentPlayer.race)?.title ?? this._currentPlayer.race,
             },
             health: {
-                label: "Health",
+                label: this._game.t("character.health"),
                 value: this._currentPlayer.health + "/" + this._currentPlayer.maxHealth,
             },
             mana: {
-                label: "Mana",
+                label: this._game.t("character.mana"),
                 value: this._currentPlayer.mana + "/" + this._currentPlayer.maxMana,
             },
         };
 
         this.slots = [
-            "HEAD",
-            "AMULET",
-            "CHEST", "PANTS", "SHOES", "WEAPON", "OFF_HAND", "RING_1", "RING_2", "BACK",];
+            this._game.t("slot.head"),
+            this._game.t("slot.amulet"),
+            this._game.t("slot.chest"),
+            this._game.t("slot.pants"),
+            this._game.t("slot.shoes"),
+            this._game.t("slot.weapon"),
+            this._game.t("slot.offHand"),
+            this._game.t("slot.ring1"),
+            this._game.t("slot.ring2"),
+            this._game.t("slot.back"),
+        ];
 
         // create UI
         this.createPanels();
@@ -167,6 +175,8 @@ export class Panel_Character extends Panel {
     }
 
     private leftPanelContent(panel) {
+        const touchMode = this._game.controlMode === "touch";
+        const viewport = this._UI.getGuiViewport();
         // if already exists
         panel.children.forEach((el) => {
             el.dispose();
@@ -190,7 +200,7 @@ export class Panel_Character extends Panel {
             panelRectangle.top = "0px";
             panelRectangle.left = "0px;";
             panelRectangle.width = 1;
-            panelRectangle.height = "30px";
+            panelRectangle.height = touchMode ? 44 * viewport.scaleY + "px" : "30px";
             panelRectangle.background = "#CCC";
             panelRectangle.thickness = 1;
             panelRectangle.paddingLeft = "0px;";
@@ -202,8 +212,10 @@ export class Panel_Character extends Panel {
             tooltipName.color = "#FFF";
             tooltipName.top = "0px";
             tooltipName.left = "5px";
-            tooltipName.fontSize = "14px;";
-            tooltipName.resizeToFit = true;
+            tooltipName.fontSize = touchMode ? "12px" : "14px";
+            tooltipName.resizeToFit = false;
+            tooltipName.width = touchMode ? 0.46 : 0.52;
+            tooltipName.height = 1;
             tooltipName.text = line.label;
             tooltipName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             tooltipName.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -215,8 +227,10 @@ export class Panel_Character extends Panel {
             valueText.color = "#FFF";
             valueText.top = "0px";
             valueText.left = "-5px";
-            valueText.fontSize = "14px;";
-            valueText.resizeToFit = true;
+            valueText.fontSize = touchMode ? "12px" : "14px";
+            valueText.resizeToFit = false;
+            valueText.width = touchMode ? 0.52 : 0.46;
+            valueText.height = 1;
             valueText.text = line.value;
             valueText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             valueText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
@@ -227,6 +241,8 @@ export class Panel_Character extends Panel {
     }
 
     private rightPanelContent(panel) {
+        const touchMode = this._game.controlMode === "touch";
+        const viewport = this._UI.getGuiViewport();
         // if already exists
         panel.children.forEach((el) => {
             el.dispose();
@@ -250,7 +266,7 @@ export class Panel_Character extends Panel {
             panelRectangle.top = "0px";
             panelRectangle.left = "0px;";
             panelRectangle.width = 1;
-            panelRectangle.height = "30px";
+            panelRectangle.height = touchMode ? 44 * viewport.scaleY + "px" : "30px";
             panelRectangle.background = "#CCC";
             panelRectangle.thickness = 1;
             panelRectangle.paddingLeft = "0px;";
@@ -262,8 +278,10 @@ export class Panel_Character extends Panel {
             tooltipName.color = "#FFF";
             tooltipName.top = "0px";
             tooltipName.left = "5px";
-            tooltipName.fontSize = "14px;";
-            tooltipName.resizeToFit = true;
+            tooltipName.fontSize = touchMode ? "11px" : "14px";
+            tooltipName.resizeToFit = false;
+            tooltipName.width = touchMode ? 0.54 : 0.7;
+            tooltipName.height = 1;
             tooltipName.text = line.name;
             tooltipName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             tooltipName.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -275,8 +293,10 @@ export class Panel_Character extends Panel {
             valueText.color = "#FFF";
             valueText.top = "0px";
             valueText.left = "-5px";
-            valueText.fontSize = "14px;";
-            valueText.resizeToFit = true;
+            valueText.fontSize = touchMode ? "12px" : "14px";
+            valueText.resizeToFit = false;
+            valueText.width = touchMode ? 0.18 : 0.25;
+            valueText.height = 1;
             valueText.text = this._currentPlayer.player_data[key] ?? "ERROR";
             valueText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             valueText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
@@ -286,7 +306,8 @@ export class Panel_Character extends Panel {
 
             //
             if (line.button && this._currentPlayer.player_data.points > 0) {
-                let button = createButton("button", "+", "20px", "20px");
+                const buttonSize = touchMode ? 44 * viewport.scaleX + "px" : "20px";
+                let button = createButton("button", "+", buttonSize, buttonSize);
                 button.background = "green";
                 button.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
                 button.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -298,28 +319,33 @@ export class Panel_Character extends Panel {
                 });
 
                 // push the value text to the left
-                valueText.left = "-30px";
+                valueText.left = touchMode ? -(48 * viewport.scaleX) + "px" : "-30px";
             }
         }
     }
 
     private slotPanelContent(panel: Rectangle) {
-        let width = 484;
+        const touchMode = this._game.controlMode === "touch";
+        const width = touchMode ? Math.min(484, window.innerWidth - 48) : 484;
+        const columns = touchMode ? 5 : this.slots.length;
+        const rows = Math.ceil(this.slots.length / columns);
+        const iconGutter = 4;
+        const iconWidth = width / columns - iconGutter;
+        panel.height = rows * (iconWidth + iconGutter) + "px";
+        panel.adaptHeightToChildren = false;
 
         let i = 0;
         this.slots.forEach((line) => {
             i++;
 
-            // calculate responsive width and height
-            let iconGutter = 4;
-            let iconWidth = width / this.slots.length - iconGutter;
             let iconLeft = iconWidth + iconGutter;
-            let leftMargin = i > 1 ? (i - 1) * iconLeft + "px" : "0px";
+            let leftMargin = ((i - 1) % columns) * iconLeft + "px";
+            let topMargin = Math.floor((i - 1) / columns) * (iconWidth + iconGutter) + "px";
 
             let panelRectangle = new Rectangle("slot_" + i);
             panelRectangle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             panelRectangle.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-            panelRectangle.top = "0px";
+            panelRectangle.top = topMargin;
             panelRectangle.left = leftMargin;
             panelRectangle.width = iconWidth + "px";
             panelRectangle.height = iconWidth + "px";
@@ -329,7 +355,8 @@ export class Panel_Character extends Panel {
 
             var panelText = new TextBlock("slot_text_" + i);
             panelText.text = line;
-            panelText.fontSize = "10px";
+            panelText.fontSize = touchMode ? "9px" : "10px";
+            panelText.textWrapping = true;
             panelText.color = "rgba(255,255,255, .3)";
             panelText.fontWeight = "bold";
             panelText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -341,6 +368,8 @@ export class Panel_Character extends Panel {
             img.stretch = Image.STRETCH_FILL;
             panelRectangle.addControl(img);
         });
+
+        this.reflowSlots(panel);
     }
 
     private slotPanelContentRefresh(type, panel: Rectangle, data) {
@@ -370,7 +399,7 @@ export class Panel_Character extends Panel {
             slotImage.source = imageData;
 
             slotPanel.onPointerClickObservable.add((e) => {
-                if (e.buttonIndex === 2) {
+                if (e.buttonIndex === 2 || (this._game.controlMode === "touch" && e.buttonIndex === 0)) {
                     this._game.sendMessage(ServerMsg.PLAYER_UNEQUIP_ITEM, {
                         key: item.key,
                     });
@@ -389,6 +418,39 @@ export class Panel_Character extends Panel {
         if (type === "REMOVE") {
             slotPanel.background = "transparent";
             slotPanel.color = "rgba(255,255,255, .3";
+        }
+    }
+
+    public resize() {
+        super.resize();
+        if (this.slotPanel) {
+            this.reflowSlots(this.slotPanel);
+        }
+    }
+
+    private reflowSlots(panel: Rectangle): void {
+        const touchMode = this._game.controlMode === "touch";
+        const panelWidth = this._panel.widthInPixels || this._UI.getGuiViewport().width;
+        const width = touchMode ? Math.min(484, panelWidth - 14) : 484;
+        const columns = touchMode && window.innerWidth < 600 ? 5 : this.slots.length;
+        const rows = Math.ceil(this.slots.length / columns);
+        const iconGutter = 4;
+        const iconWidth = width / columns - iconGutter;
+
+        panel.width = width + "px";
+        panel.height = rows * (iconWidth + iconGutter) + "px";
+        this.leftPanel.height = touchMode && columns === 5 ? 0.62 : 0.8;
+        this.rightPanel.height = touchMode && columns === 5 ? 0.62 : 0.8;
+
+        for (let index = 0; index < this.slots.length; index++) {
+            const slot = panel.getChildByName("slot_" + (index + 1)) as Rectangle;
+            if (!slot) {
+                continue;
+            }
+            slot.left = (index % columns) * (iconWidth + iconGutter) + "px";
+            slot.top = Math.floor(index / columns) * (iconWidth + iconGutter) + "px";
+            slot.width = iconWidth + "px";
+            slot.height = iconWidth + "px";
         }
     }
 }

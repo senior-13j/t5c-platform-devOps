@@ -22,6 +22,7 @@ public `80`/`443` bindings.
 | Host firewall allows only the intended public ports | MySQL, Prometheus, Grafana, and the Node.js port should stay private |
 | Database backup is verified | Existing plaintext credentials migrate to `scrypt` after successful login |
 | Asset provenance has been reviewed | Public release must have a source/license record for shipped models, textures, audio, and fonts |
+| Localization and both input profiles pass QA | Public users must be able to enter, move, act, chat, and manage panels in English/Russian on desktop and touch devices |
 
 ## Public Architecture
 
@@ -167,12 +168,18 @@ docker run --rm \
 Validate application metadata and production builds before creating the image:
 
 ```bash
+npm run check:localization
 npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 npm audit --omit=dev
 ```
+
+Install a compatible browser with `npx playwright install chromium` and omit
+the executable-path override when the deployment host does not provide
+`/usr/bin/chromium`.
 
 Start the public stack:
 
@@ -210,6 +217,8 @@ Expected results:
 
 - discovery files return `200` at the domain root;
 - the sitemap contains `https://arkadii.world/game/` and the docs URL;
+- the entry dialog allows English/Russian and keyboard/mouse/touch selection;
+- the delivered `VideoGame` JSON-LD declares both `en` and `ru`;
 - the manifest and entry HTML revalidate instead of receiving a long immutable
   cache lifetime;
 - the bundle is compressed and does not expose `X-Powered-By`;
@@ -260,14 +269,22 @@ After a public rollout:
 
 1. Open login, character selection, character editor, and the connected game on
    both a desktop and a narrow touch viewport.
-2. Confirm keyboard focus starts in the username field and remains visible on
-   actions.
-3. Run Lighthouse against `https://arkadii.world/game/` for Performance,
+2. Complete the entry dialog once in English keyboard/mouse mode and once in
+   Russian touch mode; verify translated login/game content in both sessions.
+3. On desktop, verify WASD movement, mouse camera rotation, `1`-`9`, panel
+   hotkeys, nearest targeting/interaction, and chat.
+4. On a phone or tablet, verify joystick movement, world swipe, hotbar, action,
+   chat, zoom, menu panels, portrait layout, and short-landscape layout.
+5. Confirm keyboard focus remains visible and every touch action has a practical
+   target size without HUD/panel overlap.
+6. Run Lighthouse against `https://arkadii.world/game/` for Performance,
    Accessibility, Best Practices, and SEO.
-4. Confirm the canonical URL and `VideoGame` JSON-LD in the delivered HTML.
-5. Submit `https://arkadii.world/sitemap.xml` to the search-engine webmaster
+7. Confirm the canonical URL and bilingual `VideoGame` JSON-LD in the delivered
+   HTML.
+8. Submit `https://arkadii.world/sitemap.xml` to the search-engine webmaster
    tools used for the domain.
-6. Verify the docs navigation opens API/security and game-quality documents.
+9. Verify docs navigation opens localization/controls, API/security, and
+   game-quality documents.
 
 The branch audit measured 80/100/100/100 for Performance, Accessibility, Best
 Practices, and SEO in the local production profile. Public scores can vary with

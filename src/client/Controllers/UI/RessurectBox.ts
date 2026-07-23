@@ -42,7 +42,7 @@ export class RessurectBox {
 
         const revivePanelText = new TextBlock("revivePanelText");
         revivePanelText.height = "30px;";
-        revivePanelText.text = "You have died.";
+        revivePanelText.text = this._game.t("death.message");
         revivePanelText.top = "10px;";
         revivePanelText.left = 0;
         revivePanelText.fontSize = "24px;";
@@ -53,7 +53,7 @@ export class RessurectBox {
         revivePanelText.horizontalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         revivePanel.addControl(revivePanelText);
 
-        const reviveButton = Button.CreateSimpleButton("reviveButton", "RESSURECT");
+        const reviveButton = Button.CreateSimpleButton("reviveButton", this._game.t("death.resurrect"));
         reviveButton.top = "-10px;";
         reviveButton.left = "0px;";
         reviveButton.width = "180px;";

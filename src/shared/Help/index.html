@@ -1,16 +1,70 @@
-<style>
-    .body {
-        color: #fff;
-        font-family: Arial, Helvetica, sans-serif;
-    }
-</style>
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>T5C Controls</title>
+        <style>
+            body {
+                max-width: 720px;
+                padding: 24px;
+                margin: 0 auto;
+                color: #f4f7f5;
+                background: #111815;
+                font: 16px/1.55 Arial, sans-serif;
+            }
 
-<div class="body">
-    <h1>Welcome to T5C</h1>
-    <hr />
-    <h2>Movement</h2>
-    <p>Please click and drag the mouse to move.</p>
-    <hr />
-    <h2>Attack</h2>
-    <p>Please select an enemy and click on any ability at the bottom center of the screen.</p>
-</div>
+            h1,
+            h2 {
+                line-height: 1.2;
+            }
+
+            h2 {
+                margin-top: 28px;
+                color: #e5c55c;
+            }
+
+            kbd {
+                padding: 2px 6px;
+                color: #111815;
+                background: #e8eeeb;
+                border-radius: 3px;
+            }
+
+            [hidden] {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <main data-language="en">
+            <h1>T5C Controls</h1>
+            <h2>Keyboard and mouse</h2>
+            <p>Move with <kbd>W</kbd>, <kbd>A</kbd>, <kbd>S</kbd>, and <kbd>D</kbd>. Drag with the middle or right mouse button to rotate the camera, and use the wheel to zoom.</p>
+            <p>Use <kbd>1</kbd> through <kbd>9</kbd> for hotbar actions, <kbd>E</kbd> to interact, <kbd>Tab</kbd> to select a nearby target, and <kbd>Enter</kbd> for chat.</p>
+            <p>Open Inventory, Quests, Abilities, Character, and Help with <kbd>I</kbd>, <kbd>J</kbd>, <kbd>K</kbd>, <kbd>C</kbd>, and <kbd>H</kbd>.</p>
+            <h2>Touch screen</h2>
+            <p>Use the left joystick to move. Swipe the game world to rotate the camera, tap a character or object to select it, and tap the hotbar to use an action.</p>
+            <p>The buttons on the right select a nearby target, interact, open chat, and adjust zoom.</p>
+        </main>
+
+        <main data-language="ru" hidden>
+            <h1>Управление T5C</h1>
+            <h2>Клавиатура и мышь</h2>
+            <p>Перемещайтесь клавишами <kbd>W</kbd>, <kbd>A</kbd>, <kbd>S</kbd> и <kbd>D</kbd>. Для поворота камеры перемещайте мышь с зажатой средней или правой кнопкой, для изменения масштаба используйте колесо.</p>
+            <p>Клавиши от <kbd>1</kbd> до <kbd>9</kbd> применяют действия нижней панели, <kbd>E</kbd> взаимодействует с ближайшим объектом, <kbd>Tab</kbd> выбирает цель, а <kbd>Enter</kbd> открывает чат.</p>
+            <p>Инвентарь, задания, умения, персонаж и справка открываются клавишами <kbd>I</kbd>, <kbd>J</kbd>, <kbd>K</kbd>, <kbd>C</kbd> и <kbd>H</kbd>.</p>
+            <h2>Сенсорный экран</h2>
+            <p>Перемещайтесь левым джойстиком. Проводите пальцем по игровому миру для поворота камеры, касайтесь персонажей и объектов для выбора, а умения применяйте с нижней панели.</p>
+            <p>Кнопки справа выбирают ближайшую цель, запускают взаимодействие, открывают чат и изменяют масштаб.</p>
+        </main>
+
+        <script>
+            const locale = localStorage.getItem("t5c_locale") === "ru" ? "ru" : "en";
+            document.documentElement.lang = locale;
+            document.querySelectorAll("[data-language]").forEach((section) => {
+                section.hidden = section.dataset.language !== locale;
+            });
+        </script>
+    </body>
+</html>

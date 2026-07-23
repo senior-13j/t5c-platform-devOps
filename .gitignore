@@ -21,6 +21,8 @@ tmp
 
 # Coverage reports
 coverage
+playwright-report
+test-results
 
 # API keys and secrets
 .env

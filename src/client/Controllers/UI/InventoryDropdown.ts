@@ -38,10 +38,12 @@ export class InventoryDropdown {
 
         this._selected = el;
 
+        const touchMode = this._game.controlMode === "touch";
+        const actionHeight = touchMode ? 46 : 24;
         const rect = new StackPanel("InventoryDropdown");
         rect.top = el._currentMeasure.top + el.heightInPixels;
         rect.left = el._currentMeasure.left;
-        rect.width = "100px";
+        rect.width = touchMode ? "154px" : "100px";
         rect.height = "110px";
         rect.background = this._bgColor;
         rect.spacing = 2;
@@ -55,7 +57,7 @@ export class InventoryDropdown {
         let actions: any = [];
         if (item.class === ItemClass.ARMOR || item.class === ItemClass.WEAPON) {
             actions.push({
-                title: "Equip Item",
+                title: this._game.t("inventory.equip"),
                 click: () => {
                     this._game.sendMessage(ServerMsg.PLAYER_USE_ITEM, {
                         index: inventory.i,
@@ -65,7 +67,7 @@ export class InventoryDropdown {
         }
         if (item.class === ItemClass.CONSUMABLE) {
             actions.push({
-                title: "Use Item",
+                title: this._game.t("inventory.use"),
                 click: () => {
                     this._game.sendMessage(ServerMsg.PLAYER_USE_ITEM, {
                         index: inventory.i,
@@ -74,7 +76,7 @@ export class InventoryDropdown {
             });
         }
         actions.push({
-            title: "Drop Item(s)",
+            title: this._game.t("inventory.dropAll"),
             click: () => {
                 this._game.sendMessage(ServerMsg.PLAYER_DROP_ITEM, {
                     slot: inventory.i,
@@ -85,7 +87,7 @@ export class InventoryDropdown {
 
         if (inventory.qty > 1) {
             actions.push({
-                title: "Drop One",
+                title: this._game.t("inventory.dropOne"),
                 click: () => {
                     this._game.sendMessage(ServerMsg.PLAYER_DROP_ITEM, {
                         slot: inventory.i,
@@ -95,19 +97,19 @@ export class InventoryDropdown {
         }
 
         actions.push({
-            title: "Cancel",
+            title: this._game.t("common.cancel"),
             click: () => {
                 this.hideDropdown();
             },
         });
 
-        rect.height = 24 * actions.length + "px";
+        rect.height = actionHeight * actions.length + "px";
 
         actions.forEach((action) => {
             const button = Button.CreateSimpleButton("but" + action.title, action.title);
             button.left = "0px";
-            button.width = "95px";
-            button.height = "22px";
+            button.width = touchMode ? "150px" : "95px";
+            button.height = touchMode ? "44px" : "22px";
             button.thickness = 0;
             button.background = "black";
             button.color = "white";

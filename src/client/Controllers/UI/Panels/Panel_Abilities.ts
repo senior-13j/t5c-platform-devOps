@@ -142,14 +142,6 @@ export class Panel_Abilities extends Panel {
         }
     }
 
-    public objToString(obj) {
-        let str = "Required ";
-        for (const [p, val] of Object.entries(obj)) {
-            str += `| ${p}:${val} `;
-        }
-        return str;
-    }
-
     ///////////////////////////////////////
     ///////////////////////////////////////
     // INVENTORY PANEL

@@ -1,6 +1,7 @@
 const documents = [
     { file: "README.md", title: "Documentation Home" },
     { file: "PROJECT.md", title: "Project Overview" },
+    { file: "LOCALIZATION_AND_CONTROLS.md", title: "Localization and Controls" },
     { file: "API_AND_SECURITY.md", title: "API and Security" },
     { file: "GAME_QUALITY_AUDIT.md", title: "Game Quality Audit" },
     { file: "INFRASTRUCTURE_AND_DEPLOYMENT.md", title: "Infrastructure and Deployment" },

@@ -17,22 +17,26 @@ export class QuestDialog {
 
     public dialogStackPanel;
 
-    public DEFAULT_TEXT_ACCEPTED: string = "Many thanks, please complete following objective and come back to me.";
-    public DEFAULT_TEXT_ONGOING: string = "Please complete following objective and come back to me";
-    public DEFAULT_TEXT_READYTOCOMPLETE: string = "Objective complete, please accept these small tokens of my gratitude";
-    public DEFAULT_TEXT_COMPLETED: string = "Thank you, and may the goddess Althea be with you.";
+    public DEFAULT_TEXT_ACCEPTED: string;
+    public DEFAULT_TEXT_ONGOING: string;
+    public DEFAULT_TEXT_READYTOCOMPLETE: string;
+    public DEFAULT_TEXT_COMPLETED: string;
 
     constructor(panel: Panel_Dialog, quest_id) {
         this.panel = panel;
         this._game = panel._game;
+        this.DEFAULT_TEXT_ACCEPTED = this._game.t("quest.acceptedText");
+        this.DEFAULT_TEXT_ONGOING = this._game.t("quest.ongoingText");
+        this.DEFAULT_TEXT_READYTOCOMPLETE = this._game.t("quest.readyText");
+        this.DEFAULT_TEXT_COMPLETED = this._game.t("quest.completedText");
         this.dialogStackPanel = this.panel.dialogStackPanel;
 
         // show back button
-        const createBtn = Button.CreateSimpleButton("characterBtn", "Back");
+        const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("common.back"));
         createBtn.left = "0px;";
         createBtn.top = "0px";
         createBtn.width = 1;
-        createBtn.height = "24px";
+        createBtn.height = this.panel.getActionHeight();
         createBtn.background = "black";
         createBtn.color = "white";
         createBtn.thickness = 0;
@@ -94,11 +98,11 @@ export class QuestDialog {
             this.showRewards(this.currentQuest.rewards);
 
             // complete quest button
-            const createBtn = Button.CreateSimpleButton("characterBtn", "Complete Quest");
+            const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("quest.complete"));
             createBtn.left = "0px;";
             createBtn.top = "0px";
             createBtn.width = 1;
-            createBtn.height = "24px";
+            createBtn.height = this.panel.getActionHeight();
             createBtn.background = "black";
             createBtn.color = "white";
             createBtn.thickness = 0;
@@ -143,9 +147,9 @@ export class QuestDialog {
             this.showObjective();
 
             // show accept button
-            const dialogBtnAccept = Button.CreateSimpleButton("dialogBtnAccept", "Accept");
+            const dialogBtnAccept = Button.CreateSimpleButton("dialogBtnAccept", this._game.t("quest.accept"));
             dialogBtnAccept.width = 1;
-            dialogBtnAccept.height = "24px";
+            dialogBtnAccept.height = this.panel.getActionHeight();
             dialogBtnAccept.background = "black";
             dialogBtnAccept.color = "white";
             dialogBtnAccept.thickness = 0;
@@ -161,9 +165,9 @@ export class QuestDialog {
             });
 
             // show decline button
-            const dialogBtnDecline = Button.CreateSimpleButton("dialogBtnDecline", "Decline");
+            const dialogBtnDecline = Button.CreateSimpleButton("dialogBtnDecline", this._game.t("quest.decline"));
             dialogBtnDecline.width = 1;
-            dialogBtnDecline.height = "24px";
+            dialogBtnDecline.height = this.panel.getActionHeight();
             dialogBtnDecline.background = "black";
             dialogBtnDecline.color = "white";
             dialogBtnDecline.thickness = 0;
@@ -179,11 +183,11 @@ export class QuestDialog {
         this.panel.clear();
 
         // show back button
-        const createBtn = Button.CreateSimpleButton("characterBtn", "Back");
+        const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("common.back"));
         createBtn.left = "0px;";
         createBtn.top = "0px";
         createBtn.width = 1;
-        createBtn.height = "24px";
+        createBtn.height = this.panel.getActionHeight();
         createBtn.background = "black";
         createBtn.color = "white";
         createBtn.thickness = 0;
@@ -194,9 +198,9 @@ export class QuestDialog {
             this.panel.nextStep(0);
         });
 
-        const dialogBtnAccept = Button.CreateSimpleButton("dialogBtnAccept", "Quest Completed");
+        const dialogBtnAccept = Button.CreateSimpleButton("dialogBtnAccept", this._game.t("quest.completed"));
         dialogBtnAccept.width = 1;
-        dialogBtnAccept.height = "24px";
+        dialogBtnAccept.height = this.panel.getActionHeight();
         dialogBtnAccept.background = "black";
         dialogBtnAccept.color = "orange";
         dialogBtnAccept.thickness = 0;
@@ -232,11 +236,11 @@ export class QuestDialog {
         this.panel.clear();
 
         // show back button
-        const createBtn = Button.CreateSimpleButton("characterBtn", "Back");
+        const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("common.back"));
         createBtn.left = "0px;";
         createBtn.top = "0px";
         createBtn.width = 1;
-        createBtn.height = "24px";
+        createBtn.height = this.panel.getActionHeight();
         createBtn.background = "black";
         createBtn.color = "white";
         createBtn.thickness = 0;
@@ -247,9 +251,9 @@ export class QuestDialog {
             this.panel.nextStep(0);
         });
 
-        const dialogBtnAccept = Button.CreateSimpleButton("dialogBtnAccept", "Quest Accepted");
+        const dialogBtnAccept = Button.CreateSimpleButton("dialogBtnAccept", this._game.t("quest.accepted"));
         dialogBtnAccept.width = 1;
-        dialogBtnAccept.height = "24px";
+        dialogBtnAccept.height = this.panel.getActionHeight();
         dialogBtnAccept.background = "black";
         dialogBtnAccept.color = "orange";
         dialogBtnAccept.thickness = 0;
@@ -298,7 +302,7 @@ export class QuestDialog {
     public showRewards(rewards) {
         if (rewards.experience) {
             let dialogRewards = new TextBlock("dialogRewards-experience");
-            dialogRewards.text = "Experience: " + rewards.experience;
+            dialogRewards.text = this._game.t("quest.rewardExperience", { amount: rewards.experience });
             dialogRewards.fontSize = "14px";
             dialogRewards.color = "orange";
             dialogRewards.resizeToFit = true;
@@ -308,7 +312,7 @@ export class QuestDialog {
 
         if (rewards.gold) {
             let dialogRewards = new TextBlock("dialogRewards-gold");
-            dialogRewards.text = "Gold: " + rewards.experience;
+            dialogRewards.text = this._game.t("quest.rewardGold", { amount: rewards.gold });
             dialogRewards.fontSize = "14px";
             dialogRewards.color = "orange";
             dialogRewards.resizeToFit = true;
@@ -319,7 +323,8 @@ export class QuestDialog {
         if (rewards.items && rewards.items.length > 0) {
             rewards.items.forEach((item) => {
                 let dialogRewards = new TextBlock("dialogRewards-item-" + item.key);
-                dialogRewards.text = "Item: " + item.key;
+                const itemData = this._game.getGameData("item", item.key);
+                dialogRewards.text = this._game.t("quest.rewardItem", { item: itemData?.title ?? item.key });
                 dialogRewards.fontSize = "14px";
                 dialogRewards.color = "orange";
                 dialogRewards.resizeToFit = true;

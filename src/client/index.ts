@@ -40,6 +40,7 @@ import { DebugScene } from "./Screens/DebugScene";
 import { Config } from "../shared/Config";
 import { Loading } from "./Controllers/Loading";
 import { GameController } from "./Controllers/GameController";
+import { PreferencesController } from "./Controllers/PreferencesController";
 
 // App class is our entire game application
 class App {
@@ -48,6 +49,7 @@ class App {
     public engine: Engine;
     public config: Config;
     public game: GameController;
+    public preferences: PreferencesController;
     private loadingScreen: Loading;
 
     constructor() {
@@ -56,7 +58,8 @@ class App {
 
         // set config
         this.config = new Config();
-        this.loadingScreen = new Loading("Preparing Eldoria");
+        this.preferences = new PreferencesController();
+        this.loadingScreen = new Loading(this.preferences);
 
         // initialize babylon scene and engine
         this._init().catch((error) => {
@@ -71,6 +74,8 @@ class App {
     }
 
     private async _init(): Promise<void> {
+        await this.preferences.requestEntrySelection();
+
         if (!Engine.isSupported()) {
             throw new Error("WebGL not supported");
         }
@@ -91,7 +96,7 @@ class App {
 
         // preload game data
         this.game = new GameController(this);
-        this.loadingScreen.setDetails("Loading world data...");
+        this.loadingScreen.setDetails(this.preferences.t("loading.worldData"));
         await this.game.initializeGameData();
 
         // set default scene
@@ -224,6 +229,9 @@ class App {
             if (loginOverlay) {
                 loginOverlay.hidden = true;
             }
+            document.getElementById("touchControls")?.setAttribute("hidden", "");
+            document.getElementById("controlHint")?.setAttribute("hidden", "");
+            document.body.classList.remove("touch-ui-obscured");
             this.game.engine.displayLoadingUI();
             this.game.scene.detachControl();
             this.game.scene.dispose();
@@ -232,7 +240,7 @@ class App {
     }
 
     private isCompactViewport(): boolean {
-        return window.innerWidth < 700 || window.matchMedia("(pointer: coarse)").matches;
+        return this.preferences.controlMode === "touch" || window.innerWidth < 700 || window.matchMedia("(pointer: coarse)").matches;
     }
 
     private updateRenderingScale() {
@@ -243,4 +251,8 @@ class App {
         this.engine.setHardwareScalingLevel(this.isCompactViewport() ? 1.2 : 1);
     }
 }
-new App();
+
+const app = new App();
+if (process.env.NODE_ENV !== "production") {
+    (window as any).__T5C_APP__ = app;
+}
