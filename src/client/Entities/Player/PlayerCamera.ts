@@ -71,18 +71,26 @@ export class PlayerCamera {
             return;
         }
 
+        const movement = this._input.consumeCameraMovement();
+        if (movement.x === 0 && movement.y === 0) {
+            return;
+        }
+
         // only do vertical if allowed
         let rotationX = 0;
         if (!preventVertical) {
             rotationX =
-                Math.abs(this._camRoot.rotation.x + this._input.movementY) < 0.5 ? this._camRoot.rotation.x + this._input.movementY : this._camRoot.rotation.x;
+                Math.abs(this._camRoot.rotation.x + movement.y) < 0.5
+                    ? this._camRoot.rotation.x + movement.y
+                    : this._camRoot.rotation.x;
         }
 
         // set camera delta
-        this.player._game.deltaCamY = this.player._game.deltaCamY + this._input.movementX;
+        this.player._game.deltaCamY = this.player._game.deltaCamY + movement.x;
+        this._input.refreshMovementDirection();
 
         // set horizontal rotation
-        const rotationY = this._camRoot.rotation.y + this._input.movementX;
+        const rotationY = this._camRoot.rotation.y + movement.x;
 
         // apply canmera rotation
         this._camRoot.rotation = new Vector3(rotationX, rotationY, 0);

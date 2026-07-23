@@ -132,7 +132,7 @@ export class moveCTRL {
      * @returns
      */
     processPlayerInput(playerInput: PlayerInputs) {
-        if (this._owner.blocked && !this._owner.isDead) {
+        if (this._owner.blocked || this._owner.isDead) {
             //this._owner.state = EntityState.IDLE;
             Logger.warning("Player " + this._owner.name + " is blocked, no movement will be processed");
             return false;
@@ -146,6 +146,15 @@ export class moveCTRL {
 
         // cancel any auto attack
         //this._owner.abilitiesCTRL.cancelAutoAttack(this._owner);
+        const rawHorizontal = Number.isFinite(playerInput?.h) ? playerInput.h : 0;
+        const rawVertical = Number.isFinite(playerInput?.v) ? playerInput.v : 0;
+        const inputMagnitude = Math.hypot(rawHorizontal, rawVertical);
+        if (inputMagnitude < 0.001) {
+            return false;
+        }
+        const inputScale = inputMagnitude > 1 ? 1 / inputMagnitude : 1;
+        const horizontal = rawHorizontal * inputScale;
+        const vertical = rawVertical * inputScale;
         let speed = this._owner.speed;
 
         // save current position
@@ -155,10 +164,10 @@ export class moveCTRL {
         let oldRot = this._owner.rot;
 
         // calculate new position
-        let newX = this._owner.x - playerInput.h * speed;
+        let newX = this._owner.x - horizontal * speed;
         let newY = oldY;
-        let newZ = this._owner.z - playerInput.v * speed;
-        let newRot = Math.atan2(playerInput.h, playerInput.v);
+        let newZ = this._owner.z - vertical * speed;
+        let newRot = Math.atan2(horizontal, vertical);
 
         // check if destination is in navmesh
         let sourcePos = new Vector3(oldX, oldY, oldZ); // new pos

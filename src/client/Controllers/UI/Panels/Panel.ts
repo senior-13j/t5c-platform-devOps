@@ -30,6 +30,8 @@ export class Panel {
     public _panel;
     public _panelTitle;
     public _panelContent;
+    private _panelHeader: Rectangle;
+    private _panelClose: Button;
 
     // drag stuff
     public _isPointerDown: boolean = false;
@@ -126,8 +128,9 @@ export class Panel {
         panelHeader.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         panelHeader.color = "rgba(0,0,0,1)";
         panelHeader.thickness = 0;
-        panelHeader.fontFamily = "gamefont";
+        panelHeader.fontFamily = "gamefont, Arial, sans-serif";
         this._panel.addControl(panelHeader);
+        this._panelHeader = panelHeader;
 
         // header title
         var panelTitle = new TextBlock("panelTitle");
@@ -155,16 +158,23 @@ export class Panel {
         mainPanelClose.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         mainPanelClose.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         panelHeader.addControl(mainPanelClose);
+        this._panelClose = mainPanelClose;
         mainPanelClose.onPointerDownObservable.add(() => {
             this.close();
         });
 
         // drag and drop events
         panelHeader.onPointerDownObservable.add((e) => {
+            if (this._game.controlMode === "touch") {
+                return;
+            }
             this._UI.startDragging(this._panel);
             this._panel.isPointerBlocker = false;
         });
         panelHeader.onPointerUpObservable.add((e) => {
+            if (this._game.controlMode === "touch") {
+                return;
+            }
             this._UI.stopDragging();
         });
     }
@@ -172,6 +182,10 @@ export class Panel {
     // open panel
     public open(): void {
         const visible = this._panel.isVisible;
+
+        if (this._game.controlMode === "touch" && !visible) {
+            this._UI.hidePanelsExcept(this);
+        }
 
         // close all panels
         if (!this._options.stayOpen) {
@@ -189,6 +203,7 @@ export class Panel {
             this._panel.isVisible = true;
             this._game.gamescene._sound.play("SOUND_dialog_open");
         }
+        this._UI.syncTouchOverlayState();
     }
 
     // close panel
@@ -200,6 +215,7 @@ export class Panel {
         }
 
         this._game.gamescene._sound.play("SOUND_dialog_close");
+        this._UI.syncTouchOverlayState();
     }
 
     public isOpen(): boolean {
@@ -207,7 +223,7 @@ export class Panel {
     }
 
     public resize() {
-        const compact = window.innerWidth < 700;
+        const compact = this._game.controlMode === "touch" || window.innerWidth < 700;
         if (!compact) {
             this._panel.width = this._options.width;
             this._panel.height = this._options.height;
@@ -215,17 +231,36 @@ export class Panel {
             this._panel.left = this._options.left;
             this._panel.horizontalAlignment = this._options.horizontal_position;
             this._panel.verticalAlignment = this._options.vertical_position;
+            this._panelHeader.height = "30px";
+            this._panelTitle.fontSize = "22px";
+            this._panelClose.width = "20px";
+            this._panelClose.height = "20px";
+            this._panelClose.top = "5px";
+            this._panelContent.top = "30px";
+            this._panelContent.height = 0.91;
             return;
         }
 
-        const configuredWidth = this.getPixelValue(this._options.width, window.innerWidth);
-        const configuredHeight = this.getPixelValue(this._options.height, window.innerHeight);
-        this._panel.width = Math.min(configuredWidth, window.innerWidth - 24) + "px";
-        this._panel.height = Math.min(configuredHeight, window.innerHeight - 170) + "px";
-        this._panel.top = "10px";
+        const viewport = this._UI.getGuiViewport();
+        const configuredWidth = this.getPixelValue(this._options.width, viewport.width);
+        const configuredHeight = this.getPixelValue(this._options.height, viewport.height);
+        const availableWidth = Math.max(180, viewport.width - 24 * viewport.scaleX);
+        const availableHeight = Math.max(180, viewport.height - 24 * viewport.scaleY);
+        const panelHeight = Math.min(configuredHeight, availableHeight);
+        this._panel.width = Math.min(configuredWidth, availableWidth) + "px";
+        this._panel.height = panelHeight + "px";
+        this._panel.top = "0px";
         this._panel.left = "0px";
         this._panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         this._panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        this._panelHeader.height = "40px";
+        this._panelTitle.fontSize = "18px";
+        this._panelTitle.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        this._panelClose.width = 44 * viewport.scaleX + "px";
+        this._panelClose.height = 44 * viewport.scaleY + "px";
+        this._panelClose.top = "3px";
+        this._panelContent.top = "40px";
+        this._panelContent.height = Math.max(1, panelHeight - 40) + "px";
     }
 
     // update panel

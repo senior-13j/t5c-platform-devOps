@@ -131,6 +131,7 @@ export class Entity extends TransformNode {
         // get spawnInfo
         if (entity.type === "entity" && this._game.currentLocation.dynamic.spawns) {
             this.spawnInfo = this._game.currentLocation.dynamic.spawns[this.spawn_id] ?? null;
+            this.applyLocalizedSpawnName();
         }
 
         // get material
@@ -186,6 +187,7 @@ export class Entity extends TransformNode {
 
             // update player data from server data
             Object.assign(this, this.entity);
+            this.applyLocalizedSpawnName();
 
             // update player position
             this.moveController.setPositionAndRotation(this.entity);
@@ -240,6 +242,12 @@ export class Entity extends TransformNode {
     public updateServerRate(delta) {}
 
     public updateSlowRate(delta) {}
+
+    private applyLocalizedSpawnName(): void {
+        if (this.type === "entity" && this.spawnInfo?.name) {
+            this.name = this.spawnInfo.name;
+        }
+    }
 
     public getPosition() {
         return new Vector3(this.position.x, this.position.y, this.position.z);

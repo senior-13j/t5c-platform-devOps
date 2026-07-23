@@ -111,49 +111,10 @@ export class Player extends Entity {
 
         // select entity
         if (metadata.type === "player" || metadata.type === "entity") {
-            // select entity
             let targetSessionId = metadata.sessionId;
             let target = this.entities.get(targetSessionId);
-            this._ui._targetEntitySelectedBar.setTarget(target);
-
-            // display nameplate for a certain time for any entity right clicked
-            if (target.characterLabel) {
-                target.characterLabel.isVisible = true;
-            }
-
-            // if spawninfo available
-            if (!target.spawnInfo) return false;
-
-            /*
-            // if targets is aggressive, clicking on with will trigger move & attack
-            // note: need to find a better way to do this, not linked to hotbar
-            if (target.spawnInfo.aggressive) {
-                // send to server
-                this._game.sendMessage(ServerMsg.PLAYER_HOTBAR_ACTIVATED, {
-                    senderId: this._room.sessionId,
-                    targetId: target ? target.sessionId : false,
-                    digit: 1,
-                });
-                return false;
-            }*/
-
-            // if interactable target
-            if (!target.spawnInfo.interactable) return false;
-
-            // if close enough, open dialog
-            let playerPos = this.getPosition();
-            let entityPos = target.getPosition();
-            let distanceBetween = Vector3.Distance(playerPos, entityPos);
-            if (distanceBetween < this._game.config.PLAYER_INTERACTABLE_DISTANCE) {
-                this._ui.panelDialog.open(target);
-
-                // stop any movement
-                // todo: improve
-                this._input.left_click = false;
-                this._input.vertical = 0;
-                this._input.horizontal = 0;
-                this._input.player_can_move = false;
-            }
+            this.selectTarget(target);
+            this.interactWithTarget(target);
         }
 
         // pick up item
@@ -202,6 +163,90 @@ export class Player extends Entity {
             }
             */
         }
+    }
+
+    public selectNearestTarget(): boolean {
+        let closestHostile = null;
+        let closestHostileDistance = Infinity;
+        let closestEntity = null;
+        let closestEntityDistance = Infinity;
+        const playerPosition = this.getPosition();
+
+        this.entities.forEach((entity) => {
+            if (entity === this || entity.type !== "entity" || entity.health < 1 || !entity.getPosition) {
+                return;
+            }
+            const distance = Vector3.Distance(playerPosition, entity.getPosition());
+            if (distance < closestEntityDistance) {
+                closestEntity = entity;
+                closestEntityDistance = distance;
+            }
+            if (entity.spawnInfo?.aggressive && distance < closestHostileDistance) {
+                closestHostile = entity;
+                closestHostileDistance = distance;
+            }
+        });
+
+        const target = closestHostile ?? closestEntity;
+        if (!target) {
+            return false;
+        }
+        this.selectTarget(target);
+        return true;
+    }
+
+    public interactWithNearest(): boolean {
+        const playerPosition = this.getPosition();
+        const maximumDistance = this._game.config.PLAYER_INTERACTABLE_DISTANCE;
+        let closest = null;
+        let closestDistance = Infinity;
+
+        this.entities.forEach((entity) => {
+            const canInteract = entity.type === "item" || entity.spawnInfo?.interactable;
+            if (!canInteract || !entity.getPosition) {
+                return;
+            }
+            const distance = Vector3.Distance(playerPosition, entity.getPosition());
+            if (distance < closestDistance && distance <= maximumDistance) {
+                closest = entity;
+                closestDistance = distance;
+            }
+        });
+
+        if (!closest) {
+            return false;
+        }
+        if (closest.type === "item") {
+            this._game.sendMessage(ServerMsg.PLAYER_PICKUP, { sessionId: closest.sessionId });
+            return true;
+        }
+        this.selectTarget(closest);
+        return this.interactWithTarget(closest);
+    }
+
+    private selectTarget(target): void {
+        if (!target) {
+            return;
+        }
+        this._ui._targetEntitySelectedBar.setTarget(target);
+        if (target.characterLabel) {
+            target.characterLabel.isVisible = true;
+        }
+    }
+
+    private interactWithTarget(target): boolean {
+        if (!target?.spawnInfo?.interactable) {
+            return false;
+        }
+        const distance = Vector3.Distance(this.getPosition(), target.getPosition());
+        if (distance > this._game.config.PLAYER_INTERACTABLE_DISTANCE) {
+            return false;
+        }
+
+        this._ui.panelDialog.open(target);
+        this._input.left_click = false;
+        this._input.suspendMovement();
+        return true;
     }
 
     // update at engine rate 60fps
@@ -259,7 +304,8 @@ export class Player extends Entity {
 
         ///////////// DIALOG ///////////////////////////
         // only if moving, look for the closest interactable entities.
-        if (this.isMoving) {
+        this.findCloseToInteractableEntity();
+        if (this.closestEntity) {
             // look for closest npc
             // todo: maybe this is a silly way?
             //this.findCloseToInteractableEntity();
@@ -274,8 +320,10 @@ export class Player extends Entity {
                 this._ui.panelDialog.close();
             }
 
-            ///////////// ENVIRONMENT LOD ///////////////////////////
-            // only show meshes close to us
+        }
+
+        if (this.isMoving) {
+            // Only show environment meshes close to the current player.
             let currentPos = this.getPosition();
             let key = "ENV_" + this._game.currentLocation.mesh;
             let allMeshes = this._game._loadedAssets[key]?.loadedMeshes ?? [];
@@ -311,6 +359,10 @@ export class Player extends Entity {
                 }
             }
         });
+        if (minDistanceSquared === Infinity) {
+            this.closestEntity = null;
+            this.closestEntityDistance = Infinity;
+        }
     }
 
     //////////////////////////////////////////////////////////////////////////
@@ -321,7 +373,11 @@ export class Player extends Entity {
     public registerServerMessages() {
         this._room.onMessage(ServerMsg.SERVER_MESSAGE, (data) => {
             console.log("ServerMsg.SERVER_MESSAGE", data);
-            this._ui._ChatBox.addNotificationMessage(data.type, data.message, data.message);
+            this._ui._ChatBox.addNotificationMessage(
+                data.type,
+                this._game.translateServerMessage(data.message),
+                data.date ?? new Date()
+            );
         });
 
         // on teleport confirmation
@@ -353,7 +409,7 @@ export class Player extends Entity {
 
         // remove any pointer event
         if (this.onPointerObservable && this._scene.onPointerObservable.hasObservers()) {
-            this._scene.onBeforeRenderObservable.remove(this.onPointerObservable);
+            this._scene.onPointerObservable.remove(this.onPointerObservable);
         }
     }
 

@@ -25,6 +25,7 @@ import { Race } from "../../shared/types";
 import { VatController } from "../Controllers/VatController";
 import { Grid } from "@babylonjs/gui/2D/controls/grid";
 import { ScrollViewer } from "@babylonjs/gui/2D/controls/scrollViewers/scrollViewer";
+import { TranslationKey } from "../i18n";
 
 export class CharacterEditor {
     public _game: GameController;
@@ -73,7 +74,7 @@ export class CharacterEditor {
     }
 
     private isCompact(): boolean {
-        return window.innerWidth < 700;
+        return this._game?.controlMode === "touch" || window.innerWidth < 700;
     }
 
     public async createScene(game) {
@@ -332,7 +333,10 @@ export class CharacterEditor {
 
     sectionRace() {
         const compact = this.isCompact();
-        const sectionTitle = new TextBlock("sectionTitle", compact ? "Class" : "Choose Class");
+        const sectionTitle = new TextBlock(
+            "sectionTitle",
+            this._game.t(compact ? "editor.class" : "editor.chooseClass")
+        );
         sectionTitle.width = 1;
         sectionTitle.height = compact ? "34px" : "40px";
         sectionTitle.color = "white";
@@ -374,7 +378,10 @@ export class CharacterEditor {
         const compact = this.isCompact();
         let selectedChoices = this.selected_race.vat.meshes.HEAD;
 
-        const sectionTitle = new TextBlock("sectionTitle", compact ? "Face" : "Choose Face");
+        const sectionTitle = new TextBlock(
+            "sectionTitle",
+            this._game.t(compact ? "editor.face" : "editor.chooseFace")
+        );
         sectionTitle.width = 1;
         sectionTitle.height = compact ? "34px" : "40px";
         sectionTitle.color = "white";
@@ -401,7 +408,8 @@ export class CharacterEditor {
         chatScrollViewer.addControl(chatStackPanel);
 
         selectedChoices.forEach((faceKey) => {
-            const faceLabel = faceKey.replace(/^Head_/, "").replace(/_/g, " ");
+            const faceName = faceKey.replace(/^Head_/, "").toLowerCase();
+            const faceLabel = this._game.t(`editor.face.${faceName}` as TranslationKey);
             const btnChoice = Button.CreateSimpleButton("btnChoice", faceLabel);
             btnChoice.top = "0px";
             btnChoice.width = 1;
@@ -433,7 +441,10 @@ export class CharacterEditor {
         const compact = this.isCompact();
         let selectedChoices = this.selected_race.materials;
 
-        const sectionTitle = new TextBlock("sectionTitle", compact ? "Style" : "Choose Style");
+        const sectionTitle = new TextBlock(
+            "sectionTitle",
+            this._game.t(compact ? "editor.style" : "editor.chooseStyle")
+        );
         sectionTitle.width = 1;
         sectionTitle.height = compact ? "34px" : "40px";
         sectionTitle.color = "white";
@@ -460,7 +471,10 @@ export class CharacterEditor {
         chatScrollViewer.addControl(chatStackPanel);
 
         selectedChoices.forEach((mat, index) => {
-            const btnChoice = Button.CreateSimpleButton("btnChoice_" + index, "Style " + (index + 1));
+            const btnChoice = Button.CreateSimpleButton(
+                "btnChoice_" + index,
+                this._game.t("editor.styleNumber", { number: index + 1 })
+            );
             btnChoice.top = "0px";
             btnChoice.width = 1;
             btnChoice.height = compact ? "32px" : "30px";
@@ -520,13 +534,13 @@ export class CharacterEditor {
         usernameInput.height = compact ? "36px" : "30px";
         usernameInput.color = "#FFF";
         usernameInput.text = this.randomPlayerName;
-        usernameInput.placeholderText = "Enter username";
+        usernameInput.placeholderText = this._game.t("editor.characterName");
         usernameInput.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         usernameInput.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         centerColumnRect.addControl(usernameInput);
 
         // PLAY BUTTON
-        const playBtn = Button.CreateSimpleButton("playBtn", "Create");
+        const playBtn = Button.CreateSimpleButton("playBtn", this._game.t("editor.create"));
         playBtn.top = "-68px";
         playBtn.width = compact ? 0.86 : "200px";
         playBtn.height = compact ? "36px" : "30px";
@@ -551,7 +565,7 @@ export class CharacterEditor {
         });
 
         // BACK BUTTON
-        const backBtn = Button.CreateSimpleButton("backBtn", "CANCEL");
+        const backBtn = Button.CreateSimpleButton("backBtn", this._game.t("common.cancel"));
         backBtn.top = "-24px";
         backBtn.width = compact ? 0.86 : "200px";
         backBtn.height = compact ? "36px" : "30px";

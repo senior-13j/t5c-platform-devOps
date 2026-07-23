@@ -8,10 +8,11 @@ Players can explore shared environments, fight enemies, complete quests, collect
 
 - Play: https://arkadii.world/game/
 - Technical documentation: https://arkadii.world/game/docs/
+- Localization and controls: https://arkadii.world/game/docs/#localization_and_controls
 - API and security reference: https://arkadii.world/game/docs/#api_and_security
 - Game quality audit: https://arkadii.world/game/docs/#game_quality_audit
 - Source repository: https://github.com/senior-13j/t5c-platform-devOps
 
 ## Technology
 
-The browser client uses Babylon.js and TypeScript. Multiplayer rooms use Colyseus over WebSockets, with an Express API and SQL persistence. The web shell includes responsive controls, accessible login and failure states, and structured VideoGame metadata.
+The browser client uses Babylon.js and TypeScript. Multiplayer rooms use Colyseus over WebSockets, with an Express API and SQL persistence. Players choose English or Russian and a keyboard/mouse or touch profile before entering. Keyboard play supports WASD, hotkeys, mouse camera control, and chat; touch play uses a virtual joystick, world swipes, a tappable hotbar, and action controls. The web shell includes an accessible preference/login flow, responsive portrait and landscape layouts, and bilingual structured VideoGame metadata.

@@ -2,9 +2,10 @@
 
 T5C, The 5th Continent, is a multiplayer 3D top-down RPG prototype built with
 Babylon.js, Colyseus, Express, TypeScript, and SQL persistence. It includes a
-responsive browser client, native HTML entry and failure states, a real-time
-game server, local and public container profiles, observability, and served
-project documentation.
+responsive bilingual browser client, native HTML preference/login/failure
+states, separate keyboard/mouse and touch input profiles, a real-time game
+server, local and public container profiles, observability, and served project
+documentation.
 
 ## Runtime Shape
 
@@ -35,12 +36,13 @@ MySQL in Docker or SQLite for host development
 
 | Area | Main Paths | Responsibility |
 | --- | --- | --- |
-| Client | `src/client` | Babylon.js scenes, responsive GUI, entities, input, asset loading, and networking |
-| Web shell | `public/index.html`, `public/styles.css` | Semantic entry page, login form, loading/error states, metadata, and static assets |
+| Client | `src/client` | Babylon.js scenes, localized responsive GUI, entities, adaptive input, asset loading, and networking |
+| Localization | `src/client/i18n.ts`, `src/client/Controllers/PreferencesController.ts` | Typed catalogs, game-data overlays, locale/control persistence, metadata, DOM bindings, and entry selection |
+| Web shell | `public/index.html`, `public/styles.css` | Semantic preference dialog, login form, touch controls, loading/error states, metadata, and static assets |
 | Shared | `src/shared` | Runtime config, types, utility classes, and game math helpers |
 | Server | `src/server` | Express API, Colyseus rooms, game state, authentication, persistence, and static delivery |
 | Data | `database` | MySQL and SQLite schema bootstrap files |
-| Quality | `scripts/check-web-quality.mjs` | Metadata, structured data, discovery, manifest, and local-reference assertions |
+| Quality | `scripts/check-localization.ts`, `scripts/check-web-quality.mjs`, `tests/e2e` | Translation integrity, metadata/discovery assertions, and real WebGL desktop/touch behavior |
 | Infrastructure | `Dockerfile`, `docker-compose*.yml`, `docker` | Local and public container profiles, proxies, metrics, and dashboards |
 | Documentation | `README.md`, `docs`, `public/docs` | Repository guides and the browser documentation viewer |
 
@@ -67,6 +69,7 @@ The production browser flow is:
 
 ```text
 HTML loading shell
+  -> Language and control-mode selection
   -> Login or Quick Play
   -> Character selection
   -> Character editor when requested
@@ -78,17 +81,39 @@ iteration. The production client served from port `3000` starts at login.
 
 Native HTML owns the initial interaction states:
 
+- an accessible English/Russian and keyboard/touch preference dialog before
+  the engine starts;
 - labeled username and password controls with browser validation;
 - keyboard focus and live login feedback;
 - loading text and an ARIA progress bar;
 - a focused Retry action for WebGL, startup, or asset failures;
 - semantic game title, description, instructions, and announcements.
 
-Babylon GUI owns character management and in-game interaction. Compact viewport
-logic adapts the menu, chat, hotbar, status bars, draggable panels, character
-selection, and character editor at widths below 700 pixels or on coarse-pointer
-devices. Compact rendering uses a higher hardware scaling level and disables
-scene shadows to reduce GPU cost.
+Babylon GUI owns character management and in-game interaction. The selected
+locale is applied to downloaded active game data before scenes consume it.
+Compact viewport logic adapts the menu, chat, hotbar, status bars, draggable
+panels, character selection, and character editor at widths below 700 pixels or
+on coarse-pointer devices. Compact rendering uses a higher hardware scaling
+level and disables scene shadows to reduce GPU cost.
+
+## Input Profiles
+
+`PreferencesController` stores `t5c_locale` and `t5c_control_mode` after the
+entry dialog. A coarse pointer or viewport below 700 px recommends touch mode;
+otherwise keyboard/mouse is recommended. The dialog appears on every load with
+the stored choices preselected.
+
+Keyboard/mouse mode provides camera-relative WASD/arrow movement, number-row
+hotbar actions, panel hotkeys, nearest interaction and targeting, chat focus,
+panel dismissal, and right/middle-drag camera rotation. Touch mode creates a DOM
+joystick and action cluster for interaction, targeting, chat, and zoom; world
+swipes rotate the camera and the Babylon hotbar remains directly tappable.
+
+Movement vectors are normalized client-side and clamped again server-side.
+Input is suspended on blur, page hiding, chat focus, and scene disposal. Touch
+panels hide underlying HUD controls to avoid overlap and accidental activation.
+See [Localization and Controls](./LOCALIZATION_AND_CONTROLS.md) for the complete
+mapping and validation matrix.
 
 ## Asset Loading
 
@@ -181,7 +206,7 @@ The game entry document includes:
 
 - a canonical URL and descriptive title/description;
 - Open Graph and Twitter metadata using an existing game screenshot;
-- Schema.org `VideoGame` JSON-LD;
+- Schema.org `VideoGame` JSON-LD declaring English and Russian availability;
 - a web app manifest and theme metadata;
 - semantic content available before WebGL starts.
 
@@ -206,7 +231,9 @@ browser reports Do Not Track.
 | `APP_DATABASE=sqllite npm run server-dev` | Run the host server with reload and SQLite on port `3000` |
 | `npm run client-build` | Build the production client and copy assets/docs |
 | `npm run server-build` | Compile the server and copy server-side public files |
+| `npm run check:localization` | Validate English/Russian catalogs, placeholders, active game data, dialogs, HTML bindings, and literal calls |
 | `npm run check:web-quality` | Validate HTML semantics, JSON-LD, manifest, crawler files, and references |
+| `npm run test:e2e` | Start SQLite/server/client fixtures and run desktop plus touch Chromium projects |
 | `npx tsc --noEmit` | Type-check client and server without writing output |
 | `npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS |
 | `npm run loadtest` | Run the Colyseus chat-room load test |
@@ -224,5 +251,6 @@ dist/client/docs/content/*.md
 ```
 
 The browser shell in `public/docs` fetches that Markdown at runtime. Its
-navigation covers the project overview, API/security reference, quality audit,
-local infrastructure runbook, and public deployment runbook.
+navigation covers the project overview, localization/controls reference,
+API/security reference, quality audit, local infrastructure runbook, and public
+deployment runbook.

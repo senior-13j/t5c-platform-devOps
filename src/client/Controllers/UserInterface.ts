@@ -151,7 +151,14 @@ export class UserInterface {
         this._HotBar = new HotBar(this, currentPlayer);
 
         // create chat ui + events
-        this._ChatBox = new ChatBox(this._playerUI, this._chatRoom, currentPlayer, this._entities, this._game);
+        this._ChatBox = new ChatBox(
+            this._playerUI,
+            this._chatRoom,
+            currentPlayer,
+            this._entities,
+            this._game,
+            this.MAIN_ADT
+        );
 
         // create selected entity panel
         this._targetEntitySelectedBar = new EntitySelectedBar(this, {
@@ -166,7 +173,7 @@ export class UserInterface {
 
         // create panel
         this.panelInventory = new Panel_Inventory(this, currentPlayer, {
-            name: "Inventory",
+            name: this._game.t("menu.inventory"),
             stayOpen: true,
             width: "246px;",
             height: "300px;",
@@ -179,7 +186,7 @@ export class UserInterface {
 
         // create panel
         this.panelAbilities = new Panel_Abilities(this, currentPlayer, {
-            name: "Abilities",
+            name: this._game.t("menu.abilities"),
             width: "500px;",
             height: "400px;",
             top: "-50px;",
@@ -190,9 +197,9 @@ export class UserInterface {
 
         // create panel
         this.panelCharacter = new Panel_Character(this, currentPlayer, {
-            name: "Character",
+            name: this._game.t("menu.character"),
             width: "600px;",
-            height: "320px;",
+            height: this._game.controlMode === "touch" ? "520px" : "320px",
             top: "-50px;",
             left: "0px;",
             horizontal_position: Control.HORIZONTAL_ALIGNMENT_CENTER,
@@ -201,7 +208,7 @@ export class UserInterface {
 
         // create help panel
         this.panelHelp = new Panel_Help(this, currentPlayer, {
-            name: "Welcome to T5C",
+            name: this._game.t("panel.help"),
             width: "500px;",
             height: "500px;",
             top: "-50px;",
@@ -212,7 +219,7 @@ export class UserInterface {
 
         // create dialog panel
         this.panelDialog = new Panel_Dialog(this, currentPlayer, {
-            name: "Dialog Panel",
+            name: this._game.t("panel.dialog"),
             width: "350px;",
             height: "400px;",
             top: "-50px;",
@@ -223,7 +230,7 @@ export class UserInterface {
 
         // create quests panel
         this.panelQuests = new Panel_Quests(this, currentPlayer, {
-            name: "Active Quests",
+            name: this._game.t("panel.activeQuests"),
             width: "300px;",
             height: "300px;",
             top: "-50px;",
@@ -242,7 +249,7 @@ export class UserInterface {
         ];
 
         // Keep the play area clear on compact screens.
-        if (window.innerWidth >= 700) {
+        if (this._game.controlMode === "keyboard" && window.innerWidth >= 700) {
             this.panelInventory.open();
         }
         //this.panelHelp.open();
@@ -333,5 +340,67 @@ export class UserInterface {
         this._targetEntitySelectedBar?.resize();
         this._playerEntitySelectedBar?.resize();
         this._panels?.forEach((panel) => panel.resize());
+    }
+
+    public getGuiViewport(): { width: number; height: number; scaleX: number; scaleY: number } {
+        const size = this.MAIN_ADT?.getSize();
+        const canvas = this._engine.getRenderingCanvas();
+        const cssWidth = canvas?.clientWidth || window.innerWidth || 1;
+        const cssHeight = canvas?.clientHeight || window.innerHeight || 1;
+        const width = size?.width || cssWidth;
+        const height = size?.height || cssHeight;
+
+        return {
+            width,
+            height,
+            scaleX: width / cssWidth,
+            scaleY: height / cssHeight,
+        };
+    }
+
+    public closeActivePanels(): void {
+        this._InventoryDropdown?.hideDropdown();
+        this._panels?.forEach((panel) => {
+            if (panel.isOpen()) {
+                panel.close();
+            }
+        });
+        this.syncTouchOverlayState();
+    }
+
+    public hidePanelsExcept(activePanel: Panel): void {
+        this._InventoryDropdown?.hideDropdown();
+        this._panels?.forEach((panel) => {
+            if (panel !== activePanel) {
+                panel._panel.isVisible = false;
+            }
+        });
+    }
+
+    public syncTouchOverlayState(): void {
+        const panelOpen = this._panels?.some((panel) => panel.isOpen()) ?? false;
+        const touchPanelOpen = this._game.controlMode === "touch" && panelOpen;
+        document.body.classList.toggle("touch-ui-obscured", touchPanelOpen);
+        if (this._game.controlMode === "touch") {
+            this._HotBar?.setVisible(!panelOpen);
+            this._MainMenu?.setVisible(!panelOpen);
+            this._playerEntitySelectedBar?.setVisible(!panelOpen);
+            this._targetEntitySelectedBar?.setVisible(!panelOpen);
+            this._ExperienceBar?.setVisible(!panelOpen);
+            this._Tooltip?.close();
+            if (panelOpen && this._ChatBox?.isVisible()) {
+                this._ChatBox.setVisible(false);
+            }
+        }
+    }
+
+    public toggleChat(): void {
+        if (!this._ChatBox) {
+            return;
+        }
+        this._ChatBox.setVisible(!this._ChatBox.isVisible());
+        if (this._ChatBox.isVisible()) {
+            this._ChatBox.focus();
+        }
     }
 }

@@ -31,14 +31,17 @@ export class LoginScene {
         const quickPlayButton = document.getElementById("quickPlayButton") as HTMLButtonElement;
         const feedback = document.getElementById("loginFeedback");
 
-        document.getElementById("loginVersion").textContent = this._game.config.version;
+        this._game.preferences.applyDocumentTranslations();
+        document.getElementById("loginVersion").textContent = this._game.t("login.version", {
+            version: this._game.config.version,
+        });
         overlay.hidden = false;
         feedback.textContent = "";
 
         const setBusy = (busy: boolean, message = "") => {
             loginButton.disabled = busy;
             quickPlayButton.disabled = busy;
-            loginButton.textContent = busy ? "Connecting..." : "Connect to game";
+            loginButton.textContent = this._game.t(busy ? "login.connecting" : "login.connect");
             feedback.textContent = message;
         };
 
@@ -48,7 +51,7 @@ export class LoginScene {
                 return;
             }
 
-            setBusy(true, "Checking your adventurer...");
+            setBusy(true, this._game.t("login.checking"));
             const loginResult = await this._game.login(usernameInput.value.trim(), passwordInput.value);
 
             if (loginResult) {
@@ -58,17 +61,19 @@ export class LoginScene {
                 return;
             }
 
-            setBusy(false, this._game.latestError || "Unable to connect. Please try again.");
+            setBusy(false, this._game.latestError || this._game.t("login.error"));
             passwordInput.focus();
             passwordInput.select();
         };
 
         quickPlayButton.onclick = () => {
-            setBusy(true, "Creating a guest adventurer...");
+            setBusy(true, this._game.t("login.quickCreating"));
             overlay.hidden = true;
             this._game.setScene(State.CHARACTER_SELECTION);
         };
 
-        window.requestAnimationFrame(() => usernameInput.focus());
+        if (this._game.controlMode === "keyboard") {
+            window.requestAnimationFrame(() => usernameInput.focus());
+        }
     }
 }

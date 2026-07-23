@@ -46,11 +46,9 @@ export class GameRoomState extends Schema {
         this._gameroom = gameroom;
         this.config = gameroom.config;
         this.navMesh = _navMesh;
-
-        this.init();
     }
 
-    public async init() {
+    public async init(): Promise<void> {
         // load game data
         // in the future, it'll be in the database
         this.gameData = new gameDataCTRL();

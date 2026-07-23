@@ -54,7 +54,7 @@
                 "applicationCategory": "Game",
                 "operatingSystem": "Any",
                 "playMode": "MultiPlayer",
-                "inLanguage": "en",
+                "inLanguage": ["en", "ru"],
                 "isAccessibleForFree": true
             }
         </script>
@@ -77,61 +77,119 @@
         </script>
     </head>
     <body class="disable-selection">
-        <a class="skip-link" href="#renderCanvas">Skip to the game</a>
+        <a class="skip-link" href="#renderCanvas" data-i18n="a11y.skip">Skip to the game</a>
 
         <main id="gameShell" aria-labelledby="gameTitle">
-            <h1 id="gameTitle" class="sr-only">T5C - The 5th Continent multiplayer browser RPG</h1>
-            <p id="gameDescription" class="sr-only">
+            <h1 id="gameTitle" class="sr-only" data-i18n="a11y.gameTitle">T5C - The 5th Continent multiplayer browser RPG</h1>
+            <p id="gameDescription" class="sr-only" data-i18n="a11y.gameDescription">
                 Explore Eldoria, fight enemies, complete quests, collect equipment, and chat with other players.
             </p>
             <section id="gameInstructions" class="sr-only" aria-labelledby="gameInstructionsTitle">
-                <h2 id="gameInstructionsTitle">Game controls</h2>
-                <p>
-                    Use the pointer to move and interact. Use number keys 1 through 9 for hotbar actions, Enter for chat,
-                    and the on-screen menu for inventory, quests, abilities, character details, and help.
+                <h2 id="gameInstructionsTitle" data-i18n="a11y.controlsTitle">Game controls</h2>
+                <p id="gameInstructionsText">
+                    Move with W, A, S, and D. Use the mouse to select and interact, number keys 1 through 9 for hotbar
+                    actions, Enter for chat, and letter hotkeys for game panels.
                 </p>
             </section>
 
-            <div id="loadingScreen" role="status" aria-live="polite" aria-atomic="true">
+            <section
+                id="entrySetupOverlay"
+                class="entry-setup"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="entrySetupTitle"
+                aria-describedby="entrySetupDescription"
+            >
+                <form id="entrySetupForm" class="entry-setup__panel">
+                    <img src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
+                    <p class="entry-setup__eyebrow" data-i18n="entry.eyebrow">Player setup</p>
+                    <h2 id="entrySetupTitle" data-i18n="entry.title">Choose your experience</h2>
+                    <p id="entrySetupDescription" class="entry-setup__subtitle" data-i18n="entry.subtitle">
+                        Select a language and control mode before entering Eldoria.
+                    </p>
+
+                    <fieldset class="entry-fieldset">
+                        <legend data-i18n="entry.language">Language</legend>
+                        <div class="segmented-control">
+                            <label>
+                                <input type="radio" name="locale" value="en">
+                                <span>English</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="locale" value="ru">
+                                <span>Русский</span>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="entry-fieldset">
+                        <legend data-i18n="entry.controls">Control mode</legend>
+                        <div class="control-mode-options">
+                            <label class="control-mode-option">
+                                <input type="radio" name="controlMode" value="keyboard">
+                                <span class="control-mode-option__copy">
+                                    <strong data-i18n="entry.keyboard">Keyboard and mouse</strong>
+                                    <small data-i18n="entry.keyboardDetail">Desktop or laptop</small>
+                                </span>
+                                <span class="recommendation" data-recommended-mode="keyboard" data-i18n="entry.recommended">Recommended</span>
+                            </label>
+                            <label class="control-mode-option">
+                                <input type="radio" name="controlMode" value="touch">
+                                <span class="control-mode-option__copy">
+                                    <strong data-i18n="entry.touch">Touch screen</strong>
+                                    <small data-i18n="entry.touchDetail">Phone or tablet</small>
+                                </span>
+                                <span class="recommendation" data-recommended-mode="touch" data-i18n="entry.recommended">Recommended</span>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <button class="entry-setup__continue" type="submit" data-i18n="entry.continue">Continue</button>
+                    <p class="entry-setup__remember" data-i18n="entry.remember">Saved on this device</p>
+                </form>
+            </section>
+
+            <div id="loadingScreen" role="status" aria-live="polite" aria-atomic="true" hidden>
                 <div class="loading-panel">
                     <img class="loading-logo" src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
-                    <p id="loadingText" class="loading-title">Preparing Eldoria</p>
+                    <p id="loadingText" class="loading-title" data-i18n="loading.title">Preparing Eldoria</p>
                     <div
                         id="loadingProgress"
                         class="loading-progress"
                         role="progressbar"
                         aria-label="Game loading progress"
+                        data-i18n-aria-label="a11y.loadingProgress"
                         aria-valuemin="0"
                         aria-valuemax="100"
                         aria-valuenow="0"
                     >
                         <span id="loadingProgressBar"></span>
                     </div>
-                    <p id="loadingTextDetails" class="loading-details">Starting the game...</p>
+                    <p id="loadingTextDetails" class="loading-details" data-i18n="loading.starting">Starting the game...</p>
                 </div>
             </div>
 
             <section id="fatalError" class="fatal-error" role="alert" aria-labelledby="fatalErrorTitle" hidden>
                 <div class="fatal-error__panel">
-                    <p class="fatal-error__eyebrow">T5C could not start</p>
-                    <h2 id="fatalErrorTitle">Your adventure is paused</h2>
-                    <p id="fatalErrorMessage">
+                    <p class="fatal-error__eyebrow" data-i18n="fatal.eyebrow">T5C could not start</p>
+                    <h2 id="fatalErrorTitle" data-i18n="fatal.title">Your adventure is paused</h2>
+                    <p id="fatalErrorMessage" data-i18n="fatal.default">
                         Check that WebGL is enabled and that your connection is available, then try again.
                     </p>
-                    <button id="retryButton" type="button">Retry</button>
-                    <a href="./docs/">Open technical help</a>
+                    <button id="retryButton" type="button" data-i18n="fatal.retry">Retry</button>
+                    <a href="./docs/" data-i18n="fatal.help">Open technical help</a>
                 </div>
             </section>
 
             <section id="loginOverlay" class="login-overlay" aria-labelledby="loginTitle" hidden>
                 <div class="login-panel">
                     <img src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
-                    <p class="login-panel__eyebrow">Multiplayer browser RPG</p>
-                    <h2 id="loginTitle">Enter Eldoria</h2>
+                    <p class="login-panel__eyebrow" data-i18n="login.eyebrow">Multiplayer browser RPG</p>
+                    <h2 id="loginTitle" data-i18n="login.title">Enter Eldoria</h2>
                     <p id="loginVersion" class="login-panel__version">Version 0.5.0</p>
 
                     <form id="loginForm">
-                        <label for="usernameInput">Adventurer name</label>
+                        <label for="usernameInput" data-i18n="login.username">Adventurer name</label>
                         <input
                             id="usernameInput"
                             name="username"
@@ -141,7 +199,7 @@
                             required
                         >
 
-                        <label for="passwordInput">Password</label>
+                        <label for="passwordInput" data-i18n="login.password">Password</label>
                         <input
                             id="passwordInput"
                             name="password"
@@ -153,15 +211,15 @@
 
                         <p id="loginFeedback" class="login-feedback" role="status" aria-live="polite"></p>
                         <button id="loginButton" class="login-button login-button--primary" type="submit">
-                            Connect to game
+                            <span data-i18n="login.connect">Connect to game</span>
                         </button>
                     </form>
 
-                    <div class="login-divider" aria-hidden="true"><span>or</span></div>
+                    <div class="login-divider" aria-hidden="true"><span data-i18n="login.or">or</span></div>
                     <button id="quickPlayButton" class="login-button login-button--secondary" type="button">
-                        Quick Play
+                        <span data-i18n="login.quickPlay">Quick Play</span>
                     </button>
-                    <p class="login-panel__hint">Start immediately with a generated adventurer.</p>
+                    <p class="login-panel__hint" data-i18n="login.hint">Start immediately with a generated adventurer.</p>
                 </div>
             </section>
 
@@ -169,19 +227,80 @@
                 id="renderCanvas"
                 role="application"
                 aria-label="T5C interactive 3D game"
+                data-i18n="a11y.canvasFallback"
+                data-i18n-aria-label="a11y.canvas"
                 aria-describedby="gameDescription gameInstructions"
                 tabindex="0"
             >
                 T5C requires a browser with canvas and WebGL support. Visit the technical help page for compatibility
                 information.
             </canvas>
+
+            <section
+                id="touchControls"
+                class="touch-controls"
+                aria-label="Touch game controls"
+                data-i18n-aria-label="a11y.touchControls"
+                hidden
+            >
+                <div id="touchJoystick" class="touch-joystick" aria-hidden="true">
+                    <span id="touchJoystickThumb" class="touch-joystick__thumb"></span>
+                </div>
+                <div class="touch-actions">
+                    <button
+                        id="touchInteractButton"
+                        class="touch-action touch-action--primary"
+                        type="button"
+                        data-i18n-aria-label="touch.interact"
+                        data-i18n-title="touch.interact"
+                    >
+                        <img src="./images/icons/talk.png" alt="" width="26" height="26">
+                    </button>
+                    <button
+                        id="touchTargetButton"
+                        class="touch-action"
+                        type="button"
+                        data-i18n-aria-label="touch.target"
+                        data-i18n-title="touch.target"
+                    ><span aria-hidden="true">◎</span></button>
+                    <button
+                        id="touchChatButton"
+                        class="touch-action"
+                        type="button"
+                        data-i18n-aria-label="touch.chat"
+                        data-i18n-title="touch.chat"
+                    ><span aria-hidden="true">#</span></button>
+                    <button
+                        id="touchZoomInButton"
+                        class="touch-action touch-action--small"
+                        type="button"
+                        data-i18n-aria-label="touch.zoomIn"
+                        data-i18n-title="touch.zoomIn"
+                    ><span aria-hidden="true">+</span></button>
+                    <button
+                        id="touchZoomOutButton"
+                        class="touch-action touch-action--small"
+                        type="button"
+                        data-i18n-aria-label="touch.zoomOut"
+                        data-i18n-title="touch.zoomOut"
+                    ><span aria-hidden="true">−</span></button>
+                </div>
+            </section>
+
+            <aside id="controlHint" class="control-hint" role="status" hidden>
+                <div>
+                    <strong id="controlHintTitle"></strong>
+                    <p id="controlHintBody"></p>
+                </div>
+                <button id="controlHintDismiss" type="button" data-i18n-aria-label="hint.dismiss" title="Dismiss">×</button>
+            </aside>
             <div id="gameAnnouncements" class="sr-only" aria-live="polite" aria-atomic="false"></div>
         </main>
 
         <noscript>
             <section class="noscript-message">
-                <h2>JavaScript is required</h2>
-                <p>T5C is an interactive 3D browser game and needs JavaScript to run.</p>
+                <h2 data-i18n="noscript.title">JavaScript is required</h2>
+                <p data-i18n="noscript.body">T5C is an interactive 3D browser game and needs JavaScript to run.</p>
             </section>
         </noscript>
 

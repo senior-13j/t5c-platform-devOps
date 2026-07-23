@@ -9,6 +9,15 @@ import { Room } from "colyseus.js";
 import { Config } from "../../shared/Config";
 import { ServerMsg } from "../../shared/types";
 import { GameScene } from "../Screens/GameScene";
+import { PreferencesController } from "./PreferencesController";
+import {
+    ControlMode,
+    Locale,
+    TranslationKey,
+    TranslationParams,
+    localizeGameData,
+    localizeServerMessage,
+} from "../i18n";
 
 export class GameController {
     // core
@@ -16,6 +25,7 @@ export class GameController {
     public scene;
     public client: Network;
     public config: Config;
+    public preferences: PreferencesController;
 
     // scene management
     public state: number = 0;
@@ -34,7 +44,6 @@ export class GameController {
     public _currentUser;
     public _currentCharacter;
     public selectedEntity;
-    public locale: "en";
     public currentMs: number;
     public deltaCamY: number = 2.7; // offset for camera to prevent camera moving when the player rotates
     public latestError: string;
@@ -66,15 +75,33 @@ export class GameController {
         this.engine = app.engine;
         this.config = app.config;
         this.scene = app.scene;
+        this.preferences = app.preferences;
 
         // create colyseus client
         this.client = new Network(app.config.port);
 
         // Prefer capabilities and viewport size over user-agent-only detection.
         this.isMobile =
+            this.controlMode === "touch" ||
             window.innerWidth < 700 ||
             window.matchMedia("(pointer: coarse)").matches ||
             /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    public get locale(): Locale {
+        return this.preferences.locale;
+    }
+
+    public get controlMode(): ControlMode {
+        return this.preferences.controlMode;
+    }
+
+    public t(key: TranslationKey, params: TranslationParams = {}): string {
+        return this.preferences.t(key, params);
+    }
+
+    public translateServerMessage(message: string): string {
+        return localizeServerMessage(message, this.locale);
     }
 
     setErrorCode(message: string): void {
@@ -99,7 +126,7 @@ export class GameController {
             method: "GET",
             url: apiUrl(this.config.port) + "/load_game_data",
         });
-        this._gameData = result.data.data;
+        this._gameData = localizeGameData(result.data.data, this.locale, this.controlMode);
         console.log("[GAME] loaded game data", this._gameData);
     }
 
@@ -254,7 +281,7 @@ export class GameController {
                 return true;
             }
         } catch (error) {
-            this.setErrorCode("Unable to connect. Check your details and try again.");
+            this.setErrorCode(this.t("login.invalid"));
         }
 
         return false;

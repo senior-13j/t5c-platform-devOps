@@ -4,7 +4,7 @@ import { ScrollViewer } from "@babylonjs/gui/2D/controls/scrollViewers/scrollVie
 import { Control } from "@babylonjs/gui/2D/controls/control";
 import { StackPanel } from "@babylonjs/gui/2D/controls/stackPanel";
 import { TextBlock, TextWrapping } from "@babylonjs/gui/2D/controls/textBlock";
-import { QuestObjectives } from "../../../../shared/types";
+import { QuestObjective } from "../../../../shared/types";
 import { QuestsHelper } from "../../../../shared/Class/QuestsHelper";
 
 export class Panel_Quests extends Panel {
@@ -83,8 +83,14 @@ export class Panel_Quests extends Panel {
                 let quest = this._game.getGameData("quest", q.key);
                 let location = this._game.getGameData("location", quest.location);
 
-                let short_objective = QuestObjectives[quest.type];
-                short_objective = this.replaceKeywords(short_objective, quest, q, location);
+                let short_objective = quest.objective;
+                if (quest.type === QuestObjective.KILL_AMOUNT) {
+                    short_objective = this._game.t("quest.killProgress", {
+                        completed: q.qty,
+                        required: quest.quantity,
+                        target: QuestsHelper.findQuestTargetName(location, quest.spawn_key, quest.quantity),
+                    });
+                }
 
                 let questPanel = new Rectangle("questPanel");
                 questPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -128,7 +134,7 @@ export class Panel_Quests extends Panel {
             });
         } else {
             var noQuests = new TextBlock("noQuests");
-            noQuests.text = "You have no quests. Explore the world & talk to people to discover new quests.";
+            noQuests.text = this._game.t("quest.none");
             noQuests.fontSize = "14px";
             noQuests.color = "white";
             noQuests.textWrapping = TextWrapping.WordWrap;

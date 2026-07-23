@@ -77,7 +77,7 @@ export class Panel_Inventory extends Panel {
 
         // panel title
         var goldTitle = new TextBlock("goldTitle");
-        goldTitle.text = "Gold: 0";
+        goldTitle.text = this._game.t("status.gold", { amount: 0 });
         goldTitle.fontSize = "12px";
         goldTitle.color = "rgba(255,255,255,.9)";
         goldTitle.top = "-5px";
@@ -160,7 +160,7 @@ export class Panel_Inventory extends Panel {
 
     updateGold() {
         if (this._goldUI) {
-            this._goldUI.text = "Gold: " + this._currentPlayer.player_data.gold;
+            this._goldUI.text = this._game.t("status.gold", { amount: this._currentPlayer.player_data.gold });
         }
     }
 
@@ -248,6 +248,9 @@ export class Panel_Inventory extends Panel {
                         this._game.sendMessage(ServerMsg.PLAYER_SELL_ITEM, {
                             index: element.i,
                         });
+                    } else if (this._game.controlMode === "touch") {
+                        this._UI._Tooltip.close();
+                        this._UI._InventoryDropdown.showDropdown(child, item, element);
                     }
                 }
                 if (child.metadata.item && e.buttonIndex === 2) {

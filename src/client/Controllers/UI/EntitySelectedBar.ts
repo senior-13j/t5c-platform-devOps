@@ -207,10 +207,15 @@ export class EntitySelectedBar {
 
         // update data
         this._entityNameTxt.text = target.name;
-        this._entityLevelTxt.text = "Lvl " + target.level;
+        this._entityLevelTxt.text = this._game.t("status.level", { level: target.level });
 
         //
         this.setData(target);
+    }
+
+    public setVisible(visible: boolean): void {
+        const hasContent = this._options.currentPlayer !== false || Boolean(this._game.selectedEntity);
+        this._selectedEntityBar.isVisible = visible && hasContent;
     }
 
     setData(entity) {
@@ -228,7 +233,7 @@ export class EntitySelectedBar {
 
         // update data
         this._entityNameTxt.text = entity.name;
-        this._entityLevelTxt.text = "Lvl " + entity.level;
+        this._entityLevelTxt.text = this._game.t("status.level", { level: entity.level });
     }
 
     // refresh panel
@@ -245,7 +250,7 @@ export class EntitySelectedBar {
     }
 
     public resize() {
-        const compact = window.innerWidth < 700;
+        const compact = this._game.controlMode === "touch" || window.innerWidth < 700;
         const isTarget = this._options.panelName === "target";
         this._selectedEntityBar.left = compact ? "8px" : isTarget ? "30px" : "15px";
         this._selectedEntityBar.top = compact ? (isTarget ? "132px" : "8px") : isTarget ? "85px" : "15px";

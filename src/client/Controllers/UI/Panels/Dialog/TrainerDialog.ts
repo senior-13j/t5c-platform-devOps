@@ -81,11 +81,13 @@ export class TrainerDialog {
     }
 
     create(abilities) {
-        const createBtn = Button.CreateSimpleButton("characterBtn", "Back");
+        const touchMode = this.panel._game.controlMode === "touch";
+        const actionHeight = this.panel.getActionHeight();
+        const createBtn = Button.CreateSimpleButton("characterBtn", this.panel._game.t("common.back"));
         createBtn.left = "0px;";
         createBtn.top = "0px";
         createBtn.width = 1;
-        createBtn.height = "24px";
+        createBtn.height = actionHeight;
         createBtn.background = "black";
         createBtn.color = "white";
         createBtn.thickness = 0;
@@ -101,7 +103,7 @@ export class TrainerDialog {
         const scrollViewer = new ScrollViewer("scrollViewer");
         scrollViewer.width = 1;
         scrollViewer.height = 0.54;
-        scrollViewer.top = "24px;";
+        scrollViewer.top = actionHeight;
         scrollViewer.thickness = 0;
         scrollViewer.background = this.backgroundColor;
         scrollViewer.setPaddingInPixels(5, 5, 5, 5);
@@ -130,7 +132,7 @@ export class TrainerDialog {
                 blocContainer.top = "0px";
                 blocContainer.left = "0px;";
                 blocContainer.width = 1;
-                blocContainer.height = "25px";
+                blocContainer.height = touchMode ? "44px" : "25px";
                 blocContainer.background = this.backgroundColor;
                 blocContainer.thickness = 0;
                 blocContainer.metadata = {
@@ -142,7 +144,10 @@ export class TrainerDialog {
                 blockTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
                 blockTitle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 blockTitle.paddingLeft = "5px";
-                blockTitle.text = ability.title + " (Level " + ability.required_level + ")";
+                blockTitle.text = this.panel._game.t("trainer.level", {
+                    title: ability.title,
+                    level: ability.required_level,
+                });
                 blockTitle.fontSize = "14px";
                 blockTitle.color = this.canLearnColor(ability);
                 blockTitle.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -180,7 +185,7 @@ export class TrainerDialog {
             tooltipName.top = "5px";
             tooltipName.left = "5px";
             tooltipName.resizeToFit = true;
-            tooltipName.text = "Sorry, you've already leant all I had to teach.";
+            tooltipName.text = this.panel._game.t("trainer.empty");
             tooltipName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             tooltipName.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
             tooltipName.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -203,6 +208,7 @@ export class TrainerDialog {
     }
 
     createDetails(ability) {
+        const touchMode = this.panel._game.controlMode === "touch";
         // clear previous ability
         this.panelDetails.getDescendants().forEach((el) => {
             el.dispose();
@@ -223,18 +229,18 @@ export class TrainerDialog {
         titleBloc.top = "5px";
         titleBloc.left = "0px;";
         titleBloc.width = 1;
-        titleBloc.height = "35px;";
+            titleBloc.height = touchMode ? "46px" : "35px";
         titleBloc.thickness = 0;
         stackPanel.addControl(titleBloc);
 
         if (this.canLearn(ability)) {
-            const createBtn = Button.CreateSimpleButton("learnBTN", "Train");
+            const createBtn = Button.CreateSimpleButton("learnBTN", this.panel._game.t("trainer.train"));
             createBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             createBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             createBtn.left = "-5px;";
             createBtn.top = "5px";
-            createBtn.width = "50px;";
-            createBtn.height = "20px";
+            createBtn.width = touchMode ? "82px" : "50px";
+            createBtn.height = touchMode ? "40px" : "20px";
             createBtn.background = "orange";
             createBtn.color = "white";
             createBtn.thickness = 0;
@@ -256,13 +262,13 @@ export class TrainerDialog {
                 }, 500);
             });
         } else {
-            const createBtn = Button.CreateSimpleButton("learnBTN", "Train");
+            const createBtn = Button.CreateSimpleButton("learnBTN", this.panel._game.t("trainer.train"));
             createBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             createBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             createBtn.left = "-5px;";
             createBtn.top = "5px";
-            createBtn.width = "50px;";
-            createBtn.height = "20px";
+            createBtn.width = touchMode ? "82px" : "50px";
+            createBtn.height = touchMode ? "40px" : "20px";
             createBtn.background = "gray";
             createBtn.color = "white";
             createBtn.thickness = 0;
@@ -317,25 +323,25 @@ export class TrainerDialog {
         // add requirements
         let requirements = "";
         if (ability.value) {
-            requirements += "Cost: " + ability.value + "\n";
+            requirements += this.panel._game.t("requirement.cost", { amount: ability.value }) + "\n";
         }
         if (ability.required_level) {
-            requirements += "Level Required: " + ability.required_level + "\n";
+            requirements += this.panel._game.t("requirement.level", { amount: ability.required_level }) + "\n";
         }
         if (ability.required_strength) {
-            requirements += "Strength Required: " + ability.required_strength + "\n";
+            requirements += this.panel._game.t("requirement.strength", { amount: ability.required_strength }) + "\n";
         }
         if (ability.required_endurance) {
-            requirements += "Endurance Required: " + ability.required_endurance + "\n";
+            requirements += this.panel._game.t("requirement.endurance", { amount: ability.required_endurance }) + "\n";
         }
         if (ability.required_agility) {
-            requirements += "Agility Required: " + ability.required_agility + "\n";
+            requirements += this.panel._game.t("requirement.agility", { amount: ability.required_agility }) + "\n";
         }
         if (ability.required_intelligence) {
-            requirements += "Intelligence Required: " + ability.required_intelligence + "\n";
+            requirements += this.panel._game.t("requirement.intelligence", { amount: ability.required_intelligence }) + "\n";
         }
         if (ability.required_wisdom) {
-            requirements += "Wisdom Required: " + ability.required_wisdom + "\n";
+            requirements += this.panel._game.t("requirement.wisdom", { amount: ability.required_wisdom }) + "\n";
         }
 
         const requiredBloc = new TextBlock("requiredBloc" + ability.key);

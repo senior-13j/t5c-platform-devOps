@@ -16,6 +16,9 @@ const requiredPatterns = new Map([
     ["page heading", /<h1\b/i],
     ["accessible game canvas", /<canvas[^>]+aria-label=/i],
     ["accessible login form", /<form[^>]+id="loginForm"/i],
+    ["entry preference dialog", /id="entrySetupOverlay"[\s\S]{0,300}role="dialog"/i],
+    ["English and Russian choices", /name="locale" value="en"[\s\S]+name="locale" value="ru"/i],
+    ["keyboard and touch choices", /name="controlMode" value="keyboard"[\s\S]+name="controlMode" value="touch"/i],
     ["loading progress", /role="progressbar"/i],
     ["startup error state", /id="fatalError"/i],
     ["web app manifest", /rel="manifest"/i],
@@ -30,6 +33,7 @@ assert.ok(structuredDataMatch, "Missing JSON-LD structured data");
 const structuredData = JSON.parse(structuredDataMatch[1]);
 assert.equal(structuredData["@type"], "VideoGame");
 assert.equal(structuredData.url, "https://arkadii.world/game/");
+assert.deepEqual(structuredData.inLanguage, ["en", "ru"]);
 
 const manifest = JSON.parse(await readFile(path.join(publicDir, "manifest.webmanifest"), "utf8"));
 assert.equal(manifest.start_url, "./");
@@ -46,12 +50,14 @@ assert.match(sitemap, /<loc>https:\/\/arkadii\.world\/game\/<\/loc>/);
 const llms = await readFile(path.join(publicDir, "llms.txt"), "utf8");
 assert.match(llms, /https:\/\/arkadii\.world\/game\/docs\/#api_and_security/);
 assert.match(llms, /https:\/\/arkadii\.world\/game\/docs\/#game_quality_audit/);
+assert.match(llms, /https:\/\/arkadii\.world\/game\/docs\/#localization_and_controls/);
 
 const docsIndex = await readFile(path.join(publicDir, "docs", "index.html"), "utf8");
 const docsScript = await readFile(path.join(publicDir, "docs", "docs.js"), "utf8");
 const requiredDocs = [
     "README.md",
     "PROJECT.md",
+    "LOCALIZATION_AND_CONTROLS.md",
     "API_AND_SECURITY.md",
     "GAME_QUALITY_AUDIT.md",
     "INFRASTRUCTURE_AND_DEPLOYMENT.md",

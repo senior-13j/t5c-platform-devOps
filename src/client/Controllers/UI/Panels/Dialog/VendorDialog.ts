@@ -39,11 +39,13 @@ export class VendorDialog {
     }
 
     create() {
-        const createBtn = Button.CreateSimpleButton("characterBtn", "Back");
+        const touchMode = this.panel._game.controlMode === "touch";
+        const actionHeight = this.panel.getActionHeight();
+        const createBtn = Button.CreateSimpleButton("characterBtn", this.panel._game.t("common.back"));
         createBtn.left = "0px;";
         createBtn.top = "0px";
         createBtn.width = 1;
-        createBtn.height = "24px";
+        createBtn.height = actionHeight;
         createBtn.background = "black";
         createBtn.color = "white";
         createBtn.thickness = 0;
@@ -60,7 +62,7 @@ export class VendorDialog {
         const scrollViewer = new ScrollViewer("scrollViewer");
         scrollViewer.width = 1;
         scrollViewer.height = 0.53;
-        scrollViewer.top = "24px;";
+        scrollViewer.top = actionHeight;
         scrollViewer.thickness = 0;
         scrollViewer.background = this.backgroundColor;
         scrollViewer.setPaddingInPixels(5, 5, 5, 5);
@@ -102,7 +104,7 @@ export class VendorDialog {
                 blocContainer.top = "0px";
                 blocContainer.left = "0px;";
                 blocContainer.width = 1;
-                blocContainer.height = "25px";
+                blocContainer.height = touchMode ? "44px" : "25px";
                 blocContainer.background = this.backgroundColor;
                 blocContainer.thickness = 0;
                 blocContainer.metadata = {
@@ -141,7 +143,7 @@ export class VendorDialog {
             tooltipName.top = "5px";
             tooltipName.left = "5px";
             tooltipName.resizeToFit = true;
-            tooltipName.text = "Sorry, you've already leant all I had to teach.";
+            tooltipName.text = this.panel._game.t("vendor.empty");
             tooltipName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             tooltipName.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
             tooltipName.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -166,7 +168,7 @@ export class VendorDialog {
         this.panel._game.sellingMode = true;
         this.panel._UI._Cursor.activate("sell");
         if (this.sellBtn.textBlock) {
-            this.sellBtn.textBlock.text = "Sell (ON)";
+            this.sellBtn.textBlock.text = this.panel._game.t("inventory.sellOn");
         }
     }
 
@@ -174,11 +176,14 @@ export class VendorDialog {
         this.panel._game.sellingMode = false;
         this.panel._UI._Cursor.activate();
         if (this.sellBtn.textBlock) {
-            this.sellBtn.textBlock.text = "Sell";
+            this.sellBtn.textBlock.text = this.panel._game.t("inventory.sell");
         }
     }
 
     createDetails(item) {
+        const touchMode = this.panel._game.controlMode === "touch";
+        const actionHeight = this.panel.getActionHeight();
+
         // clear previous ability
         this.panelDetails.getDescendants().forEach((el) => {
             el.dispose();
@@ -195,17 +200,17 @@ export class VendorDialog {
         actionBloc.top = "0px";
         actionBloc.left = "0px;";
         actionBloc.width = 1;
-        actionBloc.height = "35px;";
+        actionBloc.height = touchMode ? "48px" : "35px";
         actionBloc.thickness = 0;
         this.panelDetails.addControl(actionBloc);
 
-        const sellBtn = Button.CreateSimpleButton("sellBtn", "Sell");
+        const sellBtn = Button.CreateSimpleButton("sellBtn", this.panel._game.t("inventory.sell"));
         sellBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         sellBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         sellBtn.left = "0px;";
         sellBtn.top = "0px";
-        sellBtn.width = "100px;";
-        sellBtn.height = "24px";
+        sellBtn.width = touchMode ? "116px" : "100px";
+        sellBtn.height = actionHeight;
         sellBtn.background = "orange";
         sellBtn.color = "white";
         sellBtn.thickness = 0;
@@ -221,13 +226,16 @@ export class VendorDialog {
             }
         });
 
-        const createBtn = Button.CreateSimpleButton("buyBtn", "Buy " + totalQuantity);
+        const createBtn = Button.CreateSimpleButton(
+            "buyBtn",
+            this.panel._game.t("inventory.buy", { amount: totalQuantity })
+        );
         createBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         createBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        createBtn.left = "-29px;";
+        createBtn.left = touchMode ? "-43px" : "-29px";
         createBtn.top = "0px";
-        createBtn.width = "60px;";
-        createBtn.height = "24px";
+        createBtn.width = touchMode ? "92px" : "60px";
+        createBtn.height = actionHeight;
         createBtn.background = "orange";
         createBtn.color = "white";
         createBtn.thickness = 0;
@@ -240,8 +248,8 @@ export class VendorDialog {
         plusBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         plusBtn.left = "0px;";
         plusBtn.top = "0px";
-        plusBtn.width = "24px;";
-        plusBtn.height = "24px";
+        plusBtn.width = touchMode ? "38px" : "24px";
+        plusBtn.height = actionHeight;
         plusBtn.background = "gray";
         plusBtn.color = "white";
         plusBtn.thickness = 0;
@@ -249,17 +257,17 @@ export class VendorDialog {
         plusBtn.onPointerClickObservable.add(() => {
             totalQuantity++;
             if (createBtn.textBlock) {
-                createBtn.textBlock.text = "Buy " + totalQuantity;
+                createBtn.textBlock.text = this.panel._game.t("inventory.buy", { amount: totalQuantity });
             }
         });
 
         const minusBtn = Button.CreateSimpleButton("minusBtn", "-");
         minusBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         minusBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        minusBtn.left = "-95px;";
+        minusBtn.left = touchMode ? "-140px" : "-95px";
         minusBtn.top = "0px";
-        minusBtn.width = "24px;";
-        minusBtn.height = "24px";
+        minusBtn.width = touchMode ? "38px" : "24px";
+        minusBtn.height = actionHeight;
         minusBtn.background = "gray";
         minusBtn.color = "white";
         minusBtn.thickness = 0;
@@ -268,7 +276,7 @@ export class VendorDialog {
             if (totalQuantity > 1) {
                 totalQuantity--;
                 if (createBtn.textBlock) {
-                    createBtn.textBlock.text = "Buy " + totalQuantity;
+                    createBtn.textBlock.text = this.panel._game.t("inventory.buy", { amount: totalQuantity });
                 }
             }
         });
@@ -290,7 +298,7 @@ export class VendorDialog {
                     totalQuantity = 1;
                     clicked = false;
                     if (createBtn.textBlock) {
-                        createBtn.textBlock.text = "Buy " + totalQuantity;
+                        createBtn.textBlock.text = this.panel._game.t("inventory.buy", { amount: totalQuantity });
                     }
                 }, 200);
             }
@@ -303,7 +311,7 @@ export class VendorDialog {
         const scrollViewerDetails = new ScrollViewer("scrollViewerDetails");
         scrollViewerDetails.width = 1;
         scrollViewerDetails.height = 1;
-        scrollViewerDetails.top = "35px";
+        scrollViewerDetails.top = touchMode ? "48px" : "35px";
         scrollViewerDetails.thickness = 0;
         scrollViewerDetails.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         scrollViewerDetails.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -380,7 +388,7 @@ export class VendorDialog {
         // add requirements
         let requirements = "";
         if (item.value) {
-            requirements += "Cost: " + item.value + "\n";
+            requirements += this.panel._game.t("inventory.cost", { amount: item.value }) + "\n";
         }
 
         const requiredBloc = new TextBlock("requiredBloc" + item.key);
