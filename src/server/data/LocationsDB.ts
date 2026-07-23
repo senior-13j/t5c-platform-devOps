@@ -455,7 +455,16 @@ let LocationsDB = {
         skyColor: [0, 0, 0, 1],
         music: "MUSIC_01",
         dynamic: {
-            interactive: [],
+            interactive: [
+                {
+                    // Keep this at the southern edge and aligned with the
+                    // "stuck" reset position so trapped players can always leave.
+                    type: "zone_change",
+                    from: new Vector3(6.3, 0, -23.5),
+                    to_map: "lh_town",
+                    to_vector: new Vector3(6.3, 0, -23.5),
+                },
+            ],
             spawns: [
                 {
                     key: "spawn_01",

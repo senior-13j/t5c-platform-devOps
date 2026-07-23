@@ -7,6 +7,7 @@
     "description": "Building a basic multiplayer 3d top down rpg using babylon.js and colyseus",
     "main": "./dist/client/index.html",
     "scripts": {
+        "test": "tsx --test tests/*.test.ts",
         "client-dev": "webpack serve --open --config webpack.dev.js",
         "client-start": "webpack serve --open --config webpack.dev.js",
         "client-build": "webpack --config webpack.prod.js",
