@@ -1,9 +1,12 @@
 # Construction Folder
-Here I keep all the files used the generate the assets found in the public folder
+
+This folder contains source files used to create and iterate on the assets in
+`public/`: design files, Blender scenes, model sources, textures, sounds, world
+notes, formulas, and draft devlog material.
 
 ## Credits
-I'll try to keep list of credits/thanks here.
+
 - [KayKit Adventurer Character Pack](https://kaylousberg.itch.io/kaykit-adventurers)
 
-
-
+Additional credits should be added here when new third-party source assets are
+introduced.

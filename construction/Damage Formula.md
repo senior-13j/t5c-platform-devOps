@@ -1,91 +1,108 @@
-Certainly! Here are some working formulas to calculate damage based on the hero's level, items equipped, and spell power. These formulas will help create a balanced system for both physical attacks and magical spells.
+# Damage and Healing Formulas
 
-### Physical Attack Damage Formula
+These draft formulas describe how physical damage, spell damage, and healing can
+scale with character level, equipped items, and primary stats.
 
-**Damage = (Base Damage + Weapon Damage) \* (1 + (Strength / 10)) \* Level Modifier**
+## Physical Attack Damage
 
-*   **Base Damage**: A constant base damage value.
-*   **Weapon Damage**: The damage value provided by the equipped weapon.
-*   **Strength**: The hero's Strength stat.
-*   **Level Modifier**: A multiplier based on the hero's level.
+```text
+Damage = (Base Damage + Weapon Damage) * (1 + (Strength / 10)) * Level Modifier
+```
 
-**Example Calculation:**
+| Term | Meaning |
+| --- | --- |
+| `Base Damage` | Constant baseline damage for the attack |
+| `Weapon Damage` | Damage contributed by the equipped weapon |
+| `Strength` | Character stat that increases physical damage |
+| `Level Modifier` | Multiplier based on character level |
 
-*   **Base Damage**: 10
-*   **Weapon Damage**: 5 (Weapon +1)
-*   **Strength**: 8
-*   **Hero Level**: 4
+### Example
 
-**Level Modifier Calculation:**
+| Input | Value |
+| --- | --- |
+| Base Damage | `10` |
+| Weapon Damage | `5` |
+| Strength | `8` |
+| Hero Level | `4` |
 
-*   **Level Modifier** = 1 + (Hero Level / 10) = 1 + (4 / 10) = 1.4
+```text
+Level Modifier = 1 + (Hero Level / 10)
+Level Modifier = 1 + (4 / 10)
+Level Modifier = 1.4
 
-**Damage Calculation:**
+Damage = (10 + 5) * (1 + (8 / 10)) * 1.4
+Damage = 15 * 1.8 * 1.4
+Damage = 37.8
+```
 
-*   **Damage** = (10 + 5) \* (1 + (8 / 10)) \* 1.4
-*   **Damage** = 15 \* 1.8 \* 1.4
-*   **Damage** = 37.8
+## Spell Damage
 
----
+```text
+Damage = (Base Spell Damage + Intelligence Bonus) * Level Modifier
+```
 
-### Spell Damage Formula
+| Term | Meaning |
+| --- | --- |
+| `Base Spell Damage` | Constant baseline damage for the spell |
+| `Intelligence Bonus` | Bonus damage from Intelligence |
+| `Level Modifier` | Multiplier based on character level |
 
-**Damage = (Base Spell Damage + Intelligence Bonus) \* Level Modifier**
+### Example: Fireball
 
-*   **Base Spell Damage**: The base damage of the spell.
-*   **Intelligence Bonus**: Bonus damage based on the hero's Intelligence stat.
-*   **Level Modifier**: A multiplier based on the hero's level.
+| Input | Value |
+| --- | --- |
+| Base Spell Damage | `20` |
+| Intelligence Bonus | `Intelligence * 1.5` |
+| Hero Intelligence | `12` |
+| Hero Level | `4` |
 
-**Example Calculation (Fireball):**
+```text
+Level Modifier = 1 + (Hero Level / 10)
+Level Modifier = 1 + (4 / 10)
+Level Modifier = 1.4
 
-*   **Base Spell Damage**: 20
-*   **Intelligence Bonus**: Intelligence \* 1.5
-*   **Hero Intelligence**: 12
-*   **Hero Level**: 4
+Intelligence Bonus = 12 * 1.5
+Intelligence Bonus = 18
 
-**Level Modifier Calculation:**
+Damage = (20 + 18) * 1.4
+Damage = 53.2
+```
 
-*   **Level Modifier** = 1 + (Hero Level / 10) = 1 + (4 / 10) = 1.4
+## Spell Healing
 
-**Intelligence Bonus Calculation:**
+```text
+Healing = (Base Healing + Wisdom Bonus) * Level Modifier
+```
 
-*   **Intelligence Bonus** = 12 \* 1.5 = 18
+| Term | Meaning |
+| --- | --- |
+| `Base Healing` | Constant baseline healing for the spell |
+| `Wisdom Bonus` | Bonus healing from Wisdom |
+| `Level Modifier` | Multiplier based on character level |
 
-**Damage Calculation:**
+### Example: Heal
 
-*   **Damage** = (20 + 18) \* 1.4
-*   **Damage** = 38 \* 1.4
-*   **Damage** = 53.2 
+| Input | Value |
+| --- | --- |
+| Base Healing | `20` |
+| Wisdom Bonus | `Wisdom * 1.5` |
+| Hero Wisdom | `10` |
+| Hero Level | `4` |
 
----
+```text
+Level Modifier = 1 + (Hero Level / 10)
+Level Modifier = 1 + (4 / 10)
+Level Modifier = 1.4
 
-### Spell Healing Formula
+Wisdom Bonus = 10 * 1.5
+Wisdom Bonus = 15
 
-**Healing = (Base Healing + Wisdom Bonus) \* Level Modifier**
+Healing = (20 + 15) * 1.4
+Healing = 49
+```
 
-*   **Base Healing**: The base healing amount of the spell.
-*   **Wisdom Bonus**: Bonus healing based on the hero's Wisdom stat.
-*   **Level Modifier**: A multiplier based on the hero's level.
+## Tuning Notes
 
-**Example Calculation (Heal):**
-
-*   **Base Healing**: 20
-*   **Wisdom Bonus**: Wisdom \* 1.5
-*   **Hero Wisdom**: 10
-*   **Hero Level**: 4
-
-**Level Modifier Calculation:**
-
-*   **Level Modifier** = 1 + (Hero Level / 10) = 1 + (4 / 10) = 1.4
-
-**Wisdom Bonus Calculation:**
-
-*   **Wisdom Bonus** = 10 \* 1.5 = 15
-
-**Healing Calculation:**
-
-*   **Healing** = (20 + 15) \* 1.4
-*   **Healing** = 35 \* 1.4
-*   **Healing** = 49
-
-These formulas provide a balanced progression for heroes as they level up, ensuring that both physical attacks and spells scale appropriately with their stats and level. Adjustments can be made to the constants and multipliers to fine-tune the balance as needed.
+- Adjust base values to tune early-game lethality.
+- Adjust stat multipliers to tune class identity and equipment dependency.
+- Adjust the level modifier to control progression speed between levels 1 and 10.

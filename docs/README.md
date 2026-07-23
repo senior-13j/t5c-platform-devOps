@@ -1,16 +1,20 @@
 # T5C Documentation
 
-This documentation describes the T5C project, the local containerized infrastructure, and the deployment workflow that was added around the game server.
+This documentation covers the T5C game runtime, local Docker infrastructure, and
+public deployment workflow.
 
-## Documentation Index
+## Start Here
 
-- [Project Overview](./PROJECT.md)
-- [Infrastructure and Deployment](./INFRASTRUCTURE_AND_DEPLOYMENT.md)
-- [Public Deployment](./PUBLIC_DEPLOYMENT.md)
+| Need | Read |
+| --- | --- |
+| Understand how the game is structured | [Project Overview](./PROJECT.md) |
+| Run the complete stack locally | [Infrastructure and Deployment](./INFRASTRUCTURE_AND_DEPLOYMENT.md) |
+| Publish the game on `arkadii.world` | [Public Deployment](./PUBLIC_DEPLOYMENT.md) |
 
-## Runtime URLs
+## Runtime Map
 
-The local Docker stack is designed to be used through domain names, not raw service ports:
+The local Docker stack is designed around friendly HTTPS domains instead of raw
+service ports.
 
 | Surface | URL | Purpose |
 | --- | --- | --- |
@@ -20,42 +24,61 @@ The local Docker stack is designed to be used through domain names, not raw serv
 | Prometheus | `https://prometheus.arkadii.game.local` | Metrics target inspection and queries |
 | Public Game | `https://arkadii.world/game/` | Public deployment target after DNS points to the host |
 
-The backend service ports remain internal to Docker. Only the nginx HTTPS entrypoint is published on the host.
+Only the reverse proxy publishes host ports. The Node.js server, MySQL,
+Prometheus, and Grafana remain internal Docker services.
 
-## Quick Start
+## Local Quick Start
 
 ```bash
+cp .env.example .env
 scripts/setup-local-domain.sh
 docker compose up -d --build
 ```
 
-Open:
+Open the game:
 
 ```text
 https://arkadii.game.local
 ```
 
-## Operational Status
+## Public Quick Start
 
-The current stack includes:
+```bash
+cp .env.public.example .env.public
+npm run check:public
+docker compose --env-file .env.public -f docker-compose.public.yml up -d --build
+```
 
-- an nginx HTTPS reverse proxy with local TLS certificates;
-- a Node.js production server image built from the TypeScript and Webpack outputs;
-- a MySQL 8.4 database volume for persistent player data;
-- Prometheus scraping the server `/metrics` endpoint;
-- Grafana configured with a Prometheus datasource.
+Replace the `CHANGE_ME` values in `.env.public` before starting the public
+stack.
+
+## Operational Checklist
+
+Use these commands before committing infrastructure or deployment changes.
+
+| Command | Purpose |
+| --- | --- |
+| `npm run client-build` | Validate the production browser bundle and docs copy step |
+| `npm run server-build` | Validate the TypeScript server build |
+| `docker compose config` | Validate local Compose interpolation and service wiring |
+| `docker compose --env-file .env.public -f docker-compose.public.yml config` | Validate the public Compose profile |
+| `npm run smoke:ws` | Verify Colyseus WebSocket access through the local HTTPS domain |
 
 ## Readiness Checks
 
-Use these checks before committing or deploying changes:
+After the stack is running, check the main surfaces:
 
 ```bash
-npm run client-build
-npm run server-build
-docker compose config
-docker compose up -d --build
 curl -fsS https://arkadii.game.local/health
 curl -fsS https://grafana.arkadii.game.local/api/health
 curl -fsS https://prometheus.arkadii.game.local/-/healthy
 npm run smoke:ws
 ```
+
+## Document Set
+
+| File | Scope |
+| --- | --- |
+| [PROJECT.md](./PROJECT.md) | Codebase shape, runtime responsibilities, persistence, and build outputs |
+| [INFRASTRUCTURE_AND_DEPLOYMENT.md](./INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local compose stack, TLS setup, validation, observability, operations, and troubleshooting |
+| [PUBLIC_DEPLOYMENT.md](./PUBLIC_DEPLOYMENT.md) | Public DNS, Caddy, required secrets, startup commands, validation, and troubleshooting |

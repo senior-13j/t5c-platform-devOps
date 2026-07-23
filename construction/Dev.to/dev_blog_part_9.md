@@ -1,85 +1,93 @@
+# Devlog Part 9 - Eldoria Level Design
+
 Hi all,
 
-Since I've managed to resolve most of the animations issues I was having, I decided to relax and work on some level design, keeping in mind that the overall goal was to make  enough content to bring the player from level 1 to level 10. The overall feeling should feel "grindy".
+After resolving most of the animation issues I was having, I decided to relax
+and work on level design. The goal was to create enough content to bring the
+player from level 1 to level 10, with an intentionally grindy RPG feel.
 
-## Preparation is KEY
+## Preparation Is Key
 
-Before starting any level design, I want to create a list of all the different locations, enemies and characters.
+Before starting level design, I wanted a clear list of locations, enemies, and
+characters.
 
-I had a pretty good idea already, but Took me a little while to write it all down and then using CHATGPT to tidy up the structure, I got to this result: 
+I already had a good idea of the world, but it took a while to write everything
+down and clean up the structure. The current starting point is:
 
-> Eldoria is a quaint village nestled between lush forests and towering mountains. 
+> Eldoria is a quaint village nestled between lush forests and towering mountains.
 
 ### Locations
 
-*   **Forge**: The heart of Eldoria’s craftsmanship, where the Blacksmith, Garin, forged weapons and armor to aid adventurers.
-*   **Temple**: A sanctuary dedicated to Athlea, watched over by Priestess Alice, who also guarded the entrance to the rat-infested Cellar dungeon.
-*   **Farm**: A sprawling field tended by Farmer Jorin, who provided food for the village.
-*   **Tavern**: The lively hub of Eldoria, run by Bartender Morin, where stories and quests were exchanged.
-*   **Market**: Bustling with activity, the Merchant Elara sold potions and jewelry to aid adventurers in their quests.
-*   **Mountains**: Majestic and foreboding, they housed the entrance to the treacherous Cave dungeon.
-*   **Cemetery**: A somber place tended by Caretaker Ren, and the entrance to the Mausoleum dungeon.
-*   **Forest**: Dense and dark, home to fearsome Bandits and the site of many trials.
-*   **Sorceress Tower**: The mystical home of Sorceress Mira, where adventurers could learn offensive magic.
-*   **Velvet Veil**: A luxurious establishment in Eldoria, known for its warm hospitality, soothing ambiance, and vibrant performances. 
-*   **Port**: Locations of future development and potential quests.
+- **Forge**: The heart of Eldoria's craftsmanship, where Blacksmith Garin forges weapons and armor.
+- **Temple**: A sanctuary dedicated to Athlea, watched over by Priestess Alice, who also guards the entrance to the rat-infested Cellar dungeon.
+- **Farm**: A sprawling field tended by Farmer Jorin, who provides food for the village.
+- **Tavern**: The lively hub of Eldoria, run by Bartender Morin, where stories and quests are exchanged.
+- **Market**: A busy trading area where Merchant Elara sells potions and jewelry.
+- **Mountains**: A majestic and foreboding range that houses the entrance to the Cave dungeon.
+- **Cemetery**: A somber place tended by Caretaker Ren and the entrance to the Mausoleum dungeon.
+- **Forest**: A dense, dark area occupied by Bandits and used for many outdoor trials.
+- **Sorceress Tower**: The home of Sorceress Mira, where adventurers can learn offensive magic.
+- **Velvet Veil**: A warm, luxurious establishment known for hospitality, ambiance, and performances.
+- **Port**: A future area for expansion and additional quests.
 
 ### Dungeons
 
-*   **Cellar**: Beneath the Temple, infested with vicious Rats, perfect for novice adventurers.
-*   **Mausoleum**: In the Cemetery, filled with powerful Skeletons, posing a greater challenge.
-*   **Cave**: In the Mountains, housing cunning Mummies, a trial for the most seasoned heroes.
+- **Cellar**: Beneath the Temple, infested with Rats and tuned for novice adventurers.
+- **Mausoleum**: In the Cemetery, filled with powerful Skeletons for a greater challenge.
+- **Cave**: In the Mountains, housing Mummies for the most seasoned early-game heroes.
 
 ### People
 
-*   **Blacksmith Garin**: A master of the forge, providing essential equipment.
-*   **Merchant Elara**: A savvy trader in potions and enchanted items.
-*   **Sorceress Mira**: A wise mage who trained adventurers in offensive magic and resided in the Sorceress Tower.
-*   **Priestess Alice**: A devout priestess who taught defensive spells and sought help for the Temple’s troubles.
-*   **Farmer Jorin**: A simple farmer with untold stories.
-*   **Bartender Morin**: The keeper of the tavern and a source of many quests.
-*   **Caretaker Ren**: Guardian of the cemetery, harboring secrets of the Mausoleum.
-*   **Madame Seraphina**: Proprietor of the Velvet Veil.
+- **Blacksmith Garin**: A master of the forge and source of essential equipment.
+- **Merchant Elara**: A trader in potions and enchanted items.
+- **Sorceress Mira**: A mage trainer for offensive magic.
+- **Priestess Alice**: A priestess who teaches defensive spells and seeks help for the Temple.
+- **Farmer Jorin**: A farmer with room for future stories.
+- **Bartender Morin**: The tavern keeper and source of many quests.
+- **Caretaker Ren**: Guardian of the cemetery and keeper of Mausoleum secrets.
+- **Madame Seraphina**: Proprietor of the Velvet Veil.
 
 ### Enemies
 
-*   **Rats**: Infesting the Cellar, a challenge for heroes levels 1-3.
-*   **Skeletons**: Haunting the Mausoleum, suited for heroes levels 3-6.
-*   **Bandits**: Roaming the Forest, a danger for heroes levels 6-8.
-*   **Mummies**: Dwelling in the Cave, a peril for heroes levels 8-10.
-
----
-
+- **Rats**: Cellar enemies for heroes levels 1-3.
+- **Skeletons**: Mausoleum enemies for heroes levels 3-6.
+- **Bandits**: Forest enemies for heroes levels 6-8.
+- **Mummies**: Cave enemies for heroes levels 8-10.
 
 ## Level Design Workflow
 
-Once I've clarified the overall content, it's time to start level design, please see below the steps I followed to get my scene from Unity to Babylon.js
+Once the content structure was clear, I moved into level design. The workflow
+from Unity to Babylon.js looks like this:
 
-- I use the Unity editor for the level design 
-- I export the whole scene as a GLB format, and then I use https://gltf.report/ to optimize the scene, size can go from 2-3mo to 100ko.
-- I also use the unity **navigation system** to generate a **navmesh**, export it to an .OBJ file, import it in Blender, do some mesh optimization/fixes and then export to a .GLB file than can be used by the server and client.
-  
-> In order for my LOD system to function, meshes must never too big in the horizontal axis, else player will have meshes that disappear when they shouldnt so I always make sure to not make any objects that span large chunks of the level.
+1. Build the level in the Unity editor.
+2. Export the scene as GLB.
+3. Optimize the GLB with <https://gltf.report/>. Scene size can drop from
+   roughly 2-3 MB to around 100 KB.
+4. Generate a Unity navmesh.
+5. Export the navmesh to OBJ.
+6. Import the OBJ into Blender for cleanup and optimization.
+7. Export the final navmesh as GLB for server and client use.
 
- 
-## The result
+> For the LOD system to work well, meshes should not be too large on the
+> horizontal axis. Otherwise, players may see large objects disappear when they
+> should still be visible.
 
-After quite a bit of work, I actually managed to fit everything in quite a small area (which suits me just fine). The idea is too keep everything tight and condensed. Of course, this map will elvove/improve naturally as I work on it. A few thing to bother me:
-- The actual farm should be moved closer to the mountain (and not in the village center)
-- Market should probably be in the town center
-- The Velvet Veil in front of the Temple may be a little ...
-- 
+## Result
 
-MAP IMAGE HERE
+After a good amount of work, I managed to fit everything into a relatively small
+area, which suits the current scope. The idea is to keep the map tight and
+condensed while leaving room for natural iteration.
 
----
+Open items:
 
-So, What do you guys think of the result?
+- Move the farm closer to the mountain instead of keeping it in the village center.
+- Place the market closer to the town center.
+- Revisit the Velvet Veil placement in front of the Temple.
 
+![Map of Eldoria](../map_eldoria.jpg)
 
-Until next time, 
+What do you think of the result?
+
+Until next time,
+
 Orion
-
-
-
-

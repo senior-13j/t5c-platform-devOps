@@ -1,34 +1,85 @@
 # Project Overview
 
-T5C, The 5th Continent, is a multiplayer 3D top-down RPG built with Babylon.js, Colyseus, Express, TypeScript, and SQL persistence.
+T5C, The 5th Continent, is a multiplayer 3D top-down RPG prototype built with
+Babylon.js, Colyseus, Express, TypeScript, and SQL persistence.
 
-## Application Shape
+## Runtime Shape
 
-The application is split into three main runtime areas:
+The application has one browser client and one Node.js runtime service. In the
+Docker profiles, the Node.js service serves the built client, REST API,
+Colyseus WebSocket rooms, health checks, Prometheus metrics, and rendered docs.
+
+```text
+Browser
+  |
+  | HTTPS + WSS
+  v
+reverse proxy
+  |
+  v
+server:3000
+  |
+  +-- Express API
+  +-- Colyseus rooms
+  +-- static client and docs
+  +-- /health
+  +-- /metrics
+  |
+  v
+mysql:3306
+```
+
+## Source Areas
 
 | Area | Main Paths | Responsibility |
 | --- | --- | --- |
 | Client | `src/client`, `public` | Babylon.js game client, screens, UI, assets, networking |
-| Shared | `src/shared` | shared config, types, utility classes, game math helpers |
+| Shared | `src/shared` | Config, types, utility classes, game math helpers |
 | Server | `src/server` | Express API, Colyseus rooms, game state, persistence |
+| Data | `database` | MySQL and SQLite schema files |
+| Infrastructure | `Dockerfile`, `docker-compose*.yml`, `docker` | Local and public container profiles |
+| Documentation | `README.md`, `docs`, `public/docs` | Repository docs and served docs UI |
 
-The Docker deployment builds the client bundle into `dist/client` and the server into `dist/server`. The Node.js server serves the built client, REST API, Colyseus matchmaker, WebSocket traffic, health checks, metrics, and docs through one process.
+## Build Output
+
+The production build creates two runtime outputs:
+
+| Output | Created By | Contents |
+| --- | --- | --- |
+| `dist/client` | `npm run client-build` | Webpack bundle, public assets, and copied docs content |
+| `dist/server` | `npm run server-build` | Compiled TypeScript server and copied public assets |
+
+The Dockerfile builds both outputs, prunes development dependencies, and runs:
+
+```bash
+node dist/server/server/index.js
+```
 
 ## Game Runtime
 
-The browser loads the client from the public HTTPS domain:
+In the local Docker stack, the browser loads the game from:
 
 ```text
 https://arkadii.game.local
 ```
 
-The client uses same-origin URLs in production:
+In the public deployment profile, the browser loads the game from:
 
-- HTTP API calls use `window.location.origin` plus the configured `CLIENT_BASE_PATH`;
-- Colyseus WebSocket connections use `wss://` with the current host plus the configured `CLIENT_BASE_PATH`;
-- optional `CLIENT_API_URL` and `CLIENT_WS_URL` build-time variables can override those URLs.
+```text
+https://arkadii.world/game/
+```
 
-This keeps the browser-facing surface stable behind nginx and avoids exposing the Node server port directly.
+Production client URL resolution is same-origin by default:
+
+| Setting | Default Behavior |
+| --- | --- |
+| `CLIENT_API_URL` empty | API calls use `window.location.origin` plus `CLIENT_BASE_PATH` |
+| `CLIENT_WS_URL` empty | Colyseus connects with `wss://` and the current host plus `CLIENT_BASE_PATH` |
+| `CLIENT_BASE_PATH` empty | Local Docker serves from `/` |
+| `CLIENT_BASE_PATH=/game` | Public Docker serves from `/game` |
+
+This keeps browser-facing URLs stable behind nginx or Caddy and avoids exposing
+the raw Node.js server port.
 
 ## Server Runtime
 
@@ -43,11 +94,13 @@ The server process starts:
 - `/metrics` for Prometheus scraping;
 - `/docs` for rendered project documentation.
 
-The server listens on internal port `3000` inside Docker. It is not published to the host.
+The server listens on internal port `3000` inside Docker. It is not published to
+the host directly.
 
 ## Persistence
 
-The project supports both SQLite and MySQL in code, but the containerized deployment uses MySQL by default:
+The project supports both SQLite and MySQL in code. The Docker profiles use
+MySQL by default.
 
 ```env
 APP_DATABASE=mysql
@@ -57,7 +110,9 @@ DATABASE_USER=t5c
 DATABASE_PASSWORD=t5c_password
 ```
 
-The schema bootstrap is guarded. If the expected schema already exists, the server skips importing `database/mysql.sql` so persistent volume data is not dropped on restart.
+The schema bootstrap is guarded. If the expected schema already exists, the
+server skips importing `database/mysql.sql` so persistent volume data is not
+dropped on restart.
 
 ## Important Scripts
 
@@ -67,15 +122,20 @@ The schema bootstrap is guarded. If the expected schema already exists, the serv
 | `npm run server-dev` | Run the TypeScript server with reload/debug tooling |
 | `npm run client-build` | Build the production client bundle and copy static assets/docs |
 | `npm run server-build` | Compile the server and copy public assets |
+| `npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS |
+| `npm run loadtest` | Run the Colyseus chat-room load test |
+| `npm run check:public` | Check DNS and host readiness for `arkadii.world` |
 | `scripts/setup-local-domain.sh` | Prepare local HTTPS domains and certificates |
 | `docker compose up -d --build` | Build and run the full local container stack |
 
 ## Repository Documentation
 
-The Markdown source for project documentation lives in `docs/`. The served `/docs` UI renders those files from:
+The Markdown source for project documentation lives in `docs/`. Webpack copies
+those files into the served docs content directory:
 
 ```text
 /docs/content/*.md
 ```
 
-Webpack copies `docs/` into the client output during `npm run client-build`.
+The browser docs shell lives in `public/docs` and fetches Markdown from that
+copied content directory at runtime.

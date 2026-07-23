@@ -1,92 +1,137 @@
 # T5C - The 5th Continent
-Building a basic multiplayer 3d top down rpg using babylon.js and colyseus
 
-![Screenshot of T5c showing a mythical knight in a green lust forest.](https://us1.discourse-cdn.com/flex024/uploads/babylonjs/original/3X/7/3/730ef766396a083a3e3f97c0af46c443b4eba22b.jpeg)
+T5C is a multiplayer 3D top-down RPG prototype built with Babylon.js, Colyseus,
+Express, TypeScript, and SQL persistence. The repository includes the original
+game client/server plus a containerized local stack, observability services, and
+a public deployment profile for `https://arkadii.world/game/`.
+
+![Screenshot of T5C showing a mythical knight in a green lush forest.](https://us1.discourse-cdn.com/flex024/uploads/babylonjs/original/3X/7/3/730ef766396a083a3e3f97c0af46c443b4eba22b.jpeg)
 ![Screen of Eldoria, the imaginary land of T5C](https://github.com/user-attachments/assets/36710dd5-180b-4395-85db-7f98bfd6e08c)
 
-## Current progress:
-- vat animations and instances
-- fully player authorative movement with client side prediction and server reconciliation
-  - diablo like movement using the mouse with the ability to click to move
-- scene management (login, register, character selection, etc...)
-- map management (ability to teleport to a different map (ex: a dungeon) )
-- multiplayer animated characters
-- global chat (works accross zones)
-- uses a navmesh for collision detection
-- player data can be saved with mysql lite / mysql
-- basic enemies with simple AI behaviour (IDLE, PATROL, CHASE, ATTACK, DEAD)
-- enemies can drop items (based on a loot table)
-- 4 basic abilities ( sword attack, fireball, dot, heal )
-- ability to target players and enemies
-- ability to pick up items and see them in your inventory
-- ability to equip items and see them on your character
-- basic player levelling with experience and ability points
-- fully functional UI (experience bar, abilities bar, draggable panels, etc...)
-- simple quest system
-- simple trainer system (learn abilities)
-- simple vendor system (buy and sell)
+## Project at a Glance
 
-## Links
-Follow the progress on the official babylon.js forum: [https://forum.babylonjs.com/t/multiplayer-top-down-rpg-babylon-js-colyseus/35733](https://forum.babylonjs.com/t/multiplayer-top-down-rpg-babylon-js-colyseus/35733)
+| Area | Stack | Notes |
+| --- | --- | --- |
+| Client | Babylon.js, TypeScript, Webpack | 3D game client, UI screens, input, assets, networking |
+| Server | Node.js, Express, Colyseus | REST API, WebSocket rooms, health checks, metrics, static client/docs |
+| Data | MySQL, SQLite fallback | Docker uses MySQL; non-Docker development can still use SQLite |
+| Infrastructure | Docker Compose, nginx, Caddy, Prometheus, Grafana | Local HTTPS stack and public deployment profile |
 
-Check out my devlogs on [https://dev.to/orion3d](https://dev.to/orion3d)
+## Current Gameplay
+
+- VAT animations and instanced animated characters.
+- Player-authoritative click-to-move controls with client-side prediction and server reconciliation.
+- Scene flow for login, registration, and character selection.
+- Map transitions, including teleporting to dungeon-style areas.
+- Global chat across zones.
+- Navmesh-based collision detection.
+- Persistent player data with SQLite or MySQL.
+- Enemy AI states: `IDLE`, `PATROL`, `CHASE`, `ATTACK`, and `DEAD`.
+- Loot drops driven by loot tables.
+- Four starter abilities: sword attack, fireball, damage-over-time, and heal.
+- Targeting for players and enemies.
+- Item pickup, inventory management, equipment, and visible character gear.
+- Player leveling with experience and ability points.
+- Functional RPG UI: experience bar, ability bar, draggable panels, inventory, quests, help, and character panels.
+- Simple quest, trainer, vendor, buy, and sell systems.
 
 ## Requirements
-- Download and install [Node.js LTS](https://nodejs.org/en/download/)
-- Install Docker with Docker Compose support for the containerized local stack.
-- Clone or download this repository.
-- Run `npm install`
 
-## Technology
-- Babylon.js 6.x.x [https://www.babylonjs.com/](https://www.babylonjs.com/)
-- Colyseus 0.15.x [https://colyseus.io/](https://colyseus.io/)
-- MySQL 8.x for the Docker Compose stack.
-- SQLite 3.x.x remains available for non-Docker local development.
+- Node.js 22, matching [`.nvmrc`](.nvmrc).
+- npm, installed with Node.js.
+- Docker with Docker Compose support for the containerized stack.
+- `openssl` and `sudo` for the local HTTPS domain setup script.
 
-## How to run without Docker
-- Run `npm run server-dev` to launch the server
-- Run `npm run client-dev` to launch the client
-
-> The client should be accessible at [`http://localhost:8080`](http://localhost:8080)
-
-> The server should be available locally at [http://localhost:3000](http://localhost:3000)
-
-> The Colyseus monitor should be available at [http://localhost:3000/monitor](http://localhost:3000/monitor)
-
-## Docker Compose
-- Copy `.env.example` to `.env` if you need to reset local Docker settings.
-- Run `scripts/setup-local-domain.sh` once to create local DNS entries and a trusted local TLS certificate.
-- Run `docker compose up -d --build`.
-- Open [`https://arkadii.game.local`](https://arkadii.game.local).
-
-The compose stack uses MySQL by default. Only the nginx HTTPS entrypoint is published to localhost as `127.0.0.1:${HTTPS_PORT:-443}:443`; the game server `3000`, MySQL `3306`, Prometheus `9090`, and Grafana `3001` stay inside the Docker network. Grafana and Prometheus are available through nginx at `https://grafana.arkadii.game.local` and `https://prometheus.arkadii.game.local`.
-
-## Public Deployment
-- Point DNS for `arkadii.world` to the deployment host.
-- Copy `.env.public.example` to `.env.public` and replace every `CHANGE_ME` secret.
-- Run `npm run check:public` to verify DNS readiness.
-- Stop the local compose stack and any host service already using ports `80` or `443`.
-- Run `docker compose --env-file .env.public -f docker-compose.public.yml up -d --build`.
-- Open [`https://arkadii.world/game/`](https://arkadii.world/game/).
-
-The public profile uses Caddy for automatic Let's Encrypt HTTPS, publishes only ports `80` and `443`, and keeps MySQL, Prometheus, and Grafana private inside Docker. The app `/metrics` endpoint remains public through the game domain.
-
-Before committing infrastructure changes, run:
+Install dependencies once:
 
 ```bash
-npm run client-build
-npm run server-build
-docker compose config
-docker compose up -d --build
-npm run smoke:ws
+npm install
 ```
 
-## Documentation
-- Repository documentation lives in [`docs/`](docs/README.md).
-- The running Docker stack serves the same documentation at [`https://arkadii.game.local/docs`](https://arkadii.game.local/docs).
-- Infrastructure and deployment details are in [`docs/INFRASTRUCTURE_AND_DEPLOYMENT.md`](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md).
-- Public deployment details are in [`docs/PUBLIC_DEPLOYMENT.md`](docs/PUBLIC_DEPLOYMENT.md).
+## Quick Start with Docker
 
-## Smoke and Load Testing
-- Run `npm run smoke:ws` to verify the local HTTPS/WSS route through `https://arkadii.game.local`.
-- Run `npm run loadtest` for an interactive Colyseus chat room load test over `wss://arkadii.game.local`.
+The Docker Compose stack is the recommended way to run the complete local
+environment: game server, MySQL, nginx HTTPS proxy, Prometheus, and Grafana.
+
+```bash
+cp .env.example .env
+scripts/setup-local-domain.sh
+docker compose up -d --build
+```
+
+Open:
+
+| Surface | URL |
+| --- | --- |
+| Game | `https://arkadii.game.local` |
+| Docs | `https://arkadii.game.local/docs` |
+| Grafana | `https://grafana.arkadii.game.local` |
+| Prometheus | `https://prometheus.arkadii.game.local` |
+
+Only nginx publishes a host port: `127.0.0.1:${HTTPS_PORT:-443}:443`. The game
+server, MySQL, Prometheus, and Grafana stay private inside the Docker network.
+
+## Local Development without Docker
+
+Use this mode when you want Webpack hot reload and the TypeScript server running
+directly on the host.
+
+```bash
+npm run server-dev
+npm run client-dev
+```
+
+The default local URLs are:
+
+| Surface | URL |
+| --- | --- |
+| Client dev server | `http://localhost:8080` |
+| API and game server | `http://localhost:3000` |
+| Colyseus monitor | `http://localhost:3000/monitor` |
+
+## Useful Commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run client-build` | Build the production browser bundle into `dist/client` |
+| `npm run server-build` | Compile the TypeScript server and copy public assets |
+| `docker compose config` | Validate the local Compose file after env interpolation |
+| `docker compose up -d --build` | Build and run the complete local stack |
+| `npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS |
+| `npm run loadtest` | Run an interactive Colyseus chat load test |
+| `npm run check:public` | Check DNS and port readiness for the public deployment |
+
+## Public Deployment
+
+The public profile serves the game at `https://arkadii.world/game/` through
+Caddy with automatic Let's Encrypt certificates.
+
+```bash
+cp .env.public.example .env.public
+npm run check:public
+docker compose --env-file .env.public -f docker-compose.public.yml up -d --build
+```
+
+Replace every `CHANGE_ME` value in `.env.public` before starting the public
+stack. Caddy publishes only ports `80` and `443`; MySQL, Prometheus, and Grafana
+remain private inside Docker.
+
+## Documentation
+
+| Document | What it covers |
+| --- | --- |
+| [`docs/README.md`](docs/README.md) | Documentation index and runtime URL map |
+| [`docs/PROJECT.md`](docs/PROJECT.md) | Project architecture, runtime shape, persistence, and scripts |
+| [`docs/INFRASTRUCTURE_AND_DEPLOYMENT.md`](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local Docker stack, TLS, validation, observability, and troubleshooting |
+| [`docs/PUBLIC_DEPLOYMENT.md`](docs/PUBLIC_DEPLOYMENT.md) | DNS, public Caddy profile, secrets, startup, and production checks |
+
+The running Docker stack serves the same documentation at:
+
+```text
+https://arkadii.game.local/docs
+```
+
+## Links
+
+- Babylon.js forum thread: <https://forum.babylonjs.com/t/multiplayer-top-down-rpg-babylon-js-colyseus/35733>
+- Devlogs: <https://dev.to/orion3d>
