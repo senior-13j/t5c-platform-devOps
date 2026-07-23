@@ -1,0 +1,39 @@
+{
+	admin off
+}
+
+{$APP_DOMAIN:arkadii.world} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	@gameRoot path {$APP_BASE_PATH:/game}
+	redir @gameRoot {$APP_BASE_PATH:/game}/ permanent
+
+	handle_path {$APP_BASE_PATH:/game}/* {
+		reverse_proxy server:3000
+	}
+
+	handle /health {
+		reverse_proxy server:3000
+	}
+
+	handle /metrics {
+		reverse_proxy server:3000
+	}
+
+	handle {
+		respond "T5C game is available at https://{$APP_DOMAIN:arkadii.world}{$APP_BASE_PATH:/game}/" 404
+	}
+}
+
+www.{$APP_DOMAIN:arkadii.world} {
+	redir https://{$APP_DOMAIN:arkadii.world}{uri} permanent
+}
