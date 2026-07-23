@@ -44,38 +44,54 @@ import { GameController } from "./Controllers/GameController";
 // App class is our entire game application
 class App {
     // babylon
-    public canvas;
+    public canvas: HTMLCanvasElement;
     public engine: Engine;
     public config: Config;
     public game: GameController;
+    private loadingScreen: Loading;
 
     constructor() {
         // create canvas
-        this.canvas = document.getElementById("renderCanvas");
+        this.canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
 
         // set config
         this.config = new Config();
+        this.loadingScreen = new Loading("Preparing Eldoria");
 
         // initialize babylon scene and engine
-        this._init();
+        this._init().catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            if (/webgl/i.test(message)) {
+                console.warn("[GAME] WebGL is unavailable", error);
+            } else {
+                console.error("[GAME] startup failed", error);
+            }
+            this.loadingScreen.showFatalError(error);
+        });
     }
 
     private async _init(): Promise<void> {
+        if (!Engine.isSupported()) {
+            throw new Error("WebGL not supported");
+        }
+
+        const compactViewport = this.isCompactViewport();
+
         // create engine
-        this.engine = new Engine(this.canvas, true, {
-            adaptToDeviceRatio: true,
+        this.engine = new Engine(this.canvas, !compactViewport, {
+            adaptToDeviceRatio: false,
             antialias: true,
         });
 
-        //
-        this.engine.setHardwareScalingLevel(1);
+        this.updateRenderingScale();
 
         // loading
-        var loadingScreen = new Loading("Loading Assets...");
-        this.engine.loadingScreen = loadingScreen;
+        this.engine.loadingScreen = this.loadingScreen;
+        this.loadingScreen.displayLoadingUI();
 
         // preload game data
         this.game = new GameController(this);
+        this.loadingScreen.setDetails("Loading world data...");
         await this.game.initializeGameData();
 
         // set default scene
@@ -157,6 +173,7 @@ class App {
 
         //resize if the screen is resized/rotated
         window.addEventListener("resize", () => {
+            this.updateRenderingScale();
             this.engine.resize();
             if (this.game.currentScene && this.game.currentScene.resize) {
                 this.game.currentScene.resize();
@@ -165,9 +182,23 @@ class App {
     }
 
     private createScene() {
-        this.game.currentScene.createScene(this.game);
-        this.game.scene = this.game.currentScene._scene;
-        this.game.state = State.NULL;
+        const sceneController = this.game.currentScene;
+
+        try {
+            const sceneReady = sceneController.createScene(this.game);
+            this.game.scene = sceneController._scene;
+            this.game.state = State.NULL;
+
+            Promise.resolve(sceneReady).catch((error) => {
+                if (this.game.currentScene === sceneController) {
+                    console.error("[GAME] scene failed", error);
+                    this.loadingScreen.showFatalError(error);
+                }
+            });
+        } catch (error) {
+            console.error("[GAME] scene failed", error);
+            this.loadingScreen.showFatalError(error);
+        }
     }
 
     private checkForSceneChange() {
@@ -189,11 +220,27 @@ class App {
 
     private clearScene() {
         if (this.game.scene) {
+            const loginOverlay = document.getElementById("loginOverlay");
+            if (loginOverlay) {
+                loginOverlay.hidden = true;
+            }
             this.game.engine.displayLoadingUI();
             this.game.scene.detachControl();
             this.game.scene.dispose();
             this.game.currentScene = null;
         }
+    }
+
+    private isCompactViewport(): boolean {
+        return window.innerWidth < 700 || window.matchMedia("(pointer: coarse)").matches;
+    }
+
+    private updateRenderingScale() {
+        if (!this.engine) {
+            return;
+        }
+
+        this.engine.setHardwareScalingLevel(this.isCompactViewport() ? 1.2 : 1);
     }
 }
 new App();

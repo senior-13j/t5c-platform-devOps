@@ -20,6 +20,8 @@ public `80`/`443` bindings.
 | `.env.public` exists with strong secrets | Public MySQL and Grafana passwords must not use defaults |
 | Local stack is stopped if it owns port `443` | The public Caddy profile needs the host HTTPS port |
 | Host firewall allows only the intended public ports | MySQL, Prometheus, Grafana, and the Node.js port should stay private |
+| Database backup is verified | Existing plaintext credentials migrate to `scrypt` after successful login |
+| Asset provenance has been reviewed | Public release must have a source/license record for shipped models, textures, audio, and fonts |
 
 ## Public Architecture
 
@@ -27,6 +29,9 @@ public `80`/`443` bindings.
 Internet
   |
   | https://arkadii.world/game/
+  | https://arkadii.world/robots.txt
+  | https://arkadii.world/sitemap.xml
+  | https://arkadii.world/llms.txt
   | https://www.arkadii.world/game/ -> https://arkadii.world/game/
   v
 Caddy public proxy
@@ -49,7 +54,8 @@ Only Caddy publishes host ports:
 
 The game server port, MySQL, Prometheus, and Grafana remain private inside the
 Docker network. The game client, API, docs, and WebSocket endpoint are routed
-through `/game/`.
+through `/game/`. Crawler and answer-engine discovery files are routed at the
+domain root because crawlers conventionally request them there.
 
 ## DNS Requirements
 
@@ -150,6 +156,24 @@ Validate the public Compose profile:
 docker compose --env-file .env.public -f docker-compose.public.yml config
 ```
 
+Validate the Caddyfile against the same image used by Compose:
+
+```bash
+docker run --rm \
+  -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+  caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+```
+
+Validate application metadata and production builds before creating the image:
+
+```bash
+npm run check:web-quality
+npx tsc --noEmit
+npm run client-build
+npm run server-build
+npm audit --omit=dev
+```
+
 Start the public stack:
 
 ```bash
@@ -170,6 +194,27 @@ curl -fsS https://arkadii.world/health
 SMOKE_WS_URL=wss://arkadii.world/game npm run smoke:ws
 ```
 
+Verify search, answer-engine, manifest, compression, and cache delivery:
+
+```bash
+curl -fsS https://arkadii.world/robots.txt
+curl -fsS https://arkadii.world/sitemap.xml
+curl -fsS https://arkadii.world/llms.txt
+curl -I https://arkadii.world/game/manifest.webmanifest
+curl -sS -D - -o /dev/null \
+  -H 'Accept-Encoding: gzip' \
+  https://arkadii.world/game/js/bundle.js
+```
+
+Expected results:
+
+- discovery files return `200` at the domain root;
+- the sitemap contains `https://arkadii.world/game/` and the docs URL;
+- the manifest and entry HTML revalidate instead of receiving a long immutable
+  cache lifetime;
+- the bundle is compressed and does not expose `X-Powered-By`;
+- WebSocket smoke testing can join through `/game`.
+
 Run this from another network, such as a phone on mobile data:
 
 ```text
@@ -182,6 +227,10 @@ https://arkadii.world/game/
 | --- | --- |
 | Game | Served at `https://arkadii.world/game/` |
 | Docs | Served under `https://arkadii.world/game/docs/` |
+| Manifest | Served at `https://arkadii.world/game/manifest.webmanifest` |
+| Crawler policy | Served at `https://arkadii.world/robots.txt` |
+| Sitemap | Served at `https://arkadii.world/sitemap.xml` |
+| Answer-engine summary | Served at `https://arkadii.world/llms.txt` |
 | `www` host | Redirects to `https://arkadii.world` |
 | MySQL | Private Docker service with persistent volume |
 | Prometheus | Internal Docker service |
@@ -203,6 +252,26 @@ t5c-platform-public_mysql_data
 | Show Caddy logs | `docker compose --env-file .env.public -f docker-compose.public.yml logs --tail=100 caddy` |
 | Show game server logs | `docker compose --env-file .env.public -f docker-compose.public.yml logs --tail=100 server` |
 | Check DNS readiness again | `npm run check:public` |
+| Validate discovery files | `curl -fsS https://arkadii.world/{robots.txt,sitemap.xml,llms.txt}` |
+
+## Post-Deployment Web Quality
+
+After a public rollout:
+
+1. Open login, character selection, character editor, and the connected game on
+   both a desktop and a narrow touch viewport.
+2. Confirm keyboard focus starts in the username field and remains visible on
+   actions.
+3. Run Lighthouse against `https://arkadii.world/game/` for Performance,
+   Accessibility, Best Practices, and SEO.
+4. Confirm the canonical URL and `VideoGame` JSON-LD in the delivered HTML.
+5. Submit `https://arkadii.world/sitemap.xml` to the search-engine webmaster
+   tools used for the domain.
+6. Verify the docs navigation opens API/security and game-quality documents.
+
+The branch audit measured 80/100/100/100 for Performance, Accessibility, Best
+Practices, and SEO in the local production profile. Public scores can vary with
+host, network, and proxy load; semantic/discovery checks should remain stable.
 
 ## Security Notes
 
@@ -211,7 +280,16 @@ t5c-platform-public_mysql_data
   `GRAFANA_ADMIN_PASSWORD` before any shared or long-lived deployment.
 - Do not publish MySQL, Prometheus, Grafana, or the raw Node.js server port.
 - Treat `/metrics` as public unless the Caddy config is changed to restrict it.
+- New passwords use salted `scrypt`; valid legacy plaintext rows migrate during
+  login. Keep a verified pre-deployment backup and handle dormant accounts with
+  a reset policy.
+- Password fields are removed from authentication payloads, but tokens remain
+  bearer credentials and must not enter URLs, logs, or analytics.
+- Add rate limiting and production CORS restrictions before treating the
+  prototype login and Quick Play endpoints as a hardened account service.
 - Add backups before depending on the public MySQL volume for persistent data.
+- Resolve the asset provenance gaps recorded in the game quality audit before a
+  commercial release.
 
 ## Troubleshooting
 

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /game/
+
+Sitemap: https://arkadii.world/sitemap.xml

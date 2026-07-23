@@ -86,7 +86,7 @@ export class GameScene {
         let color = location.skyColor;
         scene.clearColor = new Color4(color[0], color[1], color[2], color[3]);
 
-        if (this._game.config.SHADOW_ON === true) {
+        if (this._game.config.SHADOW_ON === true && !this._game.isMobile) {
             // shadow light
             // https://forum.babylonjs.com/t/shadow-doesnt-work-if-another-light-is-created-before-shadow-casting-light/39852/4
             var shadowLight = new DirectionalLight("DirectionalLight", new Vector3(-0.5, -5, -0.5), scene);

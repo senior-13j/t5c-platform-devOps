@@ -1,0 +1,17 @@
+# T5C - The 5th Continent
+
+> T5C is a free multiplayer 3D top-down browser RPG set in Eldoria.
+
+Players can explore shared environments, fight enemies, complete quests, collect and equip loot, improve their characters, and use global chat. The game runs directly in a WebGL-capable browser and does not require an install.
+
+## Canonical pages
+
+- Play: https://arkadii.world/game/
+- Technical documentation: https://arkadii.world/game/docs/
+- API and security reference: https://arkadii.world/game/docs/#api_and_security
+- Game quality audit: https://arkadii.world/game/docs/#game_quality_audit
+- Source repository: https://github.com/senior-13j/t5c-platform-devOps
+
+## Technology
+
+The browser client uses Babylon.js and TypeScript. Multiplayer rooms use Colyseus over WebSockets, with an Express API and SQL persistence. The web shell includes responsive controls, accessible login and failure states, and structured VideoGame metadata.

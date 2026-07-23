@@ -46,12 +46,16 @@ export class AssetsController {
 
     public allMeshes;
     private _loadingTxt;
+    private _loadingProgress;
+    private _loadingProgressBar;
     private _auth;
 
     constructor(game, shadow) {
         this._game = game;
         this._shadow = shadow;
         this._loadingTxt = window.document.getElementById("loadingTextDetails");
+        this._loadingProgress = window.document.getElementById("loadingProgress");
+        this._loadingProgressBar = window.document.getElementById("loadingProgressBar");
 
         // Assets manager
         this._assetsManager = new AssetsManager(this._game.scene);
@@ -124,7 +128,14 @@ export class AssetsController {
 
     private showLoadingMessage(msg) {
         if (this._loadingTxt) {
-            this._loadingTxt.innerHTML = msg;
+            this._loadingTxt.textContent = msg;
+        }
+
+        const progress = Number.parseInt(msg, 10);
+        if (Number.isFinite(progress) && this._loadingProgress && this._loadingProgressBar) {
+            const value = Math.max(0, Math.min(100, progress));
+            this._loadingProgress.setAttribute("aria-valuenow", value.toString());
+            this._loadingProgressBar.style.width = value + "%";
         }
     }
 
@@ -136,8 +147,10 @@ export class AssetsController {
     }
 
     public async loadLevel(key) {
-        this.assetToPreload = this.assetDatabase;
-        this.assetToPreload.push({ name: "ENV_" + key, filename: "environment/" + key + ".glb", extension: "glb", type: "mesh" });
+        this.assetToPreload = [
+            ...this.assetDatabase,
+            { name: "ENV_" + key, filename: "environment/" + key + ".glb", extension: "glb", type: "mesh" },
+        ];
         console.log(this.assetToPreload);
         await this.preloadAssets();
         await this.prepareLevel(key);
@@ -146,7 +159,7 @@ export class AssetsController {
     }
 
     public async load() {
-        this.assetToPreload = this.assetDatabase;
+        this.assetToPreload = [...this.assetDatabase];
         await this.preloadAssets();
         await this.prepareTextures();
         await this.prepareDynamicMeshes();
@@ -169,7 +182,7 @@ export class AssetsController {
                 });
             }
         }
-        this.assetToPreload = this.assetDatabase;
+        this.assetToPreload = [...this.assetDatabase];
         console.log("loadRacesloadRacesloadRaces", this.assetToPreload);
         await this.preloadAssets();
     }
@@ -195,13 +208,36 @@ export class AssetsController {
         }
 
         // preload asset
-        this.assetToPreload.push(entry);
+        this.assetToPreload = [entry];
         await this.preloadAssets();
     }
 
     public async preloadAssets() {
-        let assetLoaded: any[] = [];
-        this.assetToPreload.forEach((obj) => {
+        const queuedAssets = [...this.assetToPreload];
+        this.assetToPreload = [];
+
+        const groupedAssets = new Map<string, { entry: AssetEntry; aliases: string[] }>();
+        queuedAssets.forEach((entry) => {
+            const signature = [entry.type, entry.extension, entry.filename].join(":");
+            const group = groupedAssets.get(signature) || { entry: entry, aliases: [] };
+            if (!group.aliases.includes(entry.name)) {
+                group.aliases.push(entry.name);
+            }
+            groupedAssets.set(signature, group);
+        });
+
+        const assetLoaded: Record<string, any> = {};
+        const failures: string[] = [];
+
+        groupedAssets.forEach(({ entry: obj, aliases }) => {
+            const loadedAlias = aliases.find((name) => this._game._loadedAssets[name]);
+            if (loadedAlias) {
+                aliases.forEach((name) => {
+                    this._game._loadedAssets[name] = this._game._loadedAssets[loadedAlias];
+                });
+                return;
+            }
+
             let assetTask;
             switch (obj.extension) {
                 case "png":
@@ -246,45 +282,54 @@ export class AssetsController {
 
                 default:
                     console.error('Error loading asset "' + obj.name + '". Unrecognized file extension "' + obj.extension + '"');
-                    break;
+                    failures.push(obj.filename);
+                    return;
             }
 
             assetTask.onSuccess = (task) => {
+                let loadedValue;
                 switch (task.constructor) {
                     case TextureAssetTask:
                     case CubeTextureAssetTask:
                     case HDRCubeTextureAssetTask:
-                        assetLoaded[task.name] = task.texture;
+                        loadedValue = task.texture;
                         break;
                     case ImageAssetTask:
-                        assetLoaded[task.name] = task.url;
+                        loadedValue = task.url;
                         break;
                     case BinaryFileAssetTask:
-                        assetLoaded[task.name] = task.data;
+                        loadedValue = task.data;
                         break;
                     case ContainerAssetTask:
-                        assetLoaded[task.name] = task.loadedContainer;
+                        loadedValue = task.loadedContainer;
                         break;
                     case MeshAssetTask:
-                        assetLoaded[task.name] = task;
+                        loadedValue = task;
                         break;
                     case TextFileAssetTask:
-                        assetLoaded[task.name] = task.text;
+                        loadedValue = task.text;
                         break;
                     default:
                         console.error('Error loading asset "' + task.name + '". Unrecognized AssetManager task type.');
-                        break;
+                        failures.push(obj.filename);
+                        return;
                 }
+
+                aliases.forEach((name) => {
+                    assetLoaded[name] = loadedValue;
+                });
             };
 
             assetTask.onError = (task, message, exception) => {
-                console.log(message, exception);
+                console.error(message, exception);
+                failures.push(obj.filename);
+                this.showLoadingMessage("Unable to load " + obj.filename);
             };
         });
 
         this._assetsManager.onProgress = (remainingCount, totalCount, lastFinishedTask) => {
-            let loadingMsg = (((totalCount - remainingCount) / totalCount) * 100).toFixed(0) + "%";
-            this.showLoadingMessage(loadingMsg);
+            const progress = totalCount > 0 ? (((totalCount - remainingCount) / totalCount) * 100).toFixed(0) : "100";
+            this.showLoadingMessage(progress + "%");
         };
 
         this._assetsManager.onFinish = () => {
@@ -296,6 +341,9 @@ export class AssetsController {
         };
 
         await this._assetsManager.loadAsync();
+        if (failures.length > 0) {
+            throw new Error("Failed to load game assets: " + [...new Set(failures)].join(", "));
+        }
     }
 
     public prepareTextures() {
@@ -386,15 +434,15 @@ export class AssetsController {
                 material.specularIntensity = 0;
             }
 
-            if (this._game.config.SHADOW_ON === true) {
+            if (this._shadow) {
                 m.receiveShadows = true;
                 if (
-                    !m.name.includes("SAND") ||
-                    !m.name.includes("ROAD") ||
-                    !m.name.includes("EARTH") ||
-                    !m.name.includes("GRASS") ||
-                    !m.name.includes("WOOD") ||
-                    !m.name.includes("WOODEN") ||
+                    !m.name.includes("SAND") &&
+                    !m.name.includes("ROAD") &&
+                    !m.name.includes("EARTH") &&
+                    !m.name.includes("GRASS") &&
+                    !m.name.includes("WOOD") &&
+                    !m.name.includes("WOODEN") &&
                     !m.name.includes("FLOOR_TILES")
                 ) {
                     this._shadow.addShadowCaster(m);

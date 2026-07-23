@@ -21,6 +21,11 @@
 		reverse_proxy server:3000
 	}
 
+	@discoveryFiles path /robots.txt /sitemap.xml /llms.txt
+	handle @discoveryFiles {
+		reverse_proxy server:3000
+	}
+
 	handle /health {
 		reverse_proxy server:3000
 	}

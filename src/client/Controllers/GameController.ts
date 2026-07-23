@@ -70,10 +70,11 @@ export class GameController {
         // create colyseus client
         this.client = new Network(app.config.port);
 
-        // check if on mobile
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-            this.isMobile = true;
-        }
+        // Prefer capabilities and viewport size over user-agent-only detection.
+        this.isMobile =
+            window.innerWidth < 700 ||
+            window.matchMedia("(pointer: coarse)").matches ||
+            /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     }
 
     setErrorCode(message: string): void {
@@ -195,7 +196,6 @@ export class GameController {
             this.setUser({
                 id: character.user_id,
                 username: character.username,
-                password: character.password,
                 token: character.token,
             });
             //set character
@@ -214,7 +214,7 @@ export class GameController {
         // check user exists else send back to login
         const req = await axios.request({
             method: "POST",
-            params: { token: user.token },
+            data: { token: user.token },
             url: apiUrl(this.config.port) + "/check",
         });
 
@@ -238,30 +238,26 @@ export class GameController {
         }
 
         // send login data
-        const req = await axios.request({
-            method: "POST",
-            params: {
-                username: username,
-                password: password,
-            },
-            url: apiUrl(this.config.port) + "/login",
-        });
+        try {
+            const req = await axios.request({
+                method: "POST",
+                data: {
+                    username: username,
+                    password: password,
+                },
+                url: apiUrl(this.config.port) + "/login",
+            });
 
-        // check req status
-        if (req.status === 200) {
-            // user was found or created
-            this._currentUser = req.data.user;
-
-            // save token to local storage
-            localStorage.setItem("t5c_token", req.data.user.token);
-
-            // go to character selection page
-            return true;
-        } else {
-            // something went wrong
-            console.error("Something went wrong.");
-            return false;
+            if (req.status === 200) {
+                this._currentUser = req.data.user;
+                localStorage.setItem("t5c_token", req.data.user.token);
+                return true;
+            }
+        } catch (error) {
+            this.setErrorCode("Unable to connect. Check your details and try again.");
         }
+
+        return false;
     }
 
     // set user
@@ -287,6 +283,7 @@ export class GameController {
     public logout() {
         this._currentUser = null;
         this._currentCharacter = null;
+        localStorage.removeItem("t5c_token");
         this.setScene(State.LOGIN);
     }
 

@@ -9,6 +9,11 @@ import { AbilitySchema } from "./rooms/schema/player/AbilitySchema";
 import { EquipmentSchema, HotbarSchema, PlayerSchema, QuestSchema } from "./rooms/schema";
 import { MapSchema } from "@colyseus/schema/lib/types/MapSchema";
 import { Config } from "../shared/Config";
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
+
+const scrypt = promisify(scryptCallback);
+const PASSWORD_PREFIX = "scrypt";
 
 class Database {
     private debug: boolean = true;
@@ -44,8 +49,21 @@ class Database {
     ///////////////////////////////////////
 
     async getUser(username: string | string[] | ParsedQs | ParsedQs[], password: string | string[] | ParsedQs | ParsedQs[]) {
-        const sql = `SELECT * FROM users WHERE username=? AND password=?;`;
-        return await this.querier.get(sql, [username, password]);
+        const normalizedUsername = String(username);
+        const normalizedPassword = String(password);
+        const user = await this.querier.get(`SELECT * FROM users WHERE username=?;`, [normalizedUsername]);
+
+        if (!user || !(await this.verifyPassword(normalizedPassword, user.password))) {
+            return null;
+        }
+
+        // Upgrade legacy plaintext rows after a successful login.
+        if (!String(user.password).startsWith(PASSWORD_PREFIX + "$")) {
+            user.password = await this.hashPassword(normalizedPassword);
+            await this.querier.run(`UPDATE users SET password=? WHERE id=?;`, [user.password, user.id]);
+        }
+
+        return user;
     }
 
     async getUserWithToken(token: string | string[] | ParsedQs | ParsedQs[]) {
@@ -93,8 +111,34 @@ class Database {
     }
 
     async saveUser(username: string, password: string, token: string = nanoid()) {
-        let lastId = await this.querier.run(`INSERT INTO users (username, password, token) VALUES (?,?,?)`, [username, password, token]);
+        const passwordHash = await this.hashPassword(password);
+        let lastId = await this.querier.run(`INSERT INTO users (username, password, token) VALUES (?,?,?)`, [username, passwordHash, token]);
         return await this.getUserById(lastId);
+    }
+
+    private async hashPassword(password: string): Promise<string> {
+        const salt = randomBytes(16).toString("hex");
+        const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
+        return [PASSWORD_PREFIX, salt, derivedKey.toString("hex")].join("$");
+    }
+
+    private async verifyPassword(password: string, storedPassword: string): Promise<boolean> {
+        const stored = String(storedPassword ?? "");
+        const parts = stored.split("$");
+
+        if (parts.length !== 3 || parts[0] !== PASSWORD_PREFIX) {
+            const candidate = Buffer.from(password);
+            const legacy = Buffer.from(stored);
+            return candidate.length === legacy.length && timingSafeEqual(candidate, legacy);
+        }
+
+        try {
+            const expected = Buffer.from(parts[2], "hex");
+            const actual = (await scrypt(password, parts[1], expected.length)) as Buffer;
+            return expected.length === actual.length && timingSafeEqual(expected, actual);
+        } catch {
+            return false;
+        }
     }
 
     ///////////////////////////////////////

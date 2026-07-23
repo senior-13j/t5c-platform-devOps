@@ -2,6 +2,7 @@
 import { createServer } from "http";
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 
 import { Server, matchMaker } from "@colyseus/core";
 
@@ -42,6 +43,9 @@ class GameServer {
         //////////////////////////////////////////////////
         const port = this.config.port;
         const app = express();
+        app.disable("x-powered-by");
+        app.use(compression());
+        app.use(express.json({ limit: "32kb" }));
         app.use(cors());
 
         // create colyseus server

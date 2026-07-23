@@ -232,8 +232,19 @@ export class UserInterface {
             vertical_position: Control.VERTICAL_ALIGNMENT_CENTER,
         });
 
-        // open inventory by default
-        this.panelInventory.open();
+        this._panels = [
+            this.panelInventory,
+            this.panelAbilities,
+            this.panelCharacter,
+            this.panelHelp,
+            this.panelDialog,
+            this.panelQuests,
+        ];
+
+        // Keep the play area clear on compact screens.
+        if (window.innerWidth >= 700) {
+            this.panelInventory.open();
+        }
         //this.panelHelp.open();
 
         // create tooltip
@@ -316,14 +327,11 @@ export class UserInterface {
     }
 
     public resize() {
-        if (this._engine.getRenderWidth() < 1100) {
-            if (this._ChatBox) {
-                this._ChatBox.chatPanel.top = "-115px;";
-            }
-        } else {
-            if (this._ChatBox) {
-                this._ChatBox.chatPanel.top = "-30px;";
-            }
-        }
+        this._ChatBox?.resize();
+        this._HotBar?.resize();
+        this._MainMenu?.resize();
+        this._targetEntitySelectedBar?.resize();
+        this._playerEntitySelectedBar?.resize();
+        this._panels?.forEach((panel) => panel.resize());
     }
 }

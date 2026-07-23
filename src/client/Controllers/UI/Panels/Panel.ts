@@ -67,6 +67,7 @@ export class Panel {
 
         //
         this._create(this._options);
+        this.resize();
 
         // some ui must be constantly refreshed as things change
         this._scene.registerBeforeRender(() => {
@@ -82,8 +83,8 @@ export class Panel {
         panel.left = options.left;
         panel.width = options.width;
         panel.height = options.height;
-        panel.verticalAlignment = options.horizontal_position;
-        panel.horizontalAlignment = options.vertical_position;
+        panel.horizontalAlignment = options.horizontal_position;
+        panel.verticalAlignment = options.vertical_position;
         panel.thickness = options.thickness;
         panel.cornerRadius = options.cornerRadius;
         panel.background = options.background;
@@ -205,9 +206,40 @@ export class Panel {
         return this._panel.isVisible;
     }
 
+    public resize() {
+        const compact = window.innerWidth < 700;
+        if (!compact) {
+            this._panel.width = this._options.width;
+            this._panel.height = this._options.height;
+            this._panel.top = this._options.top;
+            this._panel.left = this._options.left;
+            this._panel.horizontalAlignment = this._options.horizontal_position;
+            this._panel.verticalAlignment = this._options.vertical_position;
+            return;
+        }
+
+        const configuredWidth = this.getPixelValue(this._options.width, window.innerWidth);
+        const configuredHeight = this.getPixelValue(this._options.height, window.innerHeight);
+        this._panel.width = Math.min(configuredWidth, window.innerWidth - 24) + "px";
+        this._panel.height = Math.min(configuredHeight, window.innerHeight - 170) + "px";
+        this._panel.top = "10px";
+        this._panel.left = "0px";
+        this._panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        this._panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+    }
+
     // update panel
     public update() {}
 
     // refresh panel
     public refresh() {}
+
+    private getPixelValue(value, fallback: number): number {
+        if (typeof value === "number") {
+            return value <= 1 ? fallback * value : value;
+        }
+
+        const parsed = Number.parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
 }

@@ -1,32 +1,191 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en" dir="ltr">
     <head>
-        <meta charset="UTF-8">
-        <title>T5C - The 5th Continent</title>
-        <link rel="stylesheet" href="styles.css"></link> 
-        <link rel="icon" type="image/x-icon" href="favicon.ico">
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-        <!-- Google tag (gtag.js) -->
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-JYH151E26D"></script>
-        <script>
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-JYH151E26D');
+        <title>T5C - The 5th Continent | Multiplayer Browser RPG</title>
+        <meta
+            name="description"
+            content="Play T5C, a free multiplayer 3D browser RPG. Explore Eldoria, battle enemies, complete quests, collect loot, and build your character."
+        >
+        <meta name="application-name" content="T5C - The 5th Continent">
+        <meta name="theme-color" content="#111815">
+        <meta name="color-scheme" content="dark">
+        <meta name="robots" content="index, follow, max-image-preview:large">
+
+        <link rel="canonical" href="https://arkadii.world/game/">
+        <link rel="manifest" href="./manifest.webmanifest">
+        <link rel="icon" type="image/x-icon" href="./favicon.ico">
+        <link rel="preload" href="./fonts/font.ttf" as="font" type="font/ttf" crossorigin>
+        <link rel="preload" href="./images/background_mainmenu_1.jpg" as="image" fetchpriority="high">
+
+        <meta property="og:type" content="website">
+        <meta property="og:site_name" content="T5C - The 5th Continent">
+        <meta property="og:title" content="T5C - The 5th Continent | Multiplayer Browser RPG">
+        <meta
+            property="og:description"
+            content="Explore Eldoria with other players in a free 3D browser RPG with quests, combat, loot, character progression, and global chat."
+        >
+        <meta property="og:url" content="https://arkadii.world/game/">
+        <meta property="og:image" content="https://arkadii.world/game/images/background_mainmenu_1.jpg">
+        <meta property="og:image:width" content="1280">
+        <meta property="og:image:height" content="720">
+        <meta property="og:image:alt" content="A town and forest environment from T5C">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="T5C - The 5th Continent">
+        <meta
+            name="twitter:description"
+            content="A free multiplayer 3D browser RPG set in the continent of Eldoria."
+        >
+        <meta name="twitter:image" content="https://arkadii.world/game/images/background_mainmenu_1.jpg">
+
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "VideoGame",
+                "name": "T5C - The 5th Continent",
+                "alternateName": "T5C",
+                "url": "https://arkadii.world/game/",
+                "image": "https://arkadii.world/game/images/background_mainmenu_1.jpg",
+                "description": "A free multiplayer 3D top-down browser RPG set in Eldoria, with quests, combat, loot, character progression, and global chat.",
+                "genre": ["Role-playing game", "Multiplayer online game"],
+                "gamePlatform": "Web browser",
+                "applicationCategory": "Game",
+                "operatingSystem": "Any",
+                "playMode": "MultiPlayer",
+                "inLanguage": "en",
+                "isAccessibleForFree": true
+            }
         </script>
 
+        <link rel="stylesheet" href="./styles.css">
+        <script>
+            if (!["localhost", "127.0.0.1"].includes(window.location.hostname) && navigator.doNotTrack !== "1") {
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = function () {
+                    window.dataLayer.push(arguments);
+                };
+                window.gtag("js", new Date());
+                window.gtag("config", "G-JYH151E26D", { anonymize_ip: true });
+
+                const analyticsScript = document.createElement("script");
+                analyticsScript.async = true;
+                analyticsScript.src = "https://www.googletagmanager.com/gtag/js?id=G-JYH151E26D";
+                document.head.appendChild(analyticsScript);
+            }
+        </script>
     </head>
     <body class="disable-selection">
-        <div id="loadingScreen">
-            <div class="vertical-center">
-                <br>
-                <div id="loadingText">.</div>
-                <div id="loadingTextDetails"></div>
+        <a class="skip-link" href="#renderCanvas">Skip to the game</a>
+
+        <main id="gameShell" aria-labelledby="gameTitle">
+            <h1 id="gameTitle" class="sr-only">T5C - The 5th Continent multiplayer browser RPG</h1>
+            <p id="gameDescription" class="sr-only">
+                Explore Eldoria, fight enemies, complete quests, collect equipment, and chat with other players.
+            </p>
+            <section id="gameInstructions" class="sr-only" aria-labelledby="gameInstructionsTitle">
+                <h2 id="gameInstructionsTitle">Game controls</h2>
+                <p>
+                    Use the pointer to move and interact. Use number keys 1 through 9 for hotbar actions, Enter for chat,
+                    and the on-screen menu for inventory, quests, abilities, character details, and help.
+                </p>
+            </section>
+
+            <div id="loadingScreen" role="status" aria-live="polite" aria-atomic="true">
+                <div class="loading-panel">
+                    <img class="loading-logo" src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
+                    <p id="loadingText" class="loading-title">Preparing Eldoria</p>
+                    <div
+                        id="loadingProgress"
+                        class="loading-progress"
+                        role="progressbar"
+                        aria-label="Game loading progress"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        aria-valuenow="0"
+                    >
+                        <span id="loadingProgressBar"></span>
+                    </div>
+                    <p id="loadingTextDetails" class="loading-details">Starting the game...</p>
+                </div>
             </div>
-        </div>
-        <canvas id="renderCanvas"></canvas>
-        <script rel="dns-prefetch" src="./lib/pep.js"></script>
-        <script src="./js/bundle.js"></script>
+
+            <section id="fatalError" class="fatal-error" role="alert" aria-labelledby="fatalErrorTitle" hidden>
+                <div class="fatal-error__panel">
+                    <p class="fatal-error__eyebrow">T5C could not start</p>
+                    <h2 id="fatalErrorTitle">Your adventure is paused</h2>
+                    <p id="fatalErrorMessage">
+                        Check that WebGL is enabled and that your connection is available, then try again.
+                    </p>
+                    <button id="retryButton" type="button">Retry</button>
+                    <a href="./docs/">Open technical help</a>
+                </div>
+            </section>
+
+            <section id="loginOverlay" class="login-overlay" aria-labelledby="loginTitle" hidden>
+                <div class="login-panel">
+                    <img src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
+                    <p class="login-panel__eyebrow">Multiplayer browser RPG</p>
+                    <h2 id="loginTitle">Enter Eldoria</h2>
+                    <p id="loginVersion" class="login-panel__version">Version 0.5.0</p>
+
+                    <form id="loginForm">
+                        <label for="usernameInput">Adventurer name</label>
+                        <input
+                            id="usernameInput"
+                            name="username"
+                            type="text"
+                            autocomplete="username"
+                            maxlength="64"
+                            required
+                        >
+
+                        <label for="passwordInput">Password</label>
+                        <input
+                            id="passwordInput"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            maxlength="128"
+                            required
+                        >
+
+                        <p id="loginFeedback" class="login-feedback" role="status" aria-live="polite"></p>
+                        <button id="loginButton" class="login-button login-button--primary" type="submit">
+                            Connect to game
+                        </button>
+                    </form>
+
+                    <div class="login-divider" aria-hidden="true"><span>or</span></div>
+                    <button id="quickPlayButton" class="login-button login-button--secondary" type="button">
+                        Quick Play
+                    </button>
+                    <p class="login-panel__hint">Start immediately with a generated adventurer.</p>
+                </div>
+            </section>
+
+            <canvas
+                id="renderCanvas"
+                role="application"
+                aria-label="T5C interactive 3D game"
+                aria-describedby="gameDescription gameInstructions"
+                tabindex="0"
+            >
+                T5C requires a browser with canvas and WebGL support. Visit the technical help page for compatibility
+                information.
+            </canvas>
+            <div id="gameAnnouncements" class="sr-only" aria-live="polite" aria-atomic="false"></div>
+        </main>
+
+        <noscript>
+            <section class="noscript-message">
+                <h2>JavaScript is required</h2>
+                <p>T5C is an interactive 3D browser game and needs JavaScript to run.</p>
+            </section>
+        </noscript>
+
+        <script defer src="./lib/pep.js"></script>
+        <script defer src="./js/bundle.js"></script>
     </body>
 </html>

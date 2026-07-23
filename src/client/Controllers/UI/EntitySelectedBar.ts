@@ -195,6 +195,7 @@ export class EntitySelectedBar {
 
         // hide it by default
         this._selectedEntityBar.isVisible = false;
+        this.resize();
     }
 
     public setTarget(target) {
@@ -241,5 +242,12 @@ export class EntitySelectedBar {
             //console.log('[UPDATE]', entity.name, entity.health);
             this.setData(entity);
         }
+    }
+
+    public resize() {
+        const compact = window.innerWidth < 700;
+        const isTarget = this._options.panelName === "target";
+        this._selectedEntityBar.left = compact ? "8px" : isTarget ? "30px" : "15px";
+        this._selectedEntityBar.top = compact ? (isTarget ? "132px" : "8px") : isTarget ? "85px" : "15px";
     }
 }
