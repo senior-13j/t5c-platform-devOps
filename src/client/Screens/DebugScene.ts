@@ -123,7 +123,7 @@ class Entity {
         var label = new TextBlock("player_chat_label");
         label.text = name;
         label.color = "white";
-        label.paddingLeft = "5px;";
+        label.paddingLeft = "5px";
         label.paddingTop = "5px";
         label.paddingBottom = "5px";
         label.paddingRight = "5px";
@@ -186,8 +186,8 @@ export class DebugScene {
         var label = new TextBlock("FPS");
         label.text = "FPS: " + this._engine.getFps();
         label.color = "white";
-        label.top = "15px;";
-        label.left = "-15px;";
+        label.top = "15px";
+        label.left = "-15px";
         label.textWrapping = TextWrapping.WordWrap;
         label.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         label.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;

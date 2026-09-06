@@ -1,15 +1,16 @@
-# T5C Documentation
+# Arkadii Quest Documentation
 
-This documentation covers the T5C game runtime, bilingual player experience,
-keyboard/mouse and touch controls, quality verification, local Docker
-infrastructure, and public deployment workflow.
+This documentation covers the Arkadii Quest (`Аркадия Квест`) game runtime,
+bilingual player experience, onboarding, automatic follow camera,
+keyboard/touch controls, quality verification, local Docker infrastructure, and
+public deployment workflow.
 
 ## Start Here
 
 | Need | Read |
 | --- | --- |
 | Understand how the game is structured | [Project Overview](./PROJECT.md) |
-| Understand languages, keyboard/mouse, touch, and their QA | [Localization and Controls](./LOCALIZATION_AND_CONTROLS.md) |
+| Understand languages, onboarding, automatic camera, keyboard/touch controls, and their QA | [Localization and Controls](./LOCALIZATION_AND_CONTROLS.md) |
 | Integrate with or secure the HTTP API | [API and Security](./API_AND_SECURITY.md) |
 | Review UX, accessibility, SEO, assets, and quality results | [Game Quality Audit](./GAME_QUALITY_AUDIT.md) |
 | Run the complete stack locally | [Infrastructure and Deployment](./INFRASTRUCTURE_AND_DEPLOYMENT.md) |
@@ -99,8 +100,14 @@ curl -fsS https://arkadii.world/llms.txt
 | File | Scope |
 | --- | --- |
 | [PROJECT.md](./PROJECT.md) | Codebase shape, runtime responsibilities, persistence, and build outputs |
-| [LOCALIZATION_AND_CONTROLS.md](./LOCALIZATION_AND_CONTROLS.md) | Entry preferences, translation architecture, complete controls, accessibility, E2E coverage, and patch notes |
+| [LOCALIZATION_AND_CONTROLS.md](./LOCALIZATION_AND_CONTROLS.md) | Entry preferences, onboarding/F1 guide, automatic camera, complete controls, accessibility, and E2E coverage |
 | [API_AND_SECURITY.md](./API_AND_SECURITY.md) | Supported API flows, request formats, authentication storage, delivery headers, and known boundaries |
 | [GAME_QUALITY_AUDIT.md](./GAME_QUALITY_AUDIT.md) | Visual QA, accessibility, SEO/AEO, assets, performance, and dependency findings |
 | [INFRASTRUCTURE_AND_DEPLOYMENT.md](./INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local compose stack, TLS setup, validation, observability, operations, and troubleshooting |
 | [PUBLIC_DEPLOYMENT.md](./PUBLIC_DEPLOYMENT.md) | Public DNS, Caddy, required secrets, startup commands, validation, and troubleshooting |
+
+Repository-level legal and asset records are maintained in the root
+`NOTICE.md` and `THIRD_PARTY_ASSETS.md` files. The visible product brand is
+Arkadii Quest; any remaining `t5c` database, volume, or metric identifier is a
+temporary compatibility detail, not a public name. Former `t5c_*` browser keys
+exist only as one-time migration aliases for the new `arkadii_quest_*` keys.

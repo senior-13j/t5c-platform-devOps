@@ -71,7 +71,7 @@ export class Panel_Quests extends Panel {
         stackPanel.height = 1;
         stackPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         stackPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-        stackPanel.paddingTop = "5px;";
+        stackPanel.paddingTop = "5px";
         stackPanel.spacing = 5;
         scrollViewer.addControl(stackPanel);
 
@@ -96,7 +96,7 @@ export class Panel_Quests extends Panel {
                 questPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 questPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
                 questPanel.top = "0px";
-                questPanel.left = "0px;";
+                questPanel.left = "0px";
                 questPanel.width = 1;
                 questPanel.height = "40px";
                 questPanel.thickness = 1;

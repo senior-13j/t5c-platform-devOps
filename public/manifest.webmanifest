@@ -1,21 +1,27 @@
 {
-    "name": "T5C - The 5th Continent",
-    "short_name": "T5C",
-    "description": "A free English/Russian multiplayer 3D browser RPG with keyboard, mouse, and touch controls.",
+    "name": "Arkadii Quest",
+    "short_name": "Arkadii Quest",
+    "description": "A free English/Russian multiplayer 3D browser RPG set in Arkadia, with an automatic follow camera and keyboard or touch controls.",
     "id": "./",
     "start_url": "./",
     "scope": "./",
     "display": "fullscreen",
     "orientation": "any",
-    "background_color": "#111815",
-    "theme_color": "#111815",
+    "background_color": "#0b1710",
+    "theme_color": "#132a20",
     "lang": "en",
     "categories": ["games", "entertainment"],
     "icons": [
         {
-            "src": "./images/logo_SQUARE.jpg",
-            "sizes": "300x300",
-            "type": "image/jpeg",
+            "src": "./images/arkadii-quest-icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "./images/arkadii-quest-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
             "purpose": "any"
         }
     ]

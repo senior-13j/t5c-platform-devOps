@@ -63,13 +63,6 @@ export class Player extends Entity {
                 this.rightClick(pointerInfo);
             }
 
-            // on wheel mouse
-            if (pointerInfo.type === PointerEventTypes.POINTERWHEEL) {
-                /////////////////////////////////////////////////////////////////////
-                // camera zoom on mouse wheel
-                this.cameraController.zoom(pointerInfo.event.deltaY);
-            }
-
             // check if selected entity is too far
             // todo: should be done on server side?
             if (this._game.selectedEntity && this._game.selectedEntity.sessionId) {
@@ -84,13 +77,7 @@ export class Player extends Entity {
     }
 
     getMeshMetadata(pointerInfo) {
-        if (!pointerInfo._pickInfo.pickedMesh) return false;
-
-        if (!pointerInfo._pickInfo.pickedMesh.metadata) return false;
-
-        if (pointerInfo._pickInfo.pickedMesh.metadata === null) return false;
-
-        return pointerInfo._pickInfo.pickedMesh.metadata;
+        return pointerInfo?.pickInfo?.pickedMesh?.metadata ?? pointerInfo?._pickInfo?.pickedMesh?.metadata ?? false;
     }
 
     public rightClick(pointerInfo) {
@@ -115,6 +102,7 @@ export class Player extends Entity {
             let target = this.entities.get(targetSessionId);
             this.selectTarget(target);
             this.interactWithTarget(target);
+            this._input.recordTutorialAction("combat");
         }
 
         // pick up item
@@ -122,6 +110,7 @@ export class Player extends Entity {
             this._game.sendMessage(ServerMsg.PLAYER_PICKUP, {
                 sessionId: metadata.sessionId,
             });
+            this._input.recordTutorialAction("explore");
         }
 
         // move to clicked point

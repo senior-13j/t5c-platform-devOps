@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import { LootSchema } from "../schema/LootSchema";
 import { PlayerSchema } from "../schema";
 import { ServerMsg } from "../../../shared/types";
+import { calculateSaturatedGoldBalance } from "../gameplayRules";
 
 export class dropCTRL {
     private _owner: PlayerSchema;
@@ -32,19 +33,32 @@ export class dropCTRL {
         if (target.AI_SPAWN_INFO && target.AI_SPAWN_INFO.goldGain) {
             goldGains = target.AI_SPAWN_INFO.goldGain;
         }
-        if (goldGains.min && goldGains.max) {
-            let gold = Math.floor(randomNumberInRange(goldGains.min, goldGains.max));
-            this._owner.player_data.gold += gold;
+        const minimum = Number(goldGains?.min);
+        const maximum = Number(goldGains?.max);
+        if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum < 0 || maximum < minimum) {
+            return false;
+        }
 
-            Logger.info(`[gameroom][addGold] player has gained ${gold} gold, total: ${this._owner.player_data.gold}`);
+        const rolledGold = Math.floor(randomNumberInRange(minimum, maximum));
+        const previousBalance = this._owner.player_data.gold;
+        const updatedBalance = calculateSaturatedGoldBalance(previousBalance, rolledGold);
+        if (updatedBalance === null) {
+            return false;
+        }
 
-            // inform player
+        this._owner.player_data.gold = updatedBalance;
+        const awardedGold = updatedBalance - previousBalance;
+        Logger.info(`[gameroom][addGold] player has gained ${awardedGold} gold, total: ${updatedBalance}`);
+
+        if (awardedGold > 0) {
+            // Inform the player of the amount actually credited after saturation.
             this._client.send(ServerMsg.SERVER_MESSAGE, {
                 type: "event",
-                message: "You pick up " + gold + " worth of gold.",
+                message: "You pick up " + awardedGold + " worth of gold.",
                 date: new Date(),
             });
         }
+        return true;
     }
 
     public dropItems(target) {

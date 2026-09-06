@@ -19,6 +19,9 @@ import {
     localizeServerMessage,
 } from "../i18n";
 
+const TOKEN_STORAGE_KEY = "arkadii_quest_token";
+const LEGACY_TOKEN_STORAGE_KEY = "t5c_token";
+
 export class GameController {
     // core
     public engine;
@@ -45,7 +48,7 @@ export class GameController {
     public _currentCharacter;
     public selectedEntity;
     public currentMs: number;
-    public deltaCamY: number = 2.7; // offset for camera to prevent camera moving when the player rotates
+    public deltaCamY: number = 2.7; // fixed isometric yaw used for screen-relative movement
     public latestError: string;
     public isMobile: boolean = false;
     public currentChats = [];
@@ -76,6 +79,10 @@ export class GameController {
         this.config = app.config;
         this.scene = app.scene;
         this.preferences = app.preferences;
+        const storedToken = this.readStoredToken();
+        if (storedToken) {
+            this._currentUser = { token: storedToken };
+        }
 
         // create colyseus client
         this.client = new Network(app.config.port);
@@ -237,23 +244,27 @@ export class GameController {
     // check login details
     public async isValidLogin() {
         let user = this.currentUser;
-
-        // check user exists else send back to login
-        const req = await axios.request({
-            method: "POST",
-            data: { token: user.token },
-            url: apiUrl(this.config.port) + "/check",
-        });
-
-        // check req status
-        if (req.status === 200) {
-            let user = req.data.user;
-            this.setUser(user);
-            return user;
-        } else {
-            // something went wrong
-            console.error("Something went wrong.");
+        if (!user?.token) {
+            return false;
         }
+
+        try {
+            const req = await axios.request({
+                method: "POST",
+                data: { token: user.token },
+                url: apiUrl(this.config.port) + "/check",
+            });
+            if (req.status === 200 && req.data?.user) {
+                const validatedUser = req.data.user;
+                this.setUser(validatedUser);
+                return validatedUser;
+            }
+        } catch (error) {
+            console.warn("[AUTH] Stored session is no longer valid", error);
+        }
+        this._currentUser = null;
+        this.clearStoredToken();
+        return false;
     }
 
     // login as this character
@@ -276,8 +287,7 @@ export class GameController {
             });
 
             if (req.status === 200) {
-                this._currentUser = req.data.user;
-                localStorage.setItem("t5c_token", req.data.user.token);
+                this.setUser(req.data.user);
                 return true;
             }
         } catch (error) {
@@ -290,6 +300,14 @@ export class GameController {
     // set user
     public setUser(user) {
         this._currentUser = user;
+        if (user?.token) {
+            try {
+                localStorage.setItem(TOKEN_STORAGE_KEY, user.token);
+                localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
+            } catch {
+                // Authentication still works for the current tab without storage.
+            }
+        }
     }
 
     // set character
@@ -310,7 +328,7 @@ export class GameController {
     public logout() {
         this._currentUser = null;
         this._currentCharacter = null;
-        localStorage.removeItem("t5c_token");
+        this.clearStoredToken();
         this.setScene(State.LOGIN);
     }
 
@@ -323,6 +341,32 @@ export class GameController {
                 message[key] = value;
             }
         }
-        this.currentRoom.send(type, message);
+        if (this.currentRoom) {
+            this.currentRoom.send(type, message);
+        }
+    }
+
+    private readStoredToken(): string {
+        try {
+            const current = localStorage.getItem(TOKEN_STORAGE_KEY);
+            const legacy = localStorage.getItem(LEGACY_TOKEN_STORAGE_KEY);
+            const token = current || legacy || "";
+            if (!current && legacy) {
+                localStorage.setItem(TOKEN_STORAGE_KEY, legacy);
+                localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
+            }
+            return token;
+        } catch {
+            return "";
+        }
+    }
+
+    private clearStoredToken(): void {
+        try {
+            localStorage.removeItem(TOKEN_STORAGE_KEY);
+            localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
+        } catch {
+            // Nothing else to clear when storage is unavailable.
+        }
     }
 }

@@ -95,6 +95,7 @@ export class UserInterface {
 
     _isDragging;
     _pointerDownPosition;
+    private readonly stopDraggingOnPointerUp = () => this.stopDragging();
 
     constructor(game: GameController, entities: Map<string, Player | Entity | Item>, currentPlayer) {
         // set var we will be needing
@@ -122,10 +123,17 @@ export class UserInterface {
         uiLayerContainer.height = 1;
         uiLayerContainer.thickness = 0;
         uiLayerContainer.fontFamily = "Arial, sans-serif";
-        uiLayerContainer.fontSize = "14px;";
+        uiLayerContainer.fontSize = "14px";
         uiLayer.addControl(uiLayerContainer);
 
         this._playerUI = uiLayerContainer;
+
+        window.addEventListener("pointerup", this.stopDraggingOnPointerUp);
+        window.addEventListener("pointercancel", this.stopDraggingOnPointerUp);
+        this._scene.onDisposeObservable.addOnce(() => {
+            window.removeEventListener("pointerup", this.stopDraggingOnPointerUp);
+            window.removeEventListener("pointercancel", this.stopDraggingOnPointerUp);
+        });
     }
 
     // set current player
@@ -175,10 +183,10 @@ export class UserInterface {
         this.panelInventory = new Panel_Inventory(this, currentPlayer, {
             name: this._game.t("menu.inventory"),
             stayOpen: true,
-            width: "246px;",
-            height: "300px;",
-            top: "-30px;",
-            left: "-15px;",
+            width: "246px",
+            height: "300px",
+            top: "-30px",
+            left: "-15px",
             horizontal_position: Control.HORIZONTAL_ALIGNMENT_RIGHT,
             vertical_position: Control.VERTICAL_ALIGNMENT_BOTTOM,
         });
@@ -187,10 +195,10 @@ export class UserInterface {
         // create panel
         this.panelAbilities = new Panel_Abilities(this, currentPlayer, {
             name: this._game.t("menu.abilities"),
-            width: "500px;",
-            height: "400px;",
-            top: "-50px;",
-            left: "0px;",
+            width: "500px",
+            height: "400px",
+            top: "-50px",
+            left: "0px",
             horizontal_position: Control.HORIZONTAL_ALIGNMENT_CENTER,
             vertical_position: Control.VERTICAL_ALIGNMENT_CENTER,
         });
@@ -198,10 +206,10 @@ export class UserInterface {
         // create panel
         this.panelCharacter = new Panel_Character(this, currentPlayer, {
             name: this._game.t("menu.character"),
-            width: "600px;",
+            width: "600px",
             height: this._game.controlMode === "touch" ? "520px" : "320px",
-            top: "-50px;",
-            left: "0px;",
+            top: "-50px",
+            left: "0px",
             horizontal_position: Control.HORIZONTAL_ALIGNMENT_CENTER,
             vertical_position: Control.VERTICAL_ALIGNMENT_CENTER,
         });
@@ -209,10 +217,10 @@ export class UserInterface {
         // create help panel
         this.panelHelp = new Panel_Help(this, currentPlayer, {
             name: this._game.t("panel.help"),
-            width: "500px;",
-            height: "500px;",
-            top: "-50px;",
-            left: "0px;",
+            width: "500px",
+            height: "500px",
+            top: "-50px",
+            left: "0px",
             horizontal_position: Control.HORIZONTAL_ALIGNMENT_CENTER,
             vertical_position: Control.VERTICAL_ALIGNMENT_CENTER,
         });
@@ -220,10 +228,10 @@ export class UserInterface {
         // create dialog panel
         this.panelDialog = new Panel_Dialog(this, currentPlayer, {
             name: this._game.t("panel.dialog"),
-            width: "350px;",
-            height: "400px;",
-            top: "-50px;",
-            left: "0px;",
+            width: "350px",
+            height: "400px",
+            top: "-50px",
+            left: "0px",
             horizontal_position: Control.HORIZONTAL_ALIGNMENT_CENTER,
             vertical_position: Control.VERTICAL_ALIGNMENT_CENTER,
         });
@@ -231,10 +239,10 @@ export class UserInterface {
         // create quests panel
         this.panelQuests = new Panel_Quests(this, currentPlayer, {
             name: this._game.t("panel.activeQuests"),
-            width: "300px;",
-            height: "300px;",
-            top: "-50px;",
-            left: "0px;",
+            width: "300px",
+            height: "300px",
+            top: "-50px",
+            left: "0px",
             horizontal_position: Control.HORIZONTAL_ALIGNMENT_CENTER,
             vertical_position: Control.VERTICAL_ALIGNMENT_CENTER,
         });
@@ -248,11 +256,7 @@ export class UserInterface {
             this.panelQuests,
         ];
 
-        // Keep the play area clear on compact screens.
-        if (this._game.controlMode === "keyboard" && window.innerWidth >= 700) {
-            this.panelInventory.open();
-        }
-        //this.panelHelp.open();
+        // Start with an unobstructed world view; onboarding teaches the panel hotkeys.
 
         // create tooltip
         this._Tooltip = new Tooltip(this, currentPlayer);
@@ -329,6 +333,9 @@ export class UserInterface {
     }
 
     public stopDragging() {
+        if (!this._isDragging) {
+            return;
+        }
         this._isDragging.isPointerBlocker = true;
         this._isDragging = null;
     }

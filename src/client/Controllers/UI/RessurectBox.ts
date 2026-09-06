@@ -30,7 +30,7 @@ export class RessurectBox {
         const revivePanel = new Rectangle("revivePanel");
         revivePanel.top = "0px";
         revivePanel.width = "200px";
-        revivePanel.height = "90px;";
+        revivePanel.height = "90px";
         revivePanel.thickness = 1;
         revivePanel.background = getBg();
         revivePanel.isVisible = false;
@@ -41,11 +41,11 @@ export class RessurectBox {
         this.revivePanel = revivePanel;
 
         const revivePanelText = new TextBlock("revivePanelText");
-        revivePanelText.height = "30px;";
+        revivePanelText.height = "30px";
         revivePanelText.text = this._game.t("death.message");
-        revivePanelText.top = "10px;";
+        revivePanelText.top = "10px";
         revivePanelText.left = 0;
-        revivePanelText.fontSize = "24px;";
+        revivePanelText.fontSize = "24px";
         revivePanelText.color = "white";
         revivePanelText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         revivePanelText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -54,9 +54,9 @@ export class RessurectBox {
         revivePanel.addControl(revivePanelText);
 
         const reviveButton = Button.CreateSimpleButton("reviveButton", this._game.t("death.resurrect"));
-        reviveButton.top = "-10px;";
-        reviveButton.left = "0px;";
-        reviveButton.width = "180px;";
+        reviveButton.top = "-10px";
+        reviveButton.left = "0px";
+        reviveButton.width = "180px";
         reviveButton.height = "30px";
         reviveButton.color = "white";
         reviveButton.background = "#000";

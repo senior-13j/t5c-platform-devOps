@@ -1,7 +1,7 @@
 # Infrastructure and Deployment
 
-This guide is the runbook for the local T5C Docker stack. For the public
-internet profile at `https://arkadii.world/game/`, use
+This guide is the runbook for the local Arkadii Quest Docker stack. For the
+public internet profile at `https://arkadii.world/game/`, use
 [Public Deployment](./PUBLIC_DEPLOYMENT.md).
 
 ## Deployment Profiles
@@ -131,7 +131,8 @@ uses `./database.db`; this file is local runtime state and must not be committed
 Both clients first show language and control-mode selection. After that setup,
 the dev client at `http://localhost:8080` enters the game scene directly, while
 the built client served at `http://localhost:3000` uses the production login
-flow.
+flow. The connected game presents localized onboarding when appropriate, and
+`F1` reopens its controls guide.
 
 ## Local DNS and TLS
 
@@ -199,8 +200,10 @@ npm audit --omit=dev
 
 `client-build` currently emits size warnings for the 2.7 MiB entrypoint and
 large world/VAT/audio assets. Those warnings are tracked performance debt, not a
-failed build. The production audit should report no high or critical findings;
-remaining moderate/low advisories are documented in the quality audit.
+failed build. The September 2026 production audit reports one high transitive
+`nanoid` finding in Colyseus 0.15 and no critical findings. Its required major
+protocol migration, plus the remaining moderate/low advisories, is documented
+in the quality audit.
 
 The Playwright configuration starts an isolated SQLite server and Webpack dev
 client when ports `3000` and `8080` are free. It runs one English desktop
@@ -209,10 +212,10 @@ including a short-landscape resize. Omit
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when using the browser installed by
 Playwright.
 
-The browser checks exercise real WebGL movement/camera input, hotkeys, chat,
-targeting, translated names, touch target sizes, and panel/HUD separation. Test
-artifacts are written to ignored `test-results/` and `playwright-report/`
-directories only when applicable.
+The browser checks exercise real WebGL movement, automatic follow-camera
+behavior, onboarding/`F1`, hotkeys, chat, targeting, translated names, touch
+target sizes, and panel/HUD separation. Test artifacts are written to ignored
+`test-results/` and `playwright-report/` directories only when applicable.
 
 After the stack is running, check service state and browser-facing health:
 
@@ -308,8 +311,11 @@ Initial metrics:
 | `t5c_server_uptime_seconds` | Server process uptime |
 | `t5c_server_memory_rss_bytes` | Resident memory used by the server process |
 
-Additional game metrics can be added without changing the Docker network
-layout.
+These `t5c_*` series are legacy compatibility identifiers, not public branding.
+Keep them until dashboards, alert rules, scrapers, and any external consumers
+can migrate together; a transition should dual-publish old and new names before
+the legacy series are retired. Additional game metrics can be added without
+changing the Docker network layout.
 
 ## Data Persistence
 
@@ -318,6 +324,13 @@ MySQL data is stored in the named Docker volume:
 ```text
 t5c-platform-devops_mysql_data
 ```
+
+The volume name and the `t5c` database/user defaults are legacy compatibility
+identifiers. Renaming the Compose project, volume, database, or user in place
+does not rebrand existing data; it can instead attach a new empty volume or
+break database grants. Keep the current identifiers until a backed-up,
+explicitly tested migration updates all Compose files, environments, grants,
+dashboards, and restore procedures together.
 
 Routine restart without deleting database data:
 

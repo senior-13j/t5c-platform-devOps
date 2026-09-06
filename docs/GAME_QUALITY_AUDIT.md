@@ -1,27 +1,32 @@
-# Game Quality Audit
+# Arkadii Quest Game Quality Audit
 
-Audit date: 2026-07-23
-Branch: `feature/localization-control-modes`
+Baseline audit: 2026-07-23
+
+Documentation/rebrand review: 2026-09-06
 
 ## Outcome
 
-This pass covered the English/Russian entry flow, translated active game
-content, keyboard/mouse gameplay, touch gameplay, responsive HUD/panels,
-accessibility semantics, server movement validation, Colyseus room startup, and
-real WebGL behavior. Automated and manual browser checks used `1440x900`,
-`412x915`, and short-landscape `915x412` viewports.
+The July baseline covered the English/Russian entry flow, translated active
+game content, desktop/touch gameplay, responsive HUD/panels, accessibility
+semantics, server movement validation, Colyseus room startup, and real WebGL
+behavior. Automated and manual browser checks used `1440x900`, `412x915`, and
+short-landscape `915x412` viewports.
 
-The localization audit passes with 180 UI keys, 81 content pairs, 49 HTML
-bindings, and 133 typed translation calls. Playwright passes the desktop and
-touch projects with real player displacement and camera rotation, not only DOM
-visibility assertions. No page errors, unexpected console errors, or failed
-runtime requests were observed in those flows.
+The current Arkadii Quest release changes visible branding, introduces original
+brand artwork, renames the world to Arkadia (`Аркадия`), adds localized
+onboarding with an `F1` controls table, and replaces player-steered camera input
+with an automatic follow camera. The post-rebrand verification completed on
+2026-09-06: all 46 Node tests, localization and web-quality checks, TypeScript,
+client/server production builds, Compose validation, and the applicable desktop
+and touch Chromium gameplay scenarios passed. The two E2E cases that do not
+belong to their current Playwright device project were intentionally skipped.
 
 The following Lighthouse measurements belong to the immediately preceding web
-quality audit and remain the latest production-profile baseline. This controls
-branch preserved the audited semantic/SEO surface and expanded bilingual
-metadata checks, but did not rerun Lighthouse, so the scores are not presented
-as newly measured results.
+quality audit and remain the latest production-profile baseline. The
+localization/control branch preserved the audited semantic/SEO surface and
+expanded bilingual metadata checks, but did not rerun Lighthouse. The new
+Arkadii Quest artwork can also affect transfer size and paint timing, so the
+scores are not presented as current production results.
 
 | Metric | Original Baseline | Latest Measured Result |
 | --- | ---: | ---: |
@@ -36,11 +41,11 @@ as newly measured results.
 | Initial game resources | 101 | 88-89 |
 | Real WebGL loading time | about 8.7 s | about 3.4 s |
 
-The production JavaScript entrypoint remains about 2.7 MiB and initial game
-transfer remains about 17.8 MiB. Route-based asset streaming is still a
-separate performance project.
+The latest recorded production JavaScript entrypoint was about 2.7 MiB and the
+initial game transfer about 17.8 MiB. Re-measure after the brand-asset build;
+route-based asset streaming remains a separate performance project.
 
-## Improvements Verified
+## Previously Verified Foundation
 
 - Added an accessible pre-engine dialog for English/Russian and
   keyboard/mouse/touch selection with device-aware defaults and persisted
@@ -50,10 +55,9 @@ separate performance project.
   chat labels, and supported server notifications.
 - Added camera-relative WASD/arrow movement, `1`-`9` hotbar actions, panel
   hotkeys, nearest interaction/target selection, chat focus, panel dismissal,
-  screenshot access, and right/middle-drag camera rotation.
-- Added an analog virtual joystick, world-swipe camera rotation, interaction,
-  nearest-target, chat, zoom, menu, and tappable hotbar controls for phones and
-  tablets.
+  and screenshot access.
+- Added an analog virtual joystick, interaction, nearest-target, chat, menu,
+  and tappable hotbar controls for phones and tablets.
 - Reworked portrait and short-landscape HUD geometry and touch panel behavior;
   touch actions are approximately 44 CSS px or larger.
 - Added typed translation contracts, source-data/dialog coverage checks, HTML
@@ -63,6 +67,31 @@ separate performance project.
   movement for dead/blocked players.
 - Preserved the prior canonical, Open Graph/Twitter, `VideoGame` JSON-LD,
   manifest, crawler, answer-engine, reduced-motion, and failure-state work.
+
+The baseline also tested mouse/touch camera gestures. Those gestures are
+superseded by the automatic follow-camera design and must not be treated as
+current requirements.
+
+## Current Release Acceptance Criteria
+
+- Every player-facing entry, loader, login, menu, help, watermark, manifest,
+  social, and discovery surface uses `Arkadii Quest` in English and
+  `Аркадия Квест` in Russian.
+- Player-facing lore names the world `Arkadia` / `Аркадия`; legacy internal
+  location or database keys may remain stable when changing them would require
+  a data migration.
+- A first-entry onboarding guide explains movement, interaction, targeting,
+  hotbar actions, chat, and panels in the selected language.
+- `F1` on desktop and the touch guide button reliably reopen the controls
+  table; `Escape` closes it without leaving movement or touch HUD state stuck.
+- The camera follows the active character automatically. Wheel, right-/middle
+  drag, and touch world-swipe do not rotate or zoom the gameplay camera.
+- Desktop, phone portrait, and short-landscape layouts keep the guide and HUD
+  inside the viewport with visible focus and practical touch targets.
+- The local logo, key art, icons, favicon, and social image load without stale
+  references to retired artwork.
+- A clean production build passes localization, metadata/reference, type,
+  WebGL desktop/touch, and server checks before public deployment.
 
 ## Bugs Fixed
 
@@ -97,14 +126,15 @@ separate performance project.
 | Connected world/HUD | 915x412, Russian touch landscape | Pass |
 | Character panel/HUD separation | 915x412, Russian touch landscape | Pass |
 | Real movement | WASD and native touch joystick events | Pass |
-| Real camera input | Mouse drag and native touch swipe | Pass |
+| Automatic camera | Follow/look-ahead on desktop and touch; wheel and drag leave it unchanged | Pass |
 | Menus, hotbar, target, chat | Both profiles | Pass |
 
-The desktop run verified approximately one world-unit of WASD displacement and
-the touch run verified more than four world units of joystick displacement. The
-touch portrait panel remained inside the 412x915 viewport; the short-landscape
-panel remained inside 915x412 with the gameplay HUD hidden. Target names stayed
-Russian after later network patches.
+The current desktop run verified real WASD displacement and the touch run
+verified native joystick displacement. The touch portrait panel remained inside
+the 412x915 viewport; the short-landscape panel remained inside 915x412 with the
+gameplay HUD hidden. Target names stayed Russian after later network patches,
+and the run also exercised onboarding, tutorial progress, `F1`, panel hotkeys,
+interaction, targeting, chat focus, and automatic-camera invariants.
 
 ## Localization Review
 
@@ -134,33 +164,40 @@ layer or equivalent accessible controls and is not claimed by this audit.
 ## SEO and AEO
 
 - Canonical, description, Open Graph, Twitter, manifest, crawler, sitemap, and
-  `llms.txt` surfaces remain validated.
+  `llms.txt` surfaces must consistently identify Arkadii Quest.
 - The `VideoGame` JSON-LD now declares both `en` and `ru` in `inLanguage`.
 - Runtime title/description/social metadata follows the selected language.
-- `llms.txt` and served docs link to the localization/control reference.
+- `llms.txt` and served docs should link to the localization/control reference.
 - `check:web-quality` now asserts the preference dialog and bilingual structured
   data in addition to the existing semantic/discovery checks.
 
 ## Asset Review
 
-No new visual, audio, font, or model assets were introduced for the control and
-localization work. Native HTML/CSS, existing Babylon GUI assets, and the current
-icon atlas are reused, avoiding additional transfer cost or provenance risk.
+The Arkadii Quest brand mark and wordmark SVGs were created in this repository.
+The key art was generated specifically for this rebrand with OpenAI image
+generation and no input reference image; social art, PNG icons, and the favicon
+are project-created derivatives. These replace the retired public logo and
+external README screenshots.
 
-Existing provenance gaps remain: only
-`construction/Models/Characters/goblin/license.txt` and
-`construction/Fonts/info.txt` were found as explicit records. A complete source,
-author, license, and modification ledger is still required before commercial
-release.
+The broader legacy game asset library is not yet cleared as a whole. The goblin
+source has an explicit CC BY-SA 4.0 record and the construction-only Breathe
+Fire III font is recorded as freeware/non-commercial. The runtime font and most
+models, textures, sounds, icons, portraits, and editable source files do not
+have complete source/author/license records in the repository. Treat those gaps
+as release blockers for commercial distribution. The authoritative working
+ledger and required actions are in the root `THIRD_PARTY_ASSETS.md` file.
 
 ## Dependency Review
 
-The full dependency tree reports 2 low, 12 moderate, 0 high, and 0 critical
-findings. The production tree reports 2 low, 10 moderate, 0 high, and 0 critical
-findings. The production advisories remain in the Colyseus 0.15
-authentication/core chain and require a tested 0.17 protocol migration. The
-development tree also includes a `webpack-dev-server` advisory whose available
-fix is a major-version upgrade. No forced audit fix was applied.
+On 6 September 2026, the full dependency tree reported 2 low, 11 moderate, 1
+high, and 0 critical findings. The production tree reported 2 low, 9 moderate,
+1 high, and 0 critical findings. The high finding is the nested legacy
+`nanoid@2.1.11` used by `@colyseus/core@0.15.57`; npm offers only a breaking
+Colyseus/core 0.18 upgrade for that chain. Current game-generated IDs use the
+patched top-level `nanoid@3.3.18`, but the transitive advisory remains real and
+requires a tested Colyseus protocol migration. Safe non-breaking audit updates
+were applied; no forced major upgrade was used. Run a current audit before
+deployment because advisory data changes over time.
 
 ## Reproduce
 
@@ -177,3 +214,6 @@ npm audit --omit=dev
 
 When `/usr/bin/chromium` is not available, run `npx playwright install chromium`
 once and then use `npm run test:e2e` without the executable-path override.
+After the automated run, manually verify both languages, onboarding/`F1`,
+automatic camera behavior, the new key art/logo/icon set, and the deployed
+social preview at `https://arkadii.world/game/`.

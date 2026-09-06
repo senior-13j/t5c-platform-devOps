@@ -51,7 +51,7 @@ export class CastingBar {
         castingTimer.color = "#FFF";
         castingTimer.top = 0;
         castingTimer.left = 0;
-        castingTimer.fontSize = "11px;";
+        castingTimer.fontSize = "11px";
         castingTimer.color = "black;";
         castingTimer.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         castingTimer.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;

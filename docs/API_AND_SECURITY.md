@@ -1,9 +1,9 @@
 # API and Security
 
 This document describes the HTTP surface served by the same Node.js process as
-the T5C client and Colyseus rooms. Production traffic should reach these routes
-through HTTPS at `https://arkadii.world/game/`; port `3000` stays private inside
-the Docker network.
+the Arkadii Quest client and Colyseus rooms. Production traffic should reach
+these routes through HTTPS at `https://arkadii.world/game/`; port `3000` stays
+private inside the Docker network.
 
 ## Request Conventions
 
@@ -30,13 +30,13 @@ curl -sS https://arkadii.world/game/login \
 | `GET` | `/health` | Container and proxy health check | `200` with status and uptime |
 | `GET` | `/metrics` | Prometheus text metrics | `200`; public in the current Caddy profile |
 | `POST` | `/login` | Login or create a username that does not exist | `200`, `400`, `401`, or `500` |
-| `POST` preferred | `/loginWithToken` | Validate a token and rotate it | `200`, `400`, or `401` |
-| `POST` | `/check` | Validate the current user token and return characters | `200` or `400` |
-| `POST` | `/create_character` | Create a character for a valid token | `200` or `400` |
-| `POST` | `/returnRandomUser` | Create a Quick Play guest and starter character | `200` |
+| `POST` preferred | `/loginWithToken` | Validate a token and rotate it | `200`, `400`, `401`, or `500` |
+| `POST` | `/check` | Validate the current user token and return characters | `200`, `400`, or `500` |
+| `POST` | `/create_character` | Create a character for a valid token and validated customization | `200`, `400`, `401`, or `500` |
+| `POST` | `/returnRandomUser` | Create a rate-limited Quick Play guest and starter character | `200`, `429`, `500`, or `503` |
 | `GET` | `/load_game_data` | Return public item, ability, location, race, quest, and help data | `200` |
 | `GET` | `/getHelpPage?page=...` | Return an allowlisted HTML help page | `200` or `400` |
-| `GET` | `/get_character?character_id=...` | Legacy character lookup | `200` or `400` |
+| `GET` | `/get_character?character_id=...` | Authenticated character lookup | `200`, `400`, `401`, `404`, or `500` |
 | `GET` | `/register` | Disabled legacy registration route | `501` |
 
 The public reverse proxy removes the `/game` prefix before forwarding requests,
@@ -123,28 +123,31 @@ complete anti-cheat system: movement rate, message frequency, teleport checks,
 and authoritative time-based speed limits remain future hardening work.
 
 Room startup now awaits game-data and controller initialization before
-publishing the Colyseus state or registering normal simulation work. This fixes
-a race where a fast join or update could observe a state whose `entityCTRL` and
-`spawnCTRL` were not ready. Leave handling also tolerates incomplete state,
-authentication, or database setup and only writes online status when a valid
-character ID exists.
+publishing the Colyseus state or registering normal simulation work. Game and
+chat WebSockets authenticate the token/owned character; chat ignores spoofed
+names and IDs. A process-local reservation prevents parallel sessions for one
+character. Periodic, zone-transition, and disconnect persistence uses immutable
+snapshots and an ordered per-character queue, and disconnect cleanup waits for
+the final save before releasing the reservation.
 
 ## Current Security Boundaries
 
 The following items remain explicit follow-up work for a hardened public
 service:
 
-- Add rate limiting for login and Quick Play account creation.
+- Add rate limiting for password login; Quick Play and chat already have bounded
+  process-local limiters.
 - Restrict CORS to intended production and development origins.
 - Add per-client input-rate and authoritative displacement limits for stronger
   movement abuse protection.
-- Replace the legacy unauthenticated `/get_character` route with an
-  ownership-checked token flow before exposing character details beyond the
-  current prototype.
+- Back session reservations and rate limits with Redis before running multiple
+  Node workers; the current registries are process-local.
+- Wrap each multi-table character save/create operation in a database transaction
+  so an adapter failure cannot leave a partially replaced relation set.
 - Add account recovery and password rotation workflows.
 - Decide whether `/metrics` should remain public or be restricted by Caddy.
-- Migrate Colyseus 0.15 to a tested 0.17 release to resolve the remaining
-  production dependency advisories.
+- Migrate Colyseus 0.15 to a tested, supported current release (npm currently
+  proposes 0.18) to resolve the remaining production dependency advisories.
 
 ## Verification
 
@@ -176,5 +179,7 @@ npm audit --omit=dev
 ```
 
 Expected results include a `400` response for the missing token, compressed
-bundle delivery, no `X-Powered-By` header, and no high or critical production
-dependency findings.
+bundle delivery, and no `X-Powered-By` header. The September 2026 production
+audit has one high transitive finding in the legacy Colyseus 0.15 dependency
+chain; it is recorded in the quality audit and must not be hidden or treated as
+a clean audit.

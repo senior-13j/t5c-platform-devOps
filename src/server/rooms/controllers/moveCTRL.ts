@@ -2,6 +2,7 @@ import Logger from "../../utils/Logger";
 import { Vector3 } from "../../../shared/Libs/yuka-min";
 import { EntityState, PlayerInputs } from "../../../shared/types";
 import { BrainSchema, LootSchema, PlayerSchema } from "../schema";
+import { getSingleTargetAbilityRange } from "../gameplayRules";
 
 export class moveCTRL {
     private _owner: PlayerSchema;
@@ -37,18 +38,26 @@ export class moveCTRL {
 
             // do auto attack
             if (this._owner.AI_ABILITY && (target instanceof BrainSchema || target instanceof PlayerSchema)) {
-                if (distance <= ability.minRange) {
-                    // cast ability
-                    this._owner.abilitiesCTRL.cast(this._owner, target, ability, 1);
+                if (distance <= getSingleTargetAbilityRange(ability)) {
+                    // Revalidate resources/cooldown after the potentially long
+                    // path to the target, then cast with the original hotbar digit.
+                    const castSucceeded = this._owner.abilitiesCTRL.castIfAllowed(
+                        this._owner,
+                        target,
+                        ability,
+                        ability.digit ?? 1
+                    );
 
-                    // if ai entity
-                    if (target instanceof BrainSchema) {
-                        this._owner.AI_TARGET = null;
-                    }
+                    if (castSucceeded) {
+                        // if ai entity
+                        if (target instanceof BrainSchema) {
+                            this._owner.AI_TARGET = null;
+                        }
 
-                    // if player entity
-                    if (target instanceof PlayerSchema) {
-                        this._owner.AI_TARGET_FOUND = true;
+                        // if player entity
+                        if (target instanceof PlayerSchema) {
+                            this._owner.AI_TARGET_FOUND = true;
+                        }
                     }
 
                     this.cancelTargetDestination();

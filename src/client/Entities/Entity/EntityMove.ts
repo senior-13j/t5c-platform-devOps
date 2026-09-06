@@ -90,10 +90,6 @@ export class EntityMove {
             this._node.rotation = Vector3.Lerp(this._node.rotation, this.nextRotation, 0.45);
         }
 
-        // rotate camera to copy player rotation
-        if (this._node.isCurrentPlayer) {
-            this._node.cameraController._camRoot.rotation.y = -this._node.rotation.y + this._game.deltaCamY;
-        }
     }
 
     public move(input: PlayerInputs): void {

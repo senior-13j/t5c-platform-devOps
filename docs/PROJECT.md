@@ -1,11 +1,11 @@
 # Project Overview
 
-T5C, The 5th Continent, is a multiplayer 3D top-down RPG prototype built with
-Babylon.js, Colyseus, Express, TypeScript, and SQL persistence. It includes a
-responsive bilingual browser client, native HTML preference/login/failure
-states, separate keyboard/mouse and touch input profiles, a real-time game
-server, local and public container profiles, observability, and served project
-documentation.
+Arkadii Quest (`Аркадия Квест`) is a multiplayer 3D top-down RPG set in
+Arkadia (`Аркадия`). It is built with Babylon.js, Colyseus, Express,
+TypeScript, and SQL persistence. The project includes a responsive bilingual
+browser client, native HTML preference/login/failure states, keyboard and touch
+input profiles, a real-time game server, local and public container profiles,
+observability, and served project documentation.
 
 ## Runtime Shape
 
@@ -74,6 +74,7 @@ HTML loading shell
   -> Character selection
   -> Character editor when requested
   -> Connected game scene
+  -> First-entry onboarding and controls guide
 ```
 
 The Webpack development origin opens the game scene directly to shorten local
@@ -89,6 +90,11 @@ Native HTML owns the initial interaction states:
 - a focused Retry action for WebGL, startup, or asset failures;
 - semantic game title, description, instructions, and announcements.
 
+The connected scene presents a localized onboarding guide when appropriate.
+It teaches movement, interaction, targeting, combat slots, chat, and panels;
+`F1` reopens the controls guide after it has been dismissed on desktop, while a
+dedicated guide button provides the same action on touch screens.
+
 Babylon GUI owns character management and in-game interaction. The selected
 locale is applied to downloaded active game data before scenes consume it.
 Compact viewport logic adapts the menu, chat, hotbar, status bars, draggable
@@ -98,16 +104,24 @@ level and disables scene shadows to reduce GPU cost.
 
 ## Input Profiles
 
-`PreferencesController` stores `t5c_locale` and `t5c_control_mode` after the
-entry dialog. A coarse pointer or viewport below 700 px recommends touch mode;
-otherwise keyboard/mouse is recommended. The dialog appears on every load with
-the stored choices preselected.
+`PreferencesController` stores the selected locale and control mode after the
+entry dialog. The current storage keys are `arkadii_quest_locale` and
+`arkadii_quest_control_mode`; values from the former `t5c_*` keys are migrated
+once and the legacy keys are removed.
+A coarse pointer or viewport below 700 px recommends touch mode; otherwise
+keyboard/mouse is recommended. The dialog appears on first entry; returning
+players go directly to login and can reopen the choice through the language and
+controls link.
 
 Keyboard/mouse mode provides camera-relative WASD/arrow movement, number-row
 hotbar actions, panel hotkeys, nearest interaction and targeting, chat focus,
-panel dismissal, and right/middle-drag camera rotation. Touch mode creates a DOM
-joystick and action cluster for interaction, targeting, chat, and zoom; world
-swipes rotate the camera and the Babylon hotbar remains directly tappable.
+panel dismissal, and `F1` access to onboarding. Touch mode creates a DOM
+joystick and action cluster for interaction, targeting, and chat; the Babylon
+hotbar remains directly tappable.
+
+Both profiles use the same automatic follow camera. It tracks the active
+character and maintains a stable top-down composition, so mouse-wheel zoom,
+mouse-drag rotation, and touch-swipe rotation are not part of normal play.
 
 Movement vectors are normalized client-side and clamped again server-side.
 Input is suspended on blur, page hiding, chat focus, and scene disposal. Touch
@@ -126,10 +140,11 @@ scene. The asset controller:
 4. Reports progress through the native loading UI.
 5. Promotes failed required assets to the actionable fatal-error state.
 
-The current production entrypoint is about 2.7 MiB and the first world transfer
-is still about 17.8 MiB. Large VAT files, models, audio, and dormant race assets
+The latest recorded production entrypoint is about 2.7 MiB and the first world
+transfer about 17.8 MiB. Large VAT files, models, audio, and dormant race assets
 remain candidates for route-based loading and provenance review. See
-[Game Quality Audit](./GAME_QUALITY_AUDIT.md).
+[Game Quality Audit](./GAME_QUALITY_AUDIT.md) and the repository-level
+`THIRD_PARTY_ASSETS.md` ledger.
 
 ## Browser URL Resolution
 
@@ -186,6 +201,13 @@ DATABASE_USER=t5c
 DATABASE_PASSWORD=replace-with-a-secret
 ```
 
+The `t5c` database and user values above are temporary legacy identifiers kept
+to preserve existing deployments. Changing them without migrating grants,
+data, environment files, backups, and Compose volumes can make a healthy
+database appear empty. The same compatibility rule applies to current
+`t5c_*` Prometheus series and Compose volume/project names: keep them stable
+until a coordinated migration is available.
+
 Host development can use the SQLite adapter without MySQL:
 
 ```bash
@@ -205,7 +227,7 @@ especially when rolling out credential migration behavior.
 The game entry document includes:
 
 - a canonical URL and descriptive title/description;
-- Open Graph and Twitter metadata using an existing game screenshot;
+- Open Graph and Twitter metadata using Arkadii Quest artwork;
 - Schema.org `VideoGame` JSON-LD declaring English and Russian availability;
 - a web app manifest and theme metadata;
 - semantic content available before WebGL starts.
@@ -253,4 +275,5 @@ dist/client/docs/content/*.md
 The browser shell in `public/docs` fetches that Markdown at runtime. Its
 navigation covers the project overview, localization/controls reference,
 API/security reference, quality audit, local infrastructure runbook, and public
-deployment runbook.
+deployment runbook. Copyright provenance and asset licensing are maintained in
+the root `NOTICE.md` and `THIRD_PARTY_ASSETS.md` files.

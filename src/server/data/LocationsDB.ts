@@ -13,7 +13,7 @@ const DEFAULT_LOOT = [
 
 let LocationsDB = {
     lh_town: {
-        title: "Lighthaven",
+        title: "Oakwatch",
         key: "lh_town",
         mesh: "lh_town",
         sun: true,
@@ -86,7 +86,7 @@ let LocationsDB = {
                         data: [
                             {
                                 type: "text",
-                                text: "Greetings, adventurer! Looking for a new weapon or some sturdy armor? I've got the finest in Eldoria.",
+                                text: "Greetings, adventurer! Looking for a new weapon or sturdy armor? I carry some of the finest work in Arkadia.",
                                 vendor: {
                                     items: [
                                         { key: "shield_01" }, //
@@ -439,7 +439,7 @@ let LocationsDB = {
         },
     },
     training_ground: {
-        title: "Training Ground",
+        title: "Adventurer's Yard",
         key: "training_ground",
         mesh: "training_ground",
         sun: true,
@@ -457,8 +457,6 @@ let LocationsDB = {
         dynamic: {
             interactive: [
                 {
-                    // Keep this at the southern edge and aligned with the
-                    // "stuck" reset position so trapped players can always leave.
                     type: "zone_change",
                     from: new Vector3(6.3, 0, -23.5),
                     to_map: "lh_town",
@@ -512,7 +510,7 @@ let LocationsDB = {
         },
     },
     lh_dungeon_01: {
-        title: "Dungeon Level 1",
+        title: "The Old Barrow",
         key: "lh_dungeon_01",
         mesh: "lh_dungeon_01",
         sun: false,

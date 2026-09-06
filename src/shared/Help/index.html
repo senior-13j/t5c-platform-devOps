@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>T5C Controls</title>
+        <title>Arkadii Quest Controls</title>
         <style>
             body {
                 max-width: 720px;
@@ -38,29 +38,30 @@
     </head>
     <body>
         <main data-language="en">
-            <h1>T5C Controls</h1>
+            <h1>Arkadii Quest Controls</h1>
             <h2>Keyboard and mouse</h2>
-            <p>Move with <kbd>W</kbd>, <kbd>A</kbd>, <kbd>S</kbd>, and <kbd>D</kbd>. Drag with the middle or right mouse button to rotate the camera, and use the wheel to zoom.</p>
+            <p>Move with <kbd>W</kbd>, <kbd>A</kbd>, <kbd>S</kbd>, and <kbd>D</kbd> or the arrow keys. The camera keeps a fixed isometric angle, follows your hero, looks ahead while moving, and adjusts distance automatically. The mouse wheel and dragging do not control it.</p>
             <p>Use <kbd>1</kbd> through <kbd>9</kbd> for hotbar actions, <kbd>E</kbd> to interact, <kbd>Tab</kbd> to select a nearby target, and <kbd>Enter</kbd> for chat.</p>
-            <p>Open Inventory, Quests, Abilities, Character, and Help with <kbd>I</kbd>, <kbd>J</kbd>, <kbd>K</kbd>, <kbd>C</kbd>, and <kbd>H</kbd>.</p>
+            <p>Open Inventory, Quests, Abilities, Character, and Help with <kbd>I</kbd>, <kbd>J</kbd>, <kbd>K</kbd>, <kbd>C</kbd>, and <kbd>H</kbd>. Press <kbd>F1</kbd> to reopen onboarding and <kbd>Escape</kbd> to close the active panel.</p>
             <h2>Touch screen</h2>
-            <p>Use the left joystick to move. Swipe the game world to rotate the camera, tap a character or object to select it, and tap the hotbar to use an action.</p>
-            <p>The buttons on the right select a nearby target, interact, open chat, and adjust zoom.</p>
+            <p>Use the left joystick to move while the camera follows, looks ahead, and adjusts distance automatically. Tap a character or object to select and interact, and tap the hotbar to use an action.</p>
+            <p>The buttons on the right select a nearby target, interact, and open chat. Use the guide button to reopen onboarding; swiping the world does not rotate the camera.</p>
         </main>
 
         <main data-language="ru" hidden>
-            <h1>Управление T5C</h1>
+            <h1>Управление в «Аркадия Квест»</h1>
             <h2>Клавиатура и мышь</h2>
-            <p>Перемещайтесь клавишами <kbd>W</kbd>, <kbd>A</kbd>, <kbd>S</kbd> и <kbd>D</kbd>. Для поворота камеры перемещайте мышь с зажатой средней или правой кнопкой, для изменения масштаба используйте колесо.</p>
+            <p>Перемещайтесь клавишами <kbd>W</kbd>, <kbd>A</kbd>, <kbd>S</kbd> и <kbd>D</kbd> или стрелками. Камера сохраняет фиксированный изометрический угол, следует за героем, смотрит вперёд при движении и автоматически меняет дистанцию. Колесо и перетаскивание мышью ей не управляют.</p>
             <p>Клавиши от <kbd>1</kbd> до <kbd>9</kbd> применяют действия нижней панели, <kbd>E</kbd> взаимодействует с ближайшим объектом, <kbd>Tab</kbd> выбирает цель, а <kbd>Enter</kbd> открывает чат.</p>
-            <p>Инвентарь, задания, умения, персонаж и справка открываются клавишами <kbd>I</kbd>, <kbd>J</kbd>, <kbd>K</kbd>, <kbd>C</kbd> и <kbd>H</kbd>.</p>
+            <p>Инвентарь, задания, умения, персонаж и справка открываются клавишами <kbd>I</kbd>, <kbd>J</kbd>, <kbd>K</kbd>, <kbd>C</kbd> и <kbd>H</kbd>. Нажмите <kbd>F1</kbd>, чтобы снова открыть обучение, и <kbd>Escape</kbd>, чтобы закрыть активное окно.</p>
             <h2>Сенсорный экран</h2>
-            <p>Перемещайтесь левым джойстиком. Проводите пальцем по игровому миру для поворота камеры, касайтесь персонажей и объектов для выбора, а умения применяйте с нижней панели.</p>
-            <p>Кнопки справа выбирают ближайшую цель, запускают взаимодействие, открывают чат и изменяют масштаб.</p>
+            <p>Перемещайтесь левым джойстиком, пока камера сама следует за героем, смотрит вперёд и меняет дистанцию. Касайтесь персонажей и объектов для выбора и взаимодействия, а умения применяйте с нижней панели.</p>
+            <p>Кнопки справа выбирают ближайшую цель, запускают взаимодействие и открывают чат. Кнопка справки снова открывает обучение; проведение по миру не поворачивает камеру.</p>
         </main>
 
         <script>
-            const locale = localStorage.getItem("t5c_locale") === "ru" ? "ru" : "en";
+            const storedLocale = localStorage.getItem("arkadii_quest_locale") ?? localStorage.getItem("t5c_locale");
+            const locale = storedLocale === "ru" ? "ru" : "en";
             document.documentElement.lang = locale;
             document.querySelectorAll("[data-language]").forEach((section) => {
                 section.hidden = section.dataset.language !== locale;

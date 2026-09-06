@@ -50,6 +50,10 @@ export class GameScene {
     public toSpawnPlayer: Player;
     public toSpawnOthers: Map<string, Entity | Item> = new Map();
     public playerIsSpawned = false;
+    private playerSpawnInProgress = false;
+    private playerSpawnGeneration = 0;
+    private activePlayerSpawnGeneration: number;
+    private pendingPlayer: Player;
 
     constructor() {}
 
@@ -72,8 +76,9 @@ export class GameScene {
         // check if user token is valid
         let user = await this._game.isValidLogin();
         if (!user) {
-            // if token not valid, send back to login screen
             this._game.setScene(State.LOGIN);
+            scene.dispose();
+            return;
         }
 
         // performance
@@ -162,7 +167,10 @@ export class GameScene {
         if (this._game.currentChat) {
             this._game.currentChat.leave();
         }
-        this._game.currentChat = await this._game.client.joinChatRoom({ name: this._game._currentCharacter.name });
+        this._game.currentChat = await this._game.client.joinChatRoom({
+            token: this._game._currentUser.token,
+            character_id: this._game._currentCharacter.id,
+        });
 
         // join the game room and use chat room session ID
         this.room = await this._game.client.joinOrCreateRoom(
@@ -210,6 +218,14 @@ export class GameScene {
         //  when a entity joins the room event
         this.room.state.entities.onAdd((entity, sessionId) => {
             if (entity.type === "player" && entity.sessionId === this.room.sessionId) {
+                // Invalidate a previous pending local-player spawn before queuing
+                // the latest state. Its async continuation will fail the
+                // generation check and cannot install a stale player.
+                this.playerSpawnGeneration++;
+                void this.pendingPlayer?.remove();
+                this.pendingPlayer = undefined;
+                this.activePlayerSpawnGeneration = undefined;
+                this.playerSpawnInProgress = false;
                 this.toSpawnPlayer = entity;
             } else {
                 this.toSpawnOthers.set(entity.sessionId, entity);
@@ -218,9 +234,25 @@ export class GameScene {
 
         // when an entity is removed
         this.room.state.entities.onRemove((entity, sessionId) => {
+            this.toSpawnOthers.delete(sessionId);
+
+            if (sessionId === this.room.sessionId) {
+                this.playerSpawnGeneration++;
+                this.toSpawnPlayer = undefined;
+                void this.pendingPlayer?.remove();
+                this.pendingPlayer = undefined;
+                this.activePlayerSpawnGeneration = undefined;
+                this.playerSpawnInProgress = false;
+                this.playerIsSpawned = false;
+            }
+
             if (this._entities.has(sessionId)) {
                 this._entities.get(sessionId)?.remove();
                 this._entities.delete(sessionId);
+            }
+
+            if (this._currentPlayer?.sessionId === sessionId) {
+                this._currentPlayer = undefined;
             }
         });
 
@@ -251,8 +283,8 @@ export class GameScene {
 
         // start game loop
         this._scene.registerBeforeRender(() => {
-            // get current delta
-            let delta = this._game.engine.getFps();
+            // Babylon systems expect elapsed milliseconds, not frames per second.
+            const delta = Math.min(this._game.engine.getDeltaTime(), 100);
 
             // process vat animations
             this._game._vatController.process(delta);
@@ -303,27 +335,8 @@ export class GameScene {
             }
 
             // spawn player
-            if (!this.playerIsSpawned && this.toSpawnPlayer) {
-                // create player entity
-                let _player = new Player(this.toSpawnPlayer.sessionId, this._scene, this, this.toSpawnPlayer);
-
-                // set currentPlayer
-                this._currentPlayer = _player;
-
-                // add player specific ui
-                this._ui.setCurrentPlayer(_player);
-
-                // add to entities
-                this._entities.set(this.toSpawnPlayer.sessionId, _player);
-
-                // hide
-                this._game.engine.hideLoadingUI();
-                if (this._game.controlMode === "keyboard") {
-                    this._game.engine.getRenderingCanvas()?.focus();
-                }
-
-                // only do it once
-                this.playerIsSpawned = true;
+            if (!this.playerIsSpawned && !this.playerSpawnInProgress && this.toSpawnPlayer) {
+                void this.spawnCurrentPlayer();
             }
         });
 
@@ -340,6 +353,66 @@ export class GameScene {
 
     engineUpdate() {}
 
+    private async spawnCurrentPlayer(): Promise<void> {
+        const generation = this.playerSpawnGeneration;
+        const playerState = this.toSpawnPlayer;
+        if (!playerState) {
+            return;
+        }
+
+        this.playerSpawnInProgress = true;
+        this.activePlayerSpawnGeneration = generation;
+        let player: Player;
+        try {
+            player = new Player(playerState.sessionId, this._scene, this, playerState);
+            this.pendingPlayer = player;
+            await player.ready;
+            if (!this.isCurrentPlayerSpawn(generation, playerState)) {
+                await player.remove();
+                return;
+            }
+
+            this.pendingPlayer = undefined;
+            this.toSpawnPlayer = undefined;
+            this._currentPlayer = player;
+            this._camera.attach(player);
+            this._ui.setCurrentPlayer(player);
+            this._entities.set(playerState.sessionId, player);
+            this.playerIsSpawned = true;
+
+            this._game.engine.hideLoadingUI();
+            this._input.showOnboarding();
+            if (this._game.controlMode === "keyboard" && document.getElementById("onboardingOverlay")?.hidden) {
+                this._game.engine.getRenderingCanvas()?.focus();
+            }
+        } catch (error) {
+            if (!this.isCurrentPlayerSpawn(generation, playerState)) {
+                await player?.remove();
+                return;
+            }
+
+            await player?.remove();
+            this.toSpawnPlayer = undefined;
+            console.error("[GAME] Unable to spawn the current player", error);
+            this._game.setScene(State.LOGIN);
+        } finally {
+            if (this.activePlayerSpawnGeneration === generation) {
+                this.pendingPlayer = undefined;
+                this.activePlayerSpawnGeneration = undefined;
+                this.playerSpawnInProgress = false;
+            }
+        }
+    }
+
+    private isCurrentPlayerSpawn(generation: number, playerState): boolean {
+        return (
+            !this._scene.isDisposed &&
+            generation === this.playerSpawnGeneration &&
+            this.toSpawnPlayer === playerState &&
+            playerState.sessionId === this.room.sessionId
+        );
+    }
+
     async spawn() {
         let amountToSpawn = 10;
         let i = 0;
@@ -349,7 +422,15 @@ export class GameScene {
 
             // if player
             if (entity.type === "player" || entity.type === "entity") {
-                this._entities.set(entity.sessionId, new Entity(entity.sessionId, this._scene, this, entity));
+                const spawnedEntity = new Entity(entity.sessionId, this._scene, this, entity);
+                this._entities.set(entity.sessionId, spawnedEntity);
+                spawnedEntity.ready.catch((error) => {
+                    console.error(`[GAME] Unable to spawn entity ${entity.sessionId}`, error);
+                    if (this._entities.get(entity.sessionId) === spawnedEntity) {
+                        this._entities.delete(entity.sessionId);
+                    }
+                    spawnedEntity.remove();
+                });
             }
 
             // if item

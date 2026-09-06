@@ -1,9 +1,9 @@
-# Localization and Controls
+# Localization, Onboarding, and Controls
 
-This document describes the bilingual entry flow and the two input profiles
-introduced on branch `feature/localization-control-modes`. The supported
-languages are English (`en`) and Russian (`ru`); the supported control modes
-are keyboard/mouse and touch screen.
+Arkadii Quest supports English (`en`) and Russian (`ru`) across its entry flow,
+active gameplay content, controls guide, and core UI. Players can use a
+keyboard-oriented desktop profile or a dedicated touch-screen profile. Both
+profiles share an automatic follow camera.
 
 ## Entry Preferences
 
@@ -13,13 +13,16 @@ normal login or development scene flow.
 
 | Preference | Default | Storage Key | Behavior |
 | --- | --- | --- | --- |
-| Language | Russian when `navigator.language` begins with `ru`; English otherwise | `t5c_locale` | Changes entry metadata, HTML text, Babylon GUI, game data, dialogs, entity names, help, and supported server notifications |
-| Controls | Touch on a coarse pointer or viewport below 700 px; keyboard/mouse otherwise | `t5c_control_mode` | Enables only the selected gameplay input profile and its matching help text |
+| Language | Russian when `navigator.language` begins with `ru`; English otherwise | `arkadii_quest_locale` | Changes entry metadata, HTML text, Babylon GUI, game data, dialogs, entity names, help, and supported server notifications |
+| Controls | Touch on a coarse pointer or viewport below 700 px; keyboard/mouse otherwise | `arkadii_quest_control_mode` | Enables only the selected gameplay input profile and its matching help text |
 
-Stored values preselect the next session, but the dialog remains available on
-every load so a shared device can change either preference before entering the
-game. If local storage is unavailable, the session still works with detected
-defaults.
+Stored values skip the dialog on later visits. A language-and-controls link on
+the login panel clears the choice and opens the setup again after reload. If
+local storage is unavailable, the session still works with detected defaults.
+
+The former `t5c_locale` and `t5c_control_mode` values are read once so existing
+players keep their preferences through the rebrand, copied to the current keys,
+and then removed.
 
 The setup surface is a native HTML `role="dialog"` with `aria-modal`, a visible
 heading and description, native radio inputs, keyboard focus styling, localized
@@ -51,6 +54,35 @@ literal key therefore fails TypeScript compilation, while the localization
 check catches dynamic data and HTML coverage that static typing cannot prove.
 English and Russian placeholders must match exactly.
 
+## Onboarding and the Controls Guide
+
+On first entry to the connected world, a localized onboarding surface explains
+the smallest useful play loop:
+
+1. Move the hero and see how the camera frames the road ahead.
+2. Select a target and use a hotbar ability.
+3. Open quests, inventory, or chat before exploring Arkadia.
+
+The guide includes an essential hotkey table rather than relying on a temporary
+toast. It can be dismissed without blocking normal play and reopened with `F1`
+on desktop; touch players use the persistent guide button. `Escape` closes it.
+Input shown in the guide follows the selected control profile and language.
+
+The guide should remain readable at desktop, phone portrait, and short
+landscape sizes. It must not overlap critical status bars or leave the touch HUD
+in a hidden state after closing.
+
+## Automatic Follow Camera
+
+The gameplay camera follows the active character and maintains the intended
+top-down framing automatically. Movement remains relative to that camera, but
+players do not need to steer the view separately.
+
+The desktop profile intentionally has no mouse-wheel zoom or right-/middle-drag
+rotation. The touch profile likewise does not require world-swipe rotation.
+Ignoring those legacy gestures prevents accidental view changes while
+scrolling, clicking, or dragging over the game.
+
 ## Keyboard and Mouse
 
 Keyboard gameplay input is ignored while a native field or Babylon chat input
@@ -59,9 +91,7 @@ not faster than movement on one axis.
 
 | Input | Action |
 | --- | --- |
-| `W`, `A`, `S`, `D` or arrow keys | Move relative to the current camera |
-| Right- or middle-button drag | Rotate the camera |
-| Mouse wheel | Zoom the camera |
+| `W`, `A`, `S`, `D` or arrow keys | Move relative to the automatic camera |
 | Left click | Select or interact with a visible entity/object through the existing world interaction |
 | `1` through `9` | Use the matching hotbar slot |
 | `E` | Interact with the nearest available character or object |
@@ -72,12 +102,12 @@ not faster than movement on one axis.
 | `K` | Open abilities |
 | `C` | Open character information/equipment |
 | `H` | Open help |
+| `F1` | Open the onboarding and controls guide |
 | `Escape` | Close active panels |
 | `Home` | Capture a game screenshot through the existing menu action |
 
 Movement is cleared when the window loses focus, the page becomes hidden, chat
-opens, or the scene is disposed. The canvas context menu is disabled only for
-the selected keyboard/mouse profile so right-drag camera control remains usable.
+opens, or the scene is disposed.
 
 ## Touch Screen
 
@@ -87,14 +117,16 @@ mouse events.
 | Control | Action |
 | --- | --- |
 | Lower-left virtual joystick | Analog, camera-relative movement with a dead zone and normalized speed |
-| Swipe on the 3D world | Rotate the camera |
 | Tap an entity or object | Use the existing selection/interaction path |
 | Bottom hotbar | Use abilities and items directly |
 | Interact button | Interact with the nearest available object or character |
 | Target button | Select the nearest valid target |
 | Chat button | Show or hide chat and its input |
-| Zoom buttons | Move the camera closer or farther away |
 | Main menu | Open inventory, quests, abilities, character, and help panels |
+| Guide button | Reopen onboarding and the touch controls reference |
+
+The camera follows the character automatically. Dragging the world is reserved
+for normal touch interaction and does not rotate the view.
 
 Interactive controls use approximately 44 CSS px or larger targets. The HUD,
 hotbar, joystick, action controls, status bars, chat, hints, and panels have
@@ -114,6 +146,9 @@ controls overflow by roughly the hardware scale factor.
 - Current language is reflected by the document `lang` attribute.
 - Dynamic labels, titles, descriptions, instructions, and ARIA names follow the
   selected language and control mode.
+- The onboarding/controls guide is localized and keyboard-dismissible. It can
+  be recalled with `F1` on desktop or the guide button on touch instead of
+  disappearing permanently.
 - Focus remains visible in the HTML shell and chat uses Babylon's official
   focused-control API.
 - Touch actions have stable target sizes and do not resize the surrounding HUD.
@@ -131,10 +166,10 @@ Run the deterministic localization audit:
 npm run check:localization
 ```
 
-The current check covers 180 UI keys, 81 localized content pairs, 49 HTML
-bindings, and 133 typed translation calls. It also verifies the source keys and
-shape of every active ability, item, race, quest, location spawn, dialog, and
-dialog action.
+The check reports catalog counts and verifies the source keys and shape of every
+active ability, item, race, quest, location spawn, dialog, and dialog action.
+Counts are intentionally not duplicated here because onboarding and rebranding
+change them as the catalogs evolve.
 
 Install a Playwright browser once when the machine has no compatible Chromium:
 
@@ -156,13 +191,13 @@ PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 
 The desktop project verifies persisted English/keyboard preferences, entry
 semantics, real WASD displacement, hotbar and menu hotkeys, interaction,
-targeting, chat focus/submission, panel closing, mouse camera rotation, and
-wheel zoom. The touch project verifies persisted Russian/touch preferences,
-real joystick displacement through native touch events, swipe camera rotation,
-localized target names, interaction, both zoom directions, hotbar use,
-touch-target sizes, chat, portrait panel fit, short-landscape panel fit, and
-panel/HUD separation. Both projects fail on page errors, console errors, or
-unexpected failed requests.
+targeting, chat focus/submission, panel closing, first-entry onboarding, `F1`
+recall, and stable automatic camera behavior. The touch project verifies
+persisted Russian/touch preferences, real joystick displacement through native
+touch events, automatic camera tracking, localized target names, interaction,
+hotbar use, touch-target sizes, chat, portrait panel fit, short-landscape panel
+fit, and panel/HUD separation. Both projects should fail on page errors,
+console errors, or unexpected failed requests.
 
 ## Patch Notes
 
@@ -173,9 +208,12 @@ unexpected failed requests.
 - Complete typed localization for active UI, gameplay content, help, dialogs,
   metadata, accessibility text, and supported server notifications.
 - Dedicated keyboard/mouse controls with WASD, number-row abilities, panel
-  hotkeys, nearest interaction/targeting, chat focus, and camera drag.
-- Dedicated touch controls with a virtual joystick, world swipe, contextual
-  action buttons, chat and zoom controls, responsive portrait/landscape HUDs.
+  hotkeys, nearest interaction/targeting, chat focus, and `F1` guidance.
+- Dedicated touch controls with a virtual joystick, contextual action buttons,
+  chat controls, and responsive portrait/landscape HUDs.
+- Localized first-entry onboarding and a reusable hotkey table.
+- Automatic follow camera without wheel zoom, drag rotation, or required touch
+  camera gestures.
 - Automated localization validation and desktop/touch Playwright coverage.
 
 ### Fixed
@@ -210,6 +248,8 @@ unexpected failed requests.
 
 - Language and input mode are selected before startup; switching them during an
   active world session requires reloading and choosing again.
+- Camera framing is intentionally automatic; manual rotation and zoom are not
+  exposed as player bindings.
 - Chat messages written by players are not machine translated.
 - Server notification translation covers current known templates. New server
   message templates must be added to the localization layer and its checks.

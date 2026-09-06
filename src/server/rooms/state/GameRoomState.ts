@@ -12,6 +12,14 @@ import { NavMesh, Vector3 } from "../../../shared/Libs/yuka-min";
 import Logger from "../../utils/Logger";
 import { ItemClass, ServerMsg, Speed } from "../../../shared/types";
 import { Config } from "../../../shared/Config";
+import { canProcessDebugMessages } from "../gameplayRules";
+
+const DEBUG_MESSAGE_TYPES = new Set<ServerMsg>([
+    ServerMsg.DEBUG_BOTS,
+    ServerMsg.DEBUG_INCREASE_ENTITIES,
+    ServerMsg.DEBUG_DECREASE_ENTITIES,
+    ServerMsg.DEBUG_REMOVE_ENTITIES,
+]);
 
 export class GameRoomState extends Schema {
     // networked variables
@@ -145,9 +153,6 @@ export class GameRoomState extends Schema {
 
         this.entityCTRL.add(new PlayerSchema(this, player));
 
-        // set player as online
-        this._gameroom.database.toggleOnlineStatus(client.auth.id, 1);
-
         // log
         Logger.info(`[gameroom][onJoin] player ${client.sessionId} joined room ${this._gameroom.roomId}.`);
     }
@@ -163,6 +168,7 @@ export class GameRoomState extends Schema {
 
         if (type === ServerMsg.PING) {
             client.send(ServerMsg.PONG, data);
+            return true;
         }
 
         ////////////////////////////////////
@@ -176,7 +182,11 @@ export class GameRoomState extends Schema {
         /////////////////////////////////////
         // on player ressurect
         if (type === ServerMsg.PLAYER_RESSURECT) {
+            if (!playerState.isDead) {
+                return false;
+            }
             playerState.ressurect();
+            return true;
         }
 
         // make sure player is not dead
@@ -193,7 +203,7 @@ export class GameRoomState extends Schema {
         /////////////////////////////////////
         // on player reset position
         if (type === ServerMsg.PLAYER_RESET_POSITION) {
-            playerState.resetPosition();
+            return playerState.resetPosition();
         }
 
         /////////////////////////////////////
@@ -205,7 +215,11 @@ export class GameRoomState extends Schema {
         /////////////////////////////////////
         // on player add stat point
         if (type === ServerMsg.PLAYER_ADD_STAT_POINT) {
-            let key = data.key;
+            const allowedStats = new Set(["strength", "agility", "endurance", "intelligence", "wisdom"]);
+            const key = typeof data?.key === "string" ? data.key : "";
+            if (!allowedStats.has(key)) {
+                return false;
+            }
             if (playerState.player_data.points > 0) {
                 // remove point
                 playerState.player_data.points -= 1;
@@ -223,23 +237,30 @@ export class GameRoomState extends Schema {
 
         // on player click to move
         if (type === ServerMsg.PLAYER_MOVE_TO) {
+            const x = Number(data?.x);
+            const y = Number(data?.y);
+            const z = Number(data?.z);
+            if (![x, y, z].every(Number.isFinite)) {
+                return false;
+            }
             //playerState.abilitiesCTRL.cancelAutoAttack(playerState);
-            playerState.moveCTRL.setTargetDestination(new Vector3(data.x, data.y, data.z));
+            playerState.moveCTRL.setTargetDestination(new Vector3(x, y, z));
         }
 
         /////////////////////////////////////
         // on player ressurect
         if (type === ServerMsg.PLAYER_PICKUP) {
             //playerState.abilitiesCTRL.cancelAutoAttack(playerState);
-            const itemState = this.getEntity(data.sessionId);
+            const sessionId = typeof data?.sessionId === "string" ? data.sessionId : "";
+            const itemState = sessionId ? this.getEntity(sessionId) : null;
             if (itemState) {
                 playerState.setTarget(itemState);
             }
         }
 
         if (type === ServerMsg.PLAYER_DROP_ITEM) {
-            let slot = data.slot;
-            let dropAll = data.drop_all ?? false;
+            const slot = data?.slot;
+            const dropAll = data?.drop_all === true;
             const item = playerState.getInventoryItemByIndex(slot);
             if (item) {
                 playerState.dropItem(item, dropAll);
@@ -247,14 +268,15 @@ export class GameRoomState extends Schema {
         }
 
         if (type === ServerMsg.PLAYER_BUY_ITEM) {
-            const item = this.gameData.get("item", data.key);
+            const key = typeof data?.key === "string" ? data.key : "";
+            const item = key ? this.gameData.get("item", key) : null;
             if (item) {
-                playerState.buyItem(item, data.qty);
+                playerState.buyItem(item, data?.qty);
             }
         }
 
         if (type === ServerMsg.PLAYER_SELL_ITEM) {
-            const index = data.index;
+            const index = data?.index;
             const item = playerState.getInventoryItemByIndex(index);
             if (item) {
                 playerState.sellItem(item);
@@ -265,7 +287,7 @@ export class GameRoomState extends Schema {
         // on player equip
         // data will equal the inventory index of the clicked item
         if (type === ServerMsg.PLAYER_USE_ITEM) {
-            const index = data.index;
+            const index = data?.index;
             const item = playerState.getInventoryItemByIndex(index);
             if (item) {
                 if (item.class === ItemClass.CONSUMABLE) {
@@ -279,33 +301,36 @@ export class GameRoomState extends Schema {
         /////////////////////////////////////
         // on player unequip
         if (type === ServerMsg.PLAYER_UNEQUIP_ITEM) {
-            const key = data.key;
-            const item = this.gameData.get("item", key);
-            // does item exist in database
-            if (item) {
-                playerState.unequipItem(item.key, item.slot);
+            const key = typeof data?.key === "string" ? data.key : "";
+            const equippedItem = key ? playerState.equipment.get(key) : null;
+            if (equippedItem) {
+                return playerState.unequipItem(key, equippedItem.slot);
             }
+            return false;
         }
 
         /////////////////////////////////////
         // on player unequip
         if (type === ServerMsg.PLAYER_QUEST_UPDATE) {
-            playerState.dynamicCTRL.questUpdate(data);
+            if (data && typeof data.key === "string" && Number.isInteger(data.status)) {
+                playerState.dynamicCTRL.questUpdate(data);
+            }
         }
 
         /////////////////////////////////////
         // player entity_attack
         if (type === ServerMsg.PLAYER_HOTBAR_ACTIVATED) {
-            // get players involved
-            let targetState = this.getEntity(data.targetId) as Entity;
-            let hotbarData = playerState.player_data.hotbar.get("" + data.digit);
-
-            Logger.warning(`[ServerMsg.PLAYER_HOTBAR_ACTIVATED]`, data.digit);
-
-            if (data.digit === 6) {
-                this.spawnCTRL.createItem(playerState);
+            const digit = Number(data?.digit);
+            if (!Number.isSafeInteger(digit) || digit < 1 || digit > this.config.PLAYER_HOTBAR_SIZE) {
                 return false;
             }
+
+            // get players involved
+            const targetId = typeof data?.targetId === "string" ? data.targetId : "";
+            let targetState = targetId ? (this.getEntity(targetId) as Entity) : null;
+            let hotbarData = playerState.player_data.hotbar.get("" + digit);
+
+            Logger.warning(`[ServerMsg.PLAYER_HOTBAR_ACTIVATED]`, digit);
 
             if (!hotbarData) {
                 return false;
@@ -322,7 +347,7 @@ export class GameRoomState extends Schema {
 
             // if ability
             if (hotbarData && hotbarData.type === "ability") {
-                playerState.abilitiesCTRL.addAbility(playerState, targetState, data);
+                playerState.abilitiesCTRL.addAbility(playerState, targetState, { ...data, digit });
                 return false;
             }
         }
@@ -330,46 +355,29 @@ export class GameRoomState extends Schema {
         /////////
         /////// DEBUG /////////////////
 
-        // debug: add random entities
-        if (type === ServerMsg.DEBUG_BOTS) {
-            this.spawnCTRL.debug_bots();
-        }
-
-        /*
-        if (process.env.NODE_ENV !== "production") {
-            let amountToChange = 100;
-
-            // debug: add 100 entities
-            if (type === ServerMsg.DEBUG_INCREASE_ENTITIES) {
-                this.spawnCTRL.debug_increase(amountToChange);
+        if (DEBUG_MESSAGE_TYPES.has(type)) {
+            if (!canProcessDebugMessages()) {
+                Logger.warning(`[gameroom] rejected debug message outside development`, ServerMsg[type]);
+                return false;
             }
 
-            // debug: delete 100 entities
-            if (type === ServerMsg.DEBUG_DECREASE_ENTITIES) {
-                let i = 1;
-                this.spawnCTRL.debug_decrease(amountToChange);
-                this.entities.forEach((entity) => {
-                    if (
-                        entity instanceof BrainSchema &&
-                        entity.AI_SPAWN_INFO &&
-                        (entity.AI_SPAWN_INFO.key === "lh_town_thief" || entity.AI_SPAWN_INFO.key === "lh_town_bandits") &&
-                        i <= amountToChange
-                    ) {
-                        this.spawnCTRL.removeEntity(entity);
-                        i++;
-                    }
-                });
+            if (type === ServerMsg.DEBUG_BOTS) {
+                this.spawnCTRL.debug_bots();
+                return true;
             }
-        }*/
 
-        if (type === ServerMsg.DEBUG_REMOVE_ENTITIES) {
-            if (this.entityCTRL.hasEntities()) {
+            if (type === ServerMsg.DEBUG_REMOVE_ENTITIES && this.entityCTRL.hasEntities()) {
                 this.entityCTRL.all.forEach((entity) => {
                     if (entity.type !== "player") {
                         this.spawnCTRL.removeEntity(entity);
                     }
                 });
+                return true;
             }
+
+            return false;
         }
+
+        return false;
     }
 }

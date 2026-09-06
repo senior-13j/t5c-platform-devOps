@@ -106,7 +106,7 @@ export class Panel {
     // create panel header
     private _createContentPanel() {
         const panelContent: Rectangle = new Rectangle("panelContent");
-        panelContent.top = "30px;";
+        panelContent.top = "30px";
         panelContent.left = 0;
         panelContent.width = 1;
         panelContent.height = 0.91;
@@ -128,7 +128,7 @@ export class Panel {
         panelHeader.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         panelHeader.color = "rgba(0,0,0,1)";
         panelHeader.thickness = 0;
-        panelHeader.fontFamily = "gamefont, Arial, sans-serif";
+        panelHeader.fontFamily = "Georgia, Times New Roman, serif";
         this._panel.addControl(panelHeader);
         this._panelHeader = panelHeader;
 
@@ -181,6 +181,10 @@ export class Panel {
 
     // open panel
     public open(): void {
+        // Babylon GUI measures controls on a render frame. Re-apply the current
+        // viewport before showing a panel so an orientation change cannot flash
+        // the previous portrait/landscape dimensions.
+        this.resize();
         const visible = this._panel.isVisible;
 
         if (this._game.controlMode === "touch" && !visible) {

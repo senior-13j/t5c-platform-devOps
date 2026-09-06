@@ -81,11 +81,18 @@ export class TouchControls {
     }
 
     private bindActions(): void {
-        this.bindButton("touchInteractButton", () => this.gameScene._currentPlayer?.interactWithNearest());
-        this.bindButton("touchTargetButton", () => this.gameScene._currentPlayer?.selectNearestTarget());
-        this.bindButton("touchChatButton", () => this.gameScene._ui?.toggleChat());
-        this.bindButton("touchZoomInButton", () => this.gameScene._currentPlayer?.cameraController.zoom(-1));
-        this.bindButton("touchZoomOutButton", () => this.gameScene._currentPlayer?.cameraController.zoom(1));
+        this.bindButton("touchInteractButton", () => {
+            this.gameScene._currentPlayer?.interactWithNearest();
+            this.input.recordTutorialAction("explore");
+        });
+        this.bindButton("touchTargetButton", () => {
+            this.gameScene._currentPlayer?.selectNearestTarget();
+            this.input.recordTutorialAction("combat");
+        });
+        this.bindButton("touchChatButton", () => {
+            this.gameScene._ui?.toggleChat();
+            this.input.recordTutorialAction("explore");
+        });
     }
 
     private bindButton(id: string, action: () => void): void {

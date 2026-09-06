@@ -80,13 +80,13 @@ export class Panel_Abilities extends Panel {
             skillsPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             skillsPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             skillsPanel.top = "0px";
-            skillsPanel.left = "0px;";
+            skillsPanel.left = "0px";
             skillsPanel.width = 1;
             skillsPanel.height = "50px";
             skillsPanel.background = "#CCC";
             skillsPanel.thickness = 1;
-            skillsPanel.paddingLeft = "5px;";
-            skillsPanel.paddingBottom = "5px;";
+            skillsPanel.paddingLeft = "5px";
+            skillsPanel.paddingBottom = "5px";
             applyTheme(skillsPanel);
             skillsPanelStack.addControl(skillsPanel);
 
@@ -95,9 +95,9 @@ export class Panel_Abilities extends Panel {
             imageBLoc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             imageBLoc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             imageBLoc.top = "0px";
-            imageBLoc.left = "0px;";
-            imageBLoc.width = "40px;";
-            imageBLoc.height = "40px;";
+            imageBLoc.left = "0px";
+            imageBLoc.width = "40px";
+            imageBLoc.height = "40px";
             imageBLoc.thickness = 0;
             skillsPanel.addControl(imageBLoc);
             var imageData = this._loadedAssets[ability.icon];
@@ -118,7 +118,7 @@ export class Panel_Abilities extends Panel {
             tooltipName.color = "#FFF";
             tooltipName.top = "5px";
             tooltipName.left = "50px";
-            tooltipName.fontSize = "18px;";
+            tooltipName.fontSize = "18px";
             tooltipName.resizeToFit = true;
             tooltipName.text = ability.title;
             tooltipName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -131,7 +131,7 @@ export class Panel_Abilities extends Panel {
             abilityDescr.color = "rgba(255,255,255,.6)";
             abilityDescr.top = "0px";
             abilityDescr.left = "50px";
-            abilityDescr.fontSize = "12px;";
+            abilityDescr.fontSize = "12px";
             abilityDescr.resizeToFit = true;
             abilityDescr.text = ability.description;
             abilityDescr.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;

@@ -1,6 +1,6 @@
 # Public Deployment
 
-This guide describes how to run T5C publicly at:
+This guide describes how to run Arkadii Quest publicly at:
 
 ```text
 https://arkadii.world/game/
@@ -22,7 +22,7 @@ public `80`/`443` bindings.
 | Host firewall allows only the intended public ports | MySQL, Prometheus, Grafana, and the Node.js port should stay private |
 | Database backup is verified | Existing plaintext credentials migrate to `scrypt` after successful login |
 | Asset provenance has been reviewed | Public release must have a source/license record for shipped models, textures, audio, and fonts |
-| Localization and both input profiles pass QA | Public users must be able to enter, move, act, chat, and manage panels in English/Russian on desktop and touch devices |
+| Localization, onboarding, automatic camera, and both input profiles pass QA | Public users must be able to learn the controls, enter, move, act, chat, and manage panels in English/Russian on desktop and touch devices |
 
 ## Public Architecture
 
@@ -252,6 +252,13 @@ The public MySQL volume is:
 t5c-platform-public_mysql_data
 ```
 
+This volume name, the `t5c` database/user defaults, and the `t5c_*` Prometheus
+series are temporary legacy compatibility identifiers. They are internal and
+do not represent the Arkadii Quest brand. Do not rename them during a routine
+deployment: an uncoordinated change can attach an empty volume, break database
+access, or orphan dashboards. Migrate only with verified backups and a planned
+cutover across Compose, SQL grants, restore procedures, and metrics consumers.
+
 ## Operations
 
 | Task | Command |
@@ -271,19 +278,24 @@ After a public rollout:
    both a desktop and a narrow touch viewport.
 2. Complete the entry dialog once in English keyboard/mouse mode and once in
    Russian touch mode; verify translated login/game content in both sessions.
-3. On desktop, verify WASD movement, mouse camera rotation, `1`-`9`, panel
-   hotkeys, nearest targeting/interaction, and chat.
-4. On a phone or tablet, verify joystick movement, world swipe, hotbar, action,
-   chat, zoom, menu panels, portrait layout, and short-landscape layout.
-5. Confirm keyboard focus remains visible and every touch action has a practical
+3. Enter the world as a new player, complete the localized onboarding prompt,
+   dismiss it, and verify that `F1` reopens the controls table on desktop and
+   the guide button reopens it on touch.
+4. On desktop, verify WASD movement, stable automatic follow-camera behavior,
+   `1`-`9`, panel hotkeys, nearest targeting/interaction, and chat. Confirm that
+   wheel and mouse-drag input do not rotate or zoom the gameplay camera.
+5. On a phone or tablet, verify joystick movement, automatic camera tracking,
+   hotbar, contextual actions, chat, menu panels, portrait layout, and
+   short-landscape layout without requiring world-swipe camera control.
+6. Confirm keyboard focus remains visible and every touch action has a practical
    target size without HUD/panel overlap.
-6. Run Lighthouse against `https://arkadii.world/game/` for Performance,
+7. Run Lighthouse against `https://arkadii.world/game/` for Performance,
    Accessibility, Best Practices, and SEO.
-7. Confirm the canonical URL and bilingual `VideoGame` JSON-LD in the delivered
+8. Confirm the canonical URL and bilingual `VideoGame` JSON-LD in the delivered
    HTML.
-8. Submit `https://arkadii.world/sitemap.xml` to the search-engine webmaster
+9. Submit `https://arkadii.world/sitemap.xml` to the search-engine webmaster
    tools used for the domain.
-9. Verify docs navigation opens localization/controls, API/security, and
+10. Verify docs navigation opens localization/controls, API/security, and
    game-quality documents.
 
 The branch audit measured 80/100/100/100 for Performance, Accessibility, Best
@@ -305,8 +317,8 @@ host, network, and proxy load; semantic/discovery checks should remain stable.
 - Add rate limiting and production CORS restrictions before treating the
   prototype login and Quick Play endpoints as a hardened account service.
 - Add backups before depending on the public MySQL volume for persistent data.
-- Resolve the asset provenance gaps recorded in the game quality audit before a
-  commercial release.
+- Resolve the asset provenance gaps recorded in the repository root
+  `THIRD_PARTY_ASSETS.md` before a commercial release.
 
 ## Troubleshooting
 

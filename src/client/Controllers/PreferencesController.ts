@@ -1,19 +1,25 @@
 import { ControlMode, Locale, TranslationKey, TranslationParams, t } from "../i18n";
 
-const LOCALE_STORAGE_KEY = "t5c_locale";
-const CONTROL_STORAGE_KEY = "t5c_control_mode";
+const LOCALE_STORAGE_KEY = "arkadii_quest_locale";
+const CONTROL_STORAGE_KEY = "arkadii_quest_control_mode";
+const LEGACY_LOCALE_STORAGE_KEY = "t5c_locale";
+const LEGACY_CONTROL_STORAGE_KEY = "t5c_control_mode";
 
 export class PreferencesController {
     public locale: Locale;
     public controlMode: ControlMode;
 
     private readonly recommendedControlMode: ControlMode;
+    private readonly hasPersistedPreferences: boolean;
 
     constructor() {
         this.recommendedControlMode = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 700 ? "touch" : "keyboard";
+        this.migrateLegacyPreferences();
+        this.hasPersistedPreferences = this.hasStoredSelection();
         this.locale = this.readLocale();
         this.controlMode = this.readControlMode();
         this.applyDocumentTranslations();
+        this.bindPreferencesReset();
     }
 
     public t(key: TranslationKey, params: TranslationParams = {}): string {
@@ -24,6 +30,11 @@ export class PreferencesController {
         const overlay = document.getElementById("entrySetupOverlay");
         const form = document.getElementById("entrySetupForm") as HTMLFormElement;
         if (!overlay || !form) {
+            return;
+        }
+
+        if (this.hasPersistedPreferences) {
+            overlay.hidden = true;
             return;
         }
 
@@ -89,6 +100,14 @@ export class PreferencesController {
             .forEach((meta) => {
                 meta.content = this.t("meta.description");
             });
+        const applicationName = document.querySelector<HTMLMetaElement>('meta[name="application-name"]');
+        if (applicationName) {
+            applicationName.content = this.t("brand.name");
+        }
+        const openGraphLocale = document.querySelector<HTMLMetaElement>('meta[property="og:locale"]');
+        if (openGraphLocale) {
+            openGraphLocale.content = this.locale === "ru" ? "ru_RU" : "en_US";
+        }
 
         document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((element) => {
             const key = element.dataset.i18n as TranslationKey;
@@ -101,6 +120,10 @@ export class PreferencesController {
         document.querySelectorAll<HTMLElement>("[data-i18n-title]").forEach((element) => {
             const key = element.dataset.i18nTitle as TranslationKey;
             element.setAttribute("title", this.t(key));
+        });
+        document.querySelectorAll<HTMLElement>("[data-i18n-alt]").forEach((element) => {
+            const key = element.dataset.i18nAlt as TranslationKey;
+            element.setAttribute("alt", this.t(key));
         });
 
         const instructions = document.getElementById("gameInstructionsText");
@@ -125,6 +148,54 @@ export class PreferencesController {
             localStorage.setItem(CONTROL_STORAGE_KEY, this.controlMode);
         } catch (error) {
             console.warn("[PREFERENCES] Unable to persist browser preferences", error);
+        }
+    }
+
+    private bindPreferencesReset(): void {
+        const button = document.getElementById("changePreferencesButton") as HTMLButtonElement;
+        if (!button) {
+            return;
+        }
+        button.onclick = () => {
+            try {
+                localStorage.removeItem(LOCALE_STORAGE_KEY);
+                localStorage.removeItem(CONTROL_STORAGE_KEY);
+                localStorage.removeItem(LEGACY_LOCALE_STORAGE_KEY);
+                localStorage.removeItem(LEGACY_CONTROL_STORAGE_KEY);
+            } catch {
+                // Reload still gives the player another chance to choose preferences.
+            }
+            window.location.reload();
+        };
+    }
+
+    private hasStoredSelection(): boolean {
+        try {
+            const locale = localStorage.getItem(LOCALE_STORAGE_KEY);
+            const controls = localStorage.getItem(CONTROL_STORAGE_KEY);
+            return (locale === "en" || locale === "ru") && (controls === "keyboard" || controls === "touch");
+        } catch {
+            return false;
+        }
+    }
+
+    private migrateLegacyPreferences(): void {
+        try {
+            const legacyLocale = localStorage.getItem(LEGACY_LOCALE_STORAGE_KEY);
+            const legacyControls = localStorage.getItem(LEGACY_CONTROL_STORAGE_KEY);
+            if (!localStorage.getItem(LOCALE_STORAGE_KEY) && (legacyLocale === "en" || legacyLocale === "ru")) {
+                localStorage.setItem(LOCALE_STORAGE_KEY, legacyLocale);
+            }
+            if (
+                !localStorage.getItem(CONTROL_STORAGE_KEY) &&
+                (legacyControls === "keyboard" || legacyControls === "touch")
+            ) {
+                localStorage.setItem(CONTROL_STORAGE_KEY, legacyControls);
+            }
+            localStorage.removeItem(LEGACY_LOCALE_STORAGE_KEY);
+            localStorage.removeItem(LEGACY_CONTROL_STORAGE_KEY);
+        } catch {
+            // Private browsing can reject storage; defaults still work.
         }
     }
 

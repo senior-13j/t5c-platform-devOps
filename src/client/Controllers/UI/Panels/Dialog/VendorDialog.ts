@@ -42,7 +42,7 @@ export class VendorDialog {
         const touchMode = this.panel._game.controlMode === "touch";
         const actionHeight = this.panel.getActionHeight();
         const createBtn = Button.CreateSimpleButton("characterBtn", this.panel._game.t("common.back"));
-        createBtn.left = "0px;";
+        createBtn.left = "0px";
         createBtn.top = "0px";
         createBtn.width = 1;
         createBtn.height = actionHeight;
@@ -102,7 +102,7 @@ export class VendorDialog {
                 blocContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
                 blocContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 blocContainer.top = "0px";
-                blocContainer.left = "0px;";
+                blocContainer.left = "0px";
                 blocContainer.width = 1;
                 blocContainer.height = touchMode ? "44px" : "25px";
                 blocContainer.background = this.backgroundColor;
@@ -198,7 +198,7 @@ export class VendorDialog {
         actionBloc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         actionBloc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         actionBloc.top = "0px";
-        actionBloc.left = "0px;";
+        actionBloc.left = "0px";
         actionBloc.width = 1;
         actionBloc.height = touchMode ? "48px" : "35px";
         actionBloc.thickness = 0;
@@ -207,7 +207,7 @@ export class VendorDialog {
         const sellBtn = Button.CreateSimpleButton("sellBtn", this.panel._game.t("inventory.sell"));
         sellBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         sellBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        sellBtn.left = "0px;";
+        sellBtn.left = "0px";
         sellBtn.top = "0px";
         sellBtn.width = touchMode ? "116px" : "100px";
         sellBtn.height = actionHeight;
@@ -246,7 +246,7 @@ export class VendorDialog {
         const plusBtn = Button.CreateSimpleButton("plusBtn", "+");
         plusBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         plusBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        plusBtn.left = "0px;";
+        plusBtn.left = "0px";
         plusBtn.top = "0px";
         plusBtn.width = touchMode ? "38px" : "24px";
         plusBtn.height = actionHeight;
@@ -330,9 +330,9 @@ export class VendorDialog {
         titleBloc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         titleBloc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         titleBloc.top = "5px";
-        titleBloc.left = "0px;";
+        titleBloc.left = "0px";
         titleBloc.width = 1;
-        titleBloc.height = "35px;";
+        titleBloc.height = "35px";
         titleBloc.thickness = 0;
         stackPanel.addControl(titleBloc);
 
@@ -341,9 +341,9 @@ export class VendorDialog {
         imageBLoc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         imageBLoc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         imageBLoc.top = "0px";
-        imageBLoc.left = "0px;";
-        imageBLoc.width = "30px;";
-        imageBLoc.height = "30px;";
+        imageBLoc.left = "0px";
+        imageBLoc.width = "30px";
+        imageBLoc.height = "30px";
         imageBLoc.thickness = 0;
         titleBloc.addControl(imageBLoc);
 
@@ -358,7 +358,7 @@ export class VendorDialog {
         tooltipName.color = "#FFF";
         tooltipName.top = "0px";
         tooltipName.left = "40px";
-        tooltipName.fontSize = "18px;";
+        tooltipName.fontSize = "18px";
         tooltipName.fontWeight = "bold;";
         tooltipName.resizeToFit = true;
         tooltipName.textWrapping = TextWrapping.WordWrap;
@@ -375,7 +375,7 @@ export class VendorDialog {
         abilityDescr.color = "rgba(255,255,255,.6)";
         abilityDescr.top = 0;
         abilityDescr.left = "0px";
-        abilityDescr.fontSize = "12px;";
+        abilityDescr.fontSize = "12px";
         abilityDescr.textWrapping = TextWrapping.WordWrap;
         abilityDescr.resizeToFit = true;
         abilityDescr.text = item.description;
@@ -395,7 +395,7 @@ export class VendorDialog {
         requiredBloc.color = "rgba(255,255,255,.6)";
         requiredBloc.top = 0;
         requiredBloc.left = "0px";
-        requiredBloc.fontSize = "12px;";
+        requiredBloc.fontSize = "12px";
         requiredBloc.color = "orange";
         requiredBloc.textWrapping = TextWrapping.WordWrap;
         requiredBloc.resizeToFit = true;

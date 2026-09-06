@@ -84,7 +84,7 @@ export class TrainerDialog {
         const touchMode = this.panel._game.controlMode === "touch";
         const actionHeight = this.panel.getActionHeight();
         const createBtn = Button.CreateSimpleButton("characterBtn", this.panel._game.t("common.back"));
-        createBtn.left = "0px;";
+        createBtn.left = "0px";
         createBtn.top = "0px";
         createBtn.width = 1;
         createBtn.height = actionHeight;
@@ -130,7 +130,7 @@ export class TrainerDialog {
                 blocContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
                 blocContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 blocContainer.top = "0px";
-                blocContainer.left = "0px;";
+                blocContainer.left = "0px";
                 blocContainer.width = 1;
                 blocContainer.height = touchMode ? "44px" : "25px";
                 blocContainer.background = this.backgroundColor;
@@ -227,7 +227,7 @@ export class TrainerDialog {
         titleBloc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         titleBloc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         titleBloc.top = "5px";
-        titleBloc.left = "0px;";
+        titleBloc.left = "0px";
         titleBloc.width = 1;
             titleBloc.height = touchMode ? "46px" : "35px";
         titleBloc.thickness = 0;
@@ -237,7 +237,7 @@ export class TrainerDialog {
             const createBtn = Button.CreateSimpleButton("learnBTN", this.panel._game.t("trainer.train"));
             createBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             createBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-            createBtn.left = "-5px;";
+            createBtn.left = "-5px";
             createBtn.top = "5px";
             createBtn.width = touchMode ? "82px" : "50px";
             createBtn.height = touchMode ? "40px" : "20px";
@@ -265,7 +265,7 @@ export class TrainerDialog {
             const createBtn = Button.CreateSimpleButton("learnBTN", this.panel._game.t("trainer.train"));
             createBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             createBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-            createBtn.left = "-5px;";
+            createBtn.left = "-5px";
             createBtn.top = "5px";
             createBtn.width = touchMode ? "82px" : "50px";
             createBtn.height = touchMode ? "40px" : "20px";
@@ -280,9 +280,9 @@ export class TrainerDialog {
         imageBLoc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         imageBLoc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         imageBLoc.top = "0px";
-        imageBLoc.left = "0px;";
-        imageBLoc.width = "30px;";
-        imageBLoc.height = "30px;";
+        imageBLoc.left = "0px";
+        imageBLoc.width = "30px";
+        imageBLoc.height = "30px";
         imageBLoc.thickness = 0;
         titleBloc.addControl(imageBLoc);
 
@@ -296,7 +296,7 @@ export class TrainerDialog {
         tooltipName.color = "#FFF";
         tooltipName.top = "5px";
         tooltipName.left = "40px";
-        tooltipName.fontSize = "18px;";
+        tooltipName.fontSize = "18px";
         tooltipName.resizeToFit = true;
         tooltipName.text = ability.title;
         tooltipName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -310,7 +310,7 @@ export class TrainerDialog {
         abilityDescr.color = "rgba(255,255,255,.6)";
         abilityDescr.top = 0;
         abilityDescr.left = "0px";
-        abilityDescr.fontSize = "12px;";
+        abilityDescr.fontSize = "12px";
         abilityDescr.textWrapping = TextWrapping.WordWrap;
         abilityDescr.resizeToFit = true;
         abilityDescr.text = ability.description;
@@ -348,7 +348,7 @@ export class TrainerDialog {
         requiredBloc.color = "rgba(255,255,255,.6)";
         requiredBloc.top = 0;
         requiredBloc.left = "0px";
-        requiredBloc.fontSize = "12px;";
+        requiredBloc.fontSize = "12px";
         requiredBloc.color = "orange";
         requiredBloc.textWrapping = TextWrapping.WordWrap;
         requiredBloc.resizeToFit = true;

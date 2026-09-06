@@ -2,13 +2,13 @@ import Logger from "./utils/Logger";
 import { DB_MYSQL } from "./utils/database/mysql";
 import type { DB_SQLLITE } from "./utils/database/sqllite";
 import { nanoid } from "nanoid";
-import { PlayerCharacter, PlayerSlots, PlayerUser } from "../shared/types";
+import { PlayerSlots } from "../shared/types";
+import type { PlayerCharacter, PlayerUser } from "../shared/types";
 import { ParsedQs } from "qs";
-import { InventorySchema } from "./rooms/schema/player/InventorySchema";
-import { AbilitySchema } from "./rooms/schema/player/AbilitySchema";
-import { EquipmentSchema, HotbarSchema, PlayerSchema, QuestSchema } from "./rooms/schema";
-import { MapSchema } from "@colyseus/schema/lib/types/MapSchema";
-import { Config } from "../shared/Config";
+import type { InventorySchema } from "./rooms/schema/player/InventorySchema";
+import type { AbilitySchema } from "./rooms/schema/player/AbilitySchema";
+import type { EquipmentSchema, HotbarSchema, QuestSchema } from "./rooms/schema";
+import type { Config } from "../shared/Config";
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
@@ -19,6 +19,7 @@ class Database {
     private debug: boolean = true;
     private _config: Config;
     private querier: DB_MYSQL | DB_SQLLITE;
+    private closePromise?: Promise<void>;
 
     constructor(config) {
         this._config = config;
@@ -42,6 +43,17 @@ class Database {
     async create() {
         await this.querier.createDatabase();
         Logger.info("[database] database schema ready");
+    }
+
+    async close(): Promise<void> {
+        if (!this.querier) {
+            return;
+        }
+
+        if (!this.closePromise) {
+            this.closePromise = this.querier.close();
+        }
+        await this.closePromise;
     }
 
     ///////////////////////////////////////
@@ -146,12 +158,20 @@ class Database {
     ///////////////////////////////////////
 
     async getCharacter(id: number) {
-        let character = await this.querier.get(`SELECT * FROM characters WHERE id=?;`, [id]);
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return null;
+        }
+
+        const character = await this.querier.get(`SELECT * FROM characters WHERE id=?;`, [id]);
+        if (!character) {
+            return null;
+        }
+
         character.abilities = await this.querier.all(`SELECT CA.* FROM character_abilities CA WHERE CA.owner_id=? ORDER BY CA.id ASC;`, [id]);
         character.hotbar = await this.querier.all(`SELECT CA.* FROM character_hotbar CA WHERE CA.owner_id=? ORDER BY CA.digit ASC;`, [id]);
         character.inventory = await this.querier.all(`SELECT CI.* FROM character_inventory CI WHERE CI.owner_id=?;`, [id]);
         character.equipment = await this.querier.all(`SELECT CI.* FROM character_equipment CI WHERE CI.owner_id=?;`, [id]);
-        character.quests = await this.querier.all(`SELECT CI.* FROM character_quests CI WHERE CI.owner_id=? AND CI.status=?;`, [id, 0]);
+        character.quests = await this.querier.all(`SELECT CI.* FROM character_quests CI WHERE CI.owner_id=?;`, [id]);
         return character;
     }
 
@@ -160,7 +180,11 @@ class Database {
     }
 
     async createCharacter(token, name, race, material, head) {
-        let user = await this.getUserByToken(token);
+        const user = await this.getUserByToken(token);
+        if (!user || !Number.isSafeInteger(Number(user.id)) || Number(user.id) <= 0) {
+            return null;
+        }
+
         let characterId = await (<any>this.querier.run(
             `INSERT INTO characters (
                     user_id, 
@@ -262,126 +286,116 @@ class Database {
         ];
         for (const item of items) {
             const sql = "INSERT INTO character_inventory (`owner_id`, `qty`, `order`, `key`) VALUES (?,?,?,?)";
-            this.querier.run(sql, [characterId, item.qty, 1, item.key]);
+            await this.querier.run(sql, [characterId, item.qty, 1, item.key]);
         }
 
         return await this.getCharacter(characterId);
     }
 
     async updateCharacter(character_id: number, data) {
-        let p = [];
-        p["location"] = data.location;
-        p["x"] = data.x;
-        p["y"] = data.y;
-        p["z"] = data.z;
-        p["rot"] = data.rot;
-        if (data.level) {
-            p["level"] = data.level;
-        }
-        if (data.maxHealth) {
-            p["health"] = data.maxHealth;
-        }
-        if (data.maxMana) {
-            p["mana"] = data.maxMana;
-        }
-
-        if (data.player_data) {
-            p["gold"] = data.player_data.gold ?? 0;
-            p["experience"] = data.player_data.experience ?? 0;
-            p["points"] = data.player_data.points ?? 0;
-            p["strength"] = data.player_data.strength ?? 0;
-            p["endurance"] = data.player_data.endurance ?? 0;
-            p["agility"] = data.player_data.agility ?? 0;
-            p["intelligence"] = data.player_data.intelligence ?? 0;
-            p["wisdom"] = data.player_data.wisdom ?? 0;
-        }
-
-        let sql = "UPDATE characters SET ";
-
-        for (let i in p) {
-            const el = p[i];
-            sql += i + "='" + el + "',";
-        }
-        sql = sql.slice(0, -1);
-        sql += " WHERE id= " + character_id;
-        //console.log(sql);
-        return this.querier.run(sql, []);
+        const playerData = data?.player_data ?? {};
+        const sql = `UPDATE characters SET
+            location=?, x=?, y=?, z=?, rot=?, level=?, health=?, mana=?,
+            gold=?, experience=?, points=?, strength=?, endurance=?, agility=?, intelligence=?, wisdom=?
+            WHERE id=?;`;
+        return this.querier.run(sql, [
+            data.location,
+            data.x,
+            data.y,
+            data.z,
+            data.rot,
+            data.level,
+            data.maxHealth,
+            data.maxMana,
+            playerData.gold ?? 0,
+            playerData.experience ?? 0,
+            playerData.points ?? 0,
+            playerData.strength ?? 0,
+            playerData.endurance ?? 0,
+            playerData.agility ?? 0,
+            playerData.intelligence ?? 0,
+            playerData.wisdom ?? 0,
+            character_id,
+        ]);
     }
 
     // removes and saves character hotbar
     // terrible way to do it
-    async saveHotbar(character_id: number, hotbar: MapSchema<HotbarSchema, string>) {
+    async saveHotbar(character_id: number, hotbar: ReadonlyArray<Pick<HotbarSchema, "digit" | "type" | "key">>) {
         const sql = `DELETE FROM character_hotbar WHERE owner_id=?;`;
         await this.querier.run(sql, [character_id]);
-        if (hotbar && hotbar.size > 0) {
-            hotbar.forEach((item) => {
-                this.querier.run("INSERT INTO character_hotbar (`owner_id`, `digit`, `type`, `key`) VALUES (?,?,?,?);", [
+        if (hotbar?.length > 0) {
+            for (const item of hotbar) {
+                await this.querier.run("INSERT INTO character_hotbar (`owner_id`, `digit`, `type`, `key`) VALUES (?,?,?,?);", [
                     character_id,
                     item.digit,
                     item.type,
                     item.key,
                 ]);
-            });
+            }
         }
     }
 
     // removes and saves character items
     // terrible way to do it
-    async saveItems(character_id: number, items: MapSchema<InventorySchema, string>) {
+    async saveItems(character_id: number, items: ReadonlyArray<Pick<InventorySchema, "qty" | "key">>) {
         const sql = `DELETE FROM character_inventory WHERE owner_id=?;`;
         await this.querier.run(sql, [character_id]);
-        if (items && items.size > 0) {
-            let sqlItems = "INSERT INTO character_inventory (`owner_id`, `qty`, `key`) VALUES ";
-            items.forEach((element: InventorySchema) => {
-                sqlItems += ` ('${character_id}', '${element.qty}', '${element.key}'),`;
-            });
-            sqlItems = sqlItems.slice(0, -1);
-            return await this.querier.run(sqlItems);
+        if (items?.length > 0) {
+            for (const item of items) {
+                await this.querier.run(
+                    "INSERT INTO character_inventory (`owner_id`, `qty`, `key`) VALUES (?,?,?);",
+                    [character_id, item.qty, item.key]
+                );
+            }
         }
     }
 
     // removes and saves character abilities
     // terrible way to do it
-    async saveAbilities(character_id: number, abilities: MapSchema<AbilitySchema, string>) {
+    async saveAbilities(character_id: number, abilities: ReadonlyArray<Pick<AbilitySchema, "key">>) {
         const sql = `DELETE FROM character_abilities WHERE owner_id=?;`;
         await this.querier.run(sql, [character_id]);
-        if (abilities && abilities.size > 0) {
-            let sqlItems = "INSERT INTO character_abilities (`owner_id`, `key`) VALUES ";
-            abilities.forEach((element: AbilitySchema) => {
-                sqlItems += ` ('${character_id}', '${element.key}'),`;
-            });
-            sqlItems = sqlItems.slice(0, -1);
-            return await this.querier.run(sqlItems);
+        if (abilities?.length > 0) {
+            for (const ability of abilities) {
+                await this.querier.run("INSERT INTO character_abilities (`owner_id`, `key`) VALUES (?,?);", [
+                    character_id,
+                    ability.key,
+                ]);
+            }
         }
     }
 
     // removes and saves character equipment
     // terrible way to do it
-    async saveEquipment(character_id: number, equipments: MapSchema<EquipmentSchema, string>) {
+    async saveEquipment(character_id: number, equipments: ReadonlyArray<Pick<EquipmentSchema, "key" | "slot">>) {
         const sql = `DELETE FROM character_equipment WHERE owner_id=?;`;
         await this.querier.run(sql, [character_id]);
-        if (equipments && equipments.size > 0) {
-            let sqlString = "INSERT INTO character_equipment (`owner_id`, `key`, `slot`) VALUES ";
-            equipments.forEach((element: EquipmentSchema) => {
-                sqlString += ` ('${character_id}', '${element.key}', '${element.slot}'),`;
-            });
-            sqlString = sqlString.slice(0, -1);
-            return await this.querier.run(sqlString);
+        if (equipments?.length > 0) {
+            for (const equipment of equipments) {
+                await this.querier.run("INSERT INTO character_equipment (`owner_id`, `key`, `slot`) VALUES (?,?,?);", [
+                    character_id,
+                    equipment.key,
+                    equipment.slot,
+                ]);
+            }
         }
     }
 
     // removes and saves quests
     // terrible way to do it
-    async saveQuests(character_id: number, quests: MapSchema<QuestSchema, string>) {
+    async saveQuests(character_id: number, quests: ReadonlyArray<Pick<QuestSchema, "key" | "status" | "qty">>) {
         const sql = `DELETE FROM character_quests WHERE owner_id=?;`;
         await this.querier.run(sql, [character_id]);
-        if (quests && quests.size > 0) {
-            let sqlString = `INSERT INTO character_quests (owner_id, key, status, qty) VALUES `;
-            quests.forEach((element: QuestSchema) => {
-                sqlString += ` ('${character_id}', '${element.key}', '${element.status}', '${element.qty}'),`;
-            });
-            sqlString = sqlString.slice(0, -1);
-            return await this.querier.run(sqlString);
+        if (quests?.length > 0) {
+            for (const quest of quests) {
+                await this.querier.run("INSERT INTO character_quests (`owner_id`, `key`, `status`, `qty`) VALUES (?,?,?,?);", [
+                    character_id,
+                    quest.key,
+                    quest.status,
+                    quest.qty,
+                ]);
+            }
         }
     }
 

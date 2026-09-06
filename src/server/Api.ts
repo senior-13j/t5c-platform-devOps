@@ -3,11 +3,131 @@ import path from "path";
 import Logger from "./utils/Logger";
 import { generateRandomPlayerName } from "../shared/Utils";
 import { GameData } from "./GameData";
-import { Database } from "./Database";
+import type { Database } from "./Database";
 import { generateId } from "colyseus";
 
+export const QUICK_PLAY_RATE_LIMIT_COUNT = 5;
+export const QUICK_PLAY_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+export const QUICK_PLAY_USERNAME_ATTEMPTS = 20;
+export const CHARACTER_NAME_MAX_LENGTH = 24;
+
+export type ValidCharacterCustomization = {
+    name: string;
+    race: string;
+    material: number;
+    head: string;
+};
+
+export function validateCharacterCustomization(
+    nameValue: unknown,
+    raceValue: unknown,
+    materialValue: unknown,
+    headValue: unknown
+): ValidCharacterCustomization | null {
+    const name = typeof nameValue === "string" ? nameValue.trim().replace(/\s+/g, " ") : "";
+    const nameLength = Array.from(name).length;
+    const safeName = /^[\p{L}\p{N}](?:[\p{L}\p{N} '-]*[\p{L}\p{N}])?$/u;
+    if (!name || nameLength > CHARACTER_NAME_MAX_LENGTH || !safeName.test(name)) {
+        return null;
+    }
+
+    const raceKey = typeof raceValue === "string" ? raceValue.trim() : "";
+    const race = raceKey ? GameData.get("race", raceKey) : null;
+    if (!race || race.customizable !== true || !Array.isArray(race.materials)) {
+        return null;
+    }
+
+    const material =
+        typeof materialValue === "number"
+            ? materialValue
+            : typeof materialValue === "string" && /^\d+$/.test(materialValue.trim())
+              ? Number(materialValue)
+              : Number.NaN;
+    if (!Number.isSafeInteger(material) || material < 0 || material >= race.materials.length) {
+        return null;
+    }
+
+    const head = typeof headValue === "string" ? headValue.trim() : "";
+    const allowedHeads = race.vat?.meshes?.HEAD;
+    if (!head || !Array.isArray(allowedHeads) || !allowedHeads.includes(head)) {
+        return null;
+    }
+
+    return { name, race: raceKey, material, head };
+}
+
+export class FixedWindowRateLimiter {
+    private windows = new Map<string, { count: number; resetAt: number }>();
+    private operations = 0;
+
+    constructor(
+        private readonly limit: number,
+        private readonly windowMs: number
+    ) {}
+
+    allow(key: string, now: number = Date.now()): boolean {
+        if (!key) {
+            return false;
+        }
+
+        this.operations += 1;
+        if (this.operations % 1000 === 0 || this.windows.size >= 10_000) {
+            this.windows.forEach((window, storedKey) => {
+                if (now >= window.resetAt) {
+                    this.windows.delete(storedKey);
+                }
+            });
+        }
+
+        // Keep the limiter itself bounded under a distributed-source flood.
+        if (!this.windows.has(key) && this.windows.size >= 10_000) {
+            return false;
+        }
+
+        const current = this.windows.get(key);
+        if (!current || now >= current.resetAt) {
+            this.windows.set(key, { count: 1, resetAt: now + this.windowMs });
+            return true;
+        }
+
+        if (current.count >= this.limit) {
+            return false;
+        }
+
+        current.count += 1;
+        return true;
+    }
+}
+
+export async function findAvailableRandomUsername(
+    doesUserNameExists: (username: string) => Promise<{ count: number | string }>,
+    generateName: () => string = generateRandomPlayerName,
+    maximumAttempts: number = QUICK_PLAY_USERNAME_ATTEMPTS
+): Promise<string | null> {
+    for (let attempt = 0; attempt < maximumAttempts; attempt += 1) {
+        const candidate = String(generateName() ?? "").trim();
+        if (!candidate) {
+            continue;
+        }
+
+        const existing = await doesUserNameExists(candidate);
+        if (Number(existing?.count) === 0) {
+            return candidate;
+        }
+    }
+
+    return null;
+}
+
 class Api {
-    constructor(app, database: Database) {
+    constructor(
+        app,
+        database: Database,
+        options: { quickPlayRateLimiter?: FixedWindowRateLimiter } = {}
+    ) {
+        const quickPlayRateLimiter =
+            options.quickPlayRateLimiter ??
+            new FixedWindowRateLimiter(QUICK_PLAY_RATE_LIMIT_COUNT, QUICK_PLAY_RATE_LIMIT_WINDOW_MS);
         const requestValue = (req, key: string) => req.body?.[key] ?? req.query?.[key];
         const safeUser = (user) => {
             const result = { ...user };
@@ -107,148 +227,187 @@ class Api {
             }
         });
 
-        app.all("/loginWithToken", (req, res) => {
-            const token = String(requestValue(req, "token") ?? "");
-            if (token) {
-                Logger.info("[api][/loginWithToken] checking token.");
-                database
-                    .getUserWithToken(token)
-                    .then((user) => {
-                        if (!user) {
-                            Logger.info("[api][/login] invalid token.");
-                            res.status(401).send({ message: "Invalid Token" });
-                            return null;
-                        }
-
-                        Logger.info("[api][/login] valid token, refreshing login token.");
-                        return database.refreshToken(user.id);
-                    })
-                    .then((user) => {
-                        if (!user) {
-                            return;
-                        }
-                        Logger.info("[api][/login] login succesful.");
-                        return res.send({
-                            message: "Login Successful",
-                            user: safeUser(user),
-                        });
-                    });
-            } else {
+        app.all("/loginWithToken", async (req, res) => {
+            const token = String(requestValue(req, "token") ?? "").trim().slice(0, 256);
+            if (!token) {
                 return res.status(400).send({ message: "Missing Token" });
+            }
+
+            try {
+                Logger.info("[api][/loginWithToken] checking token.");
+                const tokenUser = await database.getUserWithToken(token);
+                if (!tokenUser) {
+                    Logger.info("[api][/loginWithToken] invalid token.");
+                    return res.status(401).send({ message: "Invalid Token" });
+                }
+
+                Logger.info("[api][/loginWithToken] valid token, refreshing login token.");
+                const user = await database.refreshToken(tokenUser.id);
+                Logger.info("[api][/loginWithToken] login successful.");
+                return res.send({
+                    message: "Login Successful",
+                    user: safeUser(user),
+                });
+            } catch (error) {
+                Logger.error("[api][/loginWithToken] request failed.", error);
+                return res.status(500).send({ message: "Login Failed" });
             }
         });
 
-        app.post("/check", (req, res) => {
-            const token = String(requestValue(req, "token") ?? "");
-            if (token !== "") {
-                database.checkToken(token).then((user) => {
-                    if (!user) {
-                        return res.status(400).send({
-                            message: "Check Failed",
-                        });
-                    } else {
-                        return res.send({
-                            message: "Check Successful",
-                            user: safeUser(user),
-                        });
-                    }
-                });
-            } else {
+        app.post("/check", async (req, res) => {
+            const token = String(requestValue(req, "token") ?? "").trim().slice(0, 256);
+            if (!token) {
                 return res.status(400).send({
                     message: "Check Failed",
                 });
             }
-        });
 
-        app.post("/create_character", (req, res) => {
-            const token = String(requestValue(req, "token") ?? "");
-            const name = String(requestValue(req, "name") ?? "").trim().slice(0, 64);
-            const race = String(requestValue(req, "race") ?? "");
-            const material = Number(requestValue(req, "material") ?? 0);
-            const head = requestValue(req, "head") ?? 0;
-            if (token !== "") {
-                database.createCharacter(token, name, race, material, head).then((character) => {
-                    if (!character) {
-                        return res.status(400).send({
-                            message: "Create Failed",
-                        });
-                    } else {
-                        return res.send({
-                            message: "Create Successful",
-                            character: character,
-                        });
-                    }
+            try {
+                const user = await database.checkToken(token);
+                if (!user) {
+                    return res.status(400).send({ message: "Check Failed" });
+                }
+                return res.send({
+                    message: "Check Successful",
+                    user: safeUser(user),
                 });
-            } else {
-                return res.status(400).send({
-                    message: "Create Failed",
-                });
+            } catch (error) {
+                Logger.error("[api][/check] request failed.", error);
+                return res.status(500).send({ message: "Check Failed" });
             }
         });
 
-        app.get("/get_character", (req, res) => {
-            const character_id: string = (req.query.character_id as string) ?? "";
-            database.getCharacter(parseInt(character_id)).then((character) => {
-                if (!character) {
-                    return res.status(400).send({
-                        message: "Get Character Failed",
-                    });
-                } else {
-                    return res.send({
-                        message: "Get Character Successful",
-                        character: character,
-                    });
+        app.post("/create_character", async (req, res) => {
+            const token = String(requestValue(req, "token") ?? "").trim().slice(0, 256);
+            if (!token) {
+                return res.status(400).send({ message: "Missing Token" });
+            }
+
+            const customization = validateCharacterCustomization(
+                requestValue(req, "name"),
+                requestValue(req, "race"),
+                requestValue(req, "material"),
+                requestValue(req, "head")
+            );
+            if (!customization) {
+                return res.status(400).send({ message: "Invalid Character Parameters" });
+            }
+
+            try {
+                const user = await database.getUserByToken(token);
+                if (!user) {
+                    return res.status(401).send({ message: "Invalid Token" });
                 }
-            });
+
+                const character = await database.createCharacter(
+                    token,
+                    customization.name,
+                    customization.race,
+                    customization.material,
+                    customization.head
+                );
+                if (!character) {
+                    return res.status(500).send({ message: "Create Failed" });
+                }
+
+                return res.send({
+                    message: "Create Successful",
+                    character,
+                });
+            } catch (error) {
+                Logger.error("[api][/create_character] request failed.", error);
+                return res.status(500).send({ message: "Create Failed" });
+            }
+        });
+
+        app.get("/get_character", async (req, res) => {
+            const authorization = String(req.get("authorization") ?? "");
+            const bearerMatch = authorization.match(/^Bearer\s+(.+)$/i);
+            const token = String(bearerMatch?.[1] ?? requestValue(req, "token") ?? "").trim();
+            const rawCharacterId = requestValue(req, "character_id");
+            const characterId =
+                typeof rawCharacterId === "number"
+                    ? rawCharacterId
+                    : typeof rawCharacterId === "string" && /^\d+$/.test(rawCharacterId.trim())
+                      ? Number(rawCharacterId)
+                      : Number.NaN;
+
+            if (!token || !Number.isSafeInteger(characterId) || characterId <= 0) {
+                return res.status(400).send({ message: "Invalid Parameters" });
+            }
+
+            try {
+                const user = await database.getUserByToken(token);
+                if (!user) {
+                    return res.status(401).send({ message: "Invalid Token" });
+                }
+
+                const character = await database.getCharacter(characterId);
+                if (!character || Number(character.user_id) !== Number(user.id)) {
+                    // Do not reveal whether a character owned by somebody else exists.
+                    return res.status(404).send({ message: "Character Not Found" });
+                }
+
+                return res.send({
+                    message: "Get Character Successful",
+                    character,
+                });
+            } catch (error) {
+                Logger.error("[api][/get_character] request failed.", error);
+                return res.status(500).send({ message: "Get Character Failed" });
+            }
         });
 
         app.get("/register", (req, res) => {
             return res.status(501).send({ message: "Use the login endpoint to create an account." });
         });
 
-        app.post("/returnRandomUser", (req, res) => {
-            let username;
-            let password = generateId();
-            const doSomething = async (username) =>
-                new Promise((resolve) => {
-                    database.doesUserNameExists(username).then((doesExists) => {
-                        if (doesExists.count > 0) {
-                            resolve("no");
-                        } else {
-                            resolve("ok");
-                        }
-                    });
-                });
+        app.post("/returnRandomUser", async (req, res) => {
+            // Express only honors X-Forwarded-For according to its configured
+            // trust-proxy policy. Do not parse that attacker-controlled header here.
+            const clientIp = String(req.ip ?? req.socket?.remoteAddress ?? "unknown");
+            if (!quickPlayRateLimiter.allow(clientIp)) {
+                res.setHeader("Retry-After", Math.ceil(QUICK_PLAY_RATE_LIMIT_WINDOW_MS / 1000));
+                return res.status(429).send({ message: "Too Many Quick Play Requests" });
+            }
 
-            const loop = async (value) => {
-                let result = null;
-                while (result != "ok") {
-                    if (result > 20) {
-                        result = "ok";
-                    }
-                    username = generateRandomPlayerName();
-                    result = await doSomething(username);
-                    value = value + 1;
+            try {
+                const username = await findAvailableRandomUsername((candidate) => database.doesUserNameExists(candidate));
+                if (!username) {
+                    return res.status(503).send({ message: "Could Not Allocate Guest Name" });
                 }
-            };
 
-            loop(1).then(() => {
-                database.saveUser(username, password).then((user) => {
-                    let race = GameData.get("race", "humanoid");
-                    let material = race.materials[Math.floor(Math.random() * race.materials.length)];
-                    let materialIndex = race.materials.indexOf(material);
-                    database.createCharacter(user.token, generateRandomPlayerName(), race.key, materialIndex, "Head_Paladin").then((character) => {
-                        character.user_id = user.id;
-                        character.username = user.username;
-                        character.token = user.token;
-                        console.log("/returnRandomUser", character.name);
-                        return res.send({
-                            message: "Successful",
-                            user: character,
-                        });
-                    });
+                const password = generateId();
+                const user = await database.saveUser(username, password);
+                const race = GameData.get("race", "humanoid");
+                if (!user || !race || !Array.isArray(race.materials) || race.materials.length === 0) {
+                    return res.status(500).send({ message: "Quick Play Failed" });
+                }
+
+                const materialIndex = Math.floor(Math.random() * race.materials.length);
+                const character = await database.createCharacter(
+                    user.token,
+                    generateRandomPlayerName(),
+                    race.key,
+                    materialIndex,
+                    "Head_Paladin"
+                );
+                if (!character) {
+                    return res.status(500).send({ message: "Quick Play Failed" });
+                }
+
+                character.user_id = user.id;
+                character.username = user.username;
+                character.token = user.token;
+                Logger.info("[api][/returnRandomUser] guest character created.");
+                return res.send({
+                    message: "Successful",
+                    user: character,
                 });
-            });
+            } catch (error) {
+                Logger.error("[api][/returnRandomUser] request failed.", error);
+                return res.status(500).send({ message: "Quick Play Failed" });
+            }
         });
 
         app.get("/getHelpPage", function (req, res) {

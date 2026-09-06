@@ -95,4 +95,22 @@ export class DB_SQLLITE {
             });
         });
     }
+
+    async close(): Promise<void> {
+        if (!this.db) {
+            return;
+        }
+
+        const connection = this.db;
+        this.db = undefined;
+        await new Promise<void>((resolve, reject) => {
+            connection.close((error: Error | null) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        });
+    }
 }

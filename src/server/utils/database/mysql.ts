@@ -78,4 +78,14 @@ export class DB_MYSQL {
         let resultJson = JSON.parse(JSON.stringify(result));
         return resultJson.insertId;
     }
+
+    async close(): Promise<void> {
+        if (!this.db) {
+            return;
+        }
+
+        const connection = this.db;
+        this.db = undefined;
+        await connection.end();
+    }
 }

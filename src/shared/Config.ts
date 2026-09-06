@@ -14,7 +14,7 @@ class Config {
     }
 
     // general settings
-    title = "T5C";
+    title = "Arkadii Quest";
     version = "0.5.0";
     lang = "en";
 
@@ -44,9 +44,9 @@ class Config {
 
     // ui theme settings
     UI_CENTER_PANEL_WIDTH = 0.6;
-    UI_CENTER_PANEL_BG = "rgba(0,0,0,.5)";
-    UI_SIDEBAR_WIDTH = "320px;";
-    UI_PRIMARY_COLOR = "rgba(35, 168, 28, 0.8)";
+    UI_CENTER_PANEL_BG = "rgba(7,16,11,.82)";
+    UI_SIDEBAR_WIDTH = "320px";
+    UI_PRIMARY_COLOR = "rgba(217,170,67,.95)";
 
     //
     SHADOW_ON = true;

@@ -44,6 +44,10 @@ class GameServer {
         const port = this.config.port;
         const app = express();
         app.disable("x-powered-by");
+        // Resolve X-Forwarded-For from the local/container reverse proxy only.
+        // Express walks the chain right-to-left, so client-supplied prefixes do
+        // not become req.ip. Public direct connections remain untrusted.
+        app.set("trust proxy", process.env.TRUST_PROXY || "loopback, linklocal, uniquelocal");
         app.use(compression());
         app.use(express.json({ limit: "32kb" }));
         app.use(cors());
@@ -57,7 +61,9 @@ class GameServer {
 
         // define all rooms
         gameServer.define("game_room", GameRoom);
-        gameServer.define("chat_room", ChatRoom);
+        gameServer.define("chat_room", ChatRoom).on("create", (room: ChatRoom) => {
+            room.setDatabase(this.database);
+        });
 
         // on localhost, simulate bad latency
         if (process.env.NODE_ENV !== "production") {

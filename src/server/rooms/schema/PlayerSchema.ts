@@ -11,8 +11,21 @@ import { GameRoomState } from "../state/GameRoomState";
 import { Entity } from "../schema/Entity";
 import { EntityState, ItemClass, CalculationTypes } from "../../../shared/types";
 import { nanoid } from "nanoid";
-import { Database } from "../../Database";
-import Logger from "../../utils/Logger";
+import {
+    MAX_INVENTORY_QUANTITY,
+    MAX_TRADE_QUANTITY,
+    calculateDroppedQuantity,
+    calculateIncreasedBalance,
+    calculatePurchaseCost,
+    calculateRemainingQuantity,
+    canClaimWorldEntity,
+    clampHealth,
+    getLocationSpawnPoint,
+    isEquippedItemRequestValid,
+    isItemQuantityCompatibleWithStacking,
+    isVendorWithinRange,
+    parsePositiveQuantity,
+} from "../gameplayRules";
 
 export class PlayerData extends Schema {
     @type({ map: InventorySchema }) inventory = new MapSchema<InventorySchema>();
@@ -199,11 +212,11 @@ export class PlayerSchema extends Entity {
         if (this.regenTimerElapsed >= this.regenTimer) {
             // continuously gain mana
             if (this.mana < this.maxMana) {
-                this.mana += this.manaRegen;
+                this.mana = clampHealth(this.mana + this.manaRegen, this.maxMana);
             }
             // continuously gain health
             if (this.health < this.maxHealth) {
-                this.health += this.healthRegen;
+                this.health = clampHealth(this.health + this.healthRegen, this.maxHealth);
             }
             this.regenTimerElapsed = 0;
         }
@@ -217,32 +230,6 @@ export class PlayerSchema extends Entity {
 
     public getClient() {
         return this._state._gameroom.clients.getById(this.sessionId);
-    }
-
-    save(db: Database) {
-        let client = this.getClient();
-        let character = client.auth;
-
-        // update character
-        db.updateCharacter(client.auth.id, this);
-
-        // update player items
-        db.saveItems(character.id, this.player_data.inventory);
-
-        // update player abilities
-        db.saveAbilities(character.id, this.player_data.abilities);
-
-        // update player equipment
-        db.saveEquipment(character.id, this.equipment);
-
-        // update player quests
-        db.saveQuests(character.id, this.player_data.quests);
-
-        // update player hotbar
-        db.saveHotbar(character.id, this.player_data.hotbar);
-
-        // log
-        Logger.info("[gameroom][onCreate] player " + this.name + " saved to database.");
     }
 
     /**
@@ -314,27 +301,41 @@ export class PlayerSchema extends Entity {
     }
 
     reduceItemQuantity(inventoryItem, amount = 1) {
-        let quantity = inventoryItem.qty - amount;
-        if (quantity < 1) {
+        const remainingQuantity = calculateRemainingQuantity(inventoryItem?.qty, amount);
+        if (remainingQuantity === null) {
+            return false;
+        }
+
+        if (remainingQuantity === 0) {
             this.player_data.inventory.delete("" + inventoryItem.i);
         } else {
-            inventoryItem.qty -= 1;
+            inventoryItem.qty = remainingQuantity;
         }
+        return true;
     }
 
     increaseItemQuantity(inventoryItem, amount = 1) {
-        inventoryItem.qty += amount;
+        const quantityToAdd = parsePositiveQuantity(amount);
+        const currentQuantity = parsePositiveQuantity(inventoryItem?.qty);
+        if (quantityToAdd === null || currentQuantity === null || currentQuantity + quantityToAdd > MAX_INVENTORY_QUANTITY) {
+            return false;
+        }
+        inventoryItem.qty = currentQuantity + quantityToAdd;
+        return true;
     }
 
     dropItem(inventoryItem, dropAll = false) {
-        let newQuantity = dropAll ? inventoryItem.qty : inventoryItem.qty - 1;
+        const droppedQuantity = calculateDroppedQuantity(inventoryItem?.qty, dropAll === true);
+        if (droppedQuantity === null) {
+            return false;
+        }
         let data = {
             key: inventoryItem.key,
             sessionId: nanoid(10),
             x: this.x,
             y: this.y,
             z: this.z,
-            qty: newQuantity,
+            qty: droppedQuantity,
         };
         let entity = new LootSchema(this._state, data);
         this._state.entityCTRL.add(entity);
@@ -342,63 +343,82 @@ export class PlayerSchema extends Entity {
         if (dropAll) {
             this.player_data.inventory.delete("" + inventoryItem.i);
         } else {
-            inventoryItem.qty -= 1;
+            this.reduceItemQuantity(inventoryItem, 1);
         }
 
-        console.log("dropItem", dropAll, newQuantity, inventoryItem.qty);
+        console.log("dropItem", dropAll, droppedQuantity, inventoryItem.qty);
+        return true;
     }
 
     buyItem(item, qty) {
-        let availableSlot = this.findNextAvailableInventorySlot();
-
-        if (!availableSlot) {
-            console.error("BUYING", item.key, "QTY: " + qty, "INVENTORY IS FULL (" + availableSlot + ")");
+        const quantity = parsePositiveQuantity(qty, MAX_TRADE_QUANTITY);
+        const totalPrice = calculatePurchaseCost(item?.value, qty, this.player_data.gold);
+        if (
+            quantity === null ||
+            totalPrice === null ||
+            !item?.key ||
+            !isItemQuantityCompatibleWithStacking(item.stackable, quantity) ||
+            !this.isNearVendor(item.key)
+        ) {
             return false;
         }
 
-        console.log("BUYING", item.key, "QTY: " + qty, "INVENTORY SLOT: " + availableSlot);
-
         let loot = new LootSchema(this._state, {
             key: item.key,
-            qty: qty,
+            qty: quantity,
         });
-        this.pickupItem(loot);
+        if (!this.pickupItem(loot)) {
+            return false;
+        }
 
-        // remove gold from player
-        this.player_data.gold = this.player_data.gold - item.value * qty;
+        this.player_data.gold -= totalPrice;
+        console.log("BUYING", item.key, "QTY: " + quantity, "TOTAL: " + totalPrice);
+        return true;
     }
 
     sellItem(inventoryItem) {
+        const unitPrice = Number(inventoryItem?.value);
+        const updatedBalance = calculateIncreasedBalance(this.player_data.gold, unitPrice);
+        if (
+            parsePositiveQuantity(inventoryItem?.qty) === null ||
+            inventoryItem?.sellable !== true ||
+            !Number.isSafeInteger(unitPrice) ||
+            unitPrice < 0 ||
+            updatedBalance === null ||
+            !this.isNearVendor()
+        ) {
+            return false;
+        }
+
         // reduce inventory qty
-        this.reduceItemQuantity(inventoryItem, 1);
+        if (!this.reduceItemQuantity(inventoryItem, 1)) {
+            return false;
+        }
 
         // add gold to player
-        this.player_data.gold += inventoryItem.value;
+        this.player_data.gold = updatedBalance;
 
         console.log("SELLING", inventoryItem.key, "QTY: 1");
+        return true;
     }
 
     pickupItem(loot: LootSchema) {
         // play animation // disabled
         //this.animationCTRL.playAnim(this, EntityState.PICKUP, () => {});
 
-        let availableSlot = this.findNextAvailableInventorySlot();
-
-        if (!availableSlot) {
-            console.error("PICK UP", loot.key, "QTY: " + loot.qty, "INVENTORY IS FULL (" + availableSlot + ")");
+        const registeredEntity =
+            typeof loot?.sessionId === "string" && loot.sessionId.length > 0
+                ? this._state.entities.get(loot.sessionId)
+                : undefined;
+        if (!canClaimWorldEntity(loot?.sessionId, registeredEntity, loot)) {
             return false;
         }
 
-        let data = {
-            key: loot.key,
-            qty: loot.qty,
-            i: "" + availableSlot,
-        };
-
-        console.log("PICK UP", loot.key, "QTY: " + loot.qty, "SLOT: " + availableSlot);
-
-        //
-        let item = this._state.gameData.get("item", loot.key);
+        const quantity = parsePositiveQuantity(loot?.qty);
+        let item = loot?.key ? this._state.gameData.get("item", loot.key) : null;
+        if (quantity === null || !item || !isItemQuantityCompatibleWithStacking(item.stackable, quantity)) {
+            return false;
+        }
 
         // is item already inventory
         let inventoryItem = this.getInventoryItem(loot.key, "key");
@@ -406,19 +426,39 @@ export class PlayerSchema extends Entity {
         // is item stackable
         if (item.stackable && inventoryItem) {
             // increnent quantity
-            this.increaseItemQuantity(inventoryItem, data.qty);
+            if (!this.increaseItemQuantity(inventoryItem, quantity)) {
+                return false;
+            }
         } else {
+            const availableSlot = this.findNextAvailableInventorySlot();
+            if (availableSlot === false) {
+                console.error("PICK UP", loot.key, "QTY: " + quantity, "INVENTORY IS FULL");
+                return false;
+            }
+
+            let data = {
+                key: loot.key,
+                qty: quantity,
+                i: "" + availableSlot,
+            };
             // add inventory item
             this.player_data.inventory.set("" + data.i, new InventorySchema(data));
+            console.log("PICK UP", loot.key, "QTY: " + quantity, "SLOT: " + availableSlot);
         }
 
         // delete loot
-        if (this._state.entities.get(loot.sessionId)) {
+        if (this._state.entities.get(loot.sessionId) === loot) {
             this._state.entities.delete(loot.sessionId);
         }
 
         // stop chasing target
         this.AI_TARGET = null;
+        return true;
+    }
+
+    private isNearVendor(itemKey?: string): boolean {
+        const spawns = this._state?.roomDetails?.dynamic?.spawns ?? [];
+        return isVendorWithinRange(this.getPosition(), spawns, itemKey);
     }
 
     consumeItem(item) {
@@ -466,27 +506,28 @@ export class PlayerSchema extends Entity {
         }
     }
 
-    unequipItem(key, slot) {
-        let availableSlot = this.findNextAvailableInventorySlot();
-
-        if (!availableSlot) {
-            console.error("UNEQUIP ITEM", key, "SLOT: " + slot, "INVENTORY IS FULL (" + availableSlot + ")");
+    unequipItem(key, slot?) {
+        const equippedItem = typeof key === "string" ? this.equipment.get(key) : null;
+        const item = typeof key === "string" ? this._state.gameData.get("item", key) : null;
+        if (!isEquippedItemRequestValid(key, slot, equippedItem, item)) {
             return false;
         }
 
-        // remove item from equipment
-        this.equipment.delete(key);
-
-        //
-        this.statsCTRL.unequipItem(this._state.gameData.get("item", key));
-
-        // equip
-        this.pickupItem(
+        // Add the item first so an unexpected inventory failure cannot destroy
+        // the player's equipment.
+        const addedToInventory = this.pickupItem(
             new LootSchema(this._state, {
                 key: key,
                 qty: 1,
             })
         );
+        if (!addedToInventory) {
+            return false;
+        }
+
+        this.equipment.delete(key);
+        this.statsCTRL.unequipItem(item);
+        return true;
     }
 
     canEquip(item, slot) {
@@ -508,16 +549,28 @@ export class PlayerSchema extends Entity {
     }
 
     resetPosition() {
-        this.x = 6.3;
-        this.y = 0;
-        this.z = -23.5;
-        this.rot = 3.13;
-        this.ressurect();
+        const spawnPoint = getLocationSpawnPoint(this._state?.roomDetails);
+        if (!spawnPoint || this.isDead) {
+            return false;
+        }
+
+        this.x = spawnPoint.x;
+        this.y = spawnPoint.y;
+        this.z = spawnPoint.z;
+        this.rot = spawnPoint.rot;
+        this.location = this._state.roomDetails.key ?? this.location;
+        this.AI_TARGET = null;
+        this.AI_TARGET_POSITION = null;
+        this.AI_TARGET_WAYPOINTS = [];
+        this.AI_ABILITY = null;
+        this.blocked = false;
+        this.anim_state = EntityState.IDLE;
+        return true;
     }
 
     ressurect() {
         this.isDead = false;
-        this.health = this.maxHealth;
+        this.health = clampHealth(this.maxHealth, this.maxHealth);
         this.mana = this.maxMana;
         this.blocked = false;
         this.gracePeriod = true;
@@ -537,13 +590,7 @@ export class PlayerSchema extends Entity {
 
     // make sure no value are out of range
     normalizeStats() {
-        // health
-        if (this.health > this.maxHealth) {
-            this.health = this.maxHealth;
-        }
-        if (this.health < 0) {
-            this.health = 0;
-        }
+        this.health = clampHealth(this.health, this.maxHealth);
 
         // mana
         if (this.mana > this.maxMana) {

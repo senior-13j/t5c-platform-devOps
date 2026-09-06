@@ -1,70 +1,105 @@
-# T5C - The 5th Continent
+# Arkadii Quest / Аркадия Квест
 
-T5C is a multiplayer 3D top-down RPG prototype built with Babylon.js, Colyseus,
-Express, TypeScript, and SQL persistence. The repository includes the original
-game client/server plus a containerized local stack, observability services, and
-a public deployment profile for `https://arkadii.world/game/`. The browser shell
-also includes an English/Russian entry flow, dedicated keyboard/mouse and touch
-profiles, responsive game UI, accessible loading/failure states, and
-search/discovery metadata.
+An old-school fantasy adventure in your browser. Explore Arkadia, complete
+quests, develop your hero, and meet other players in a persistent 3D world.
 
-![Screenshot of T5C showing a mythical knight in a green lush forest.](https://us1.discourse-cdn.com/flex024/uploads/babylonjs/original/3X/7/3/730ef766396a083a3e3f97c0af46c443b4eba22b.jpeg)
-![Screen of Eldoria, the imaginary land of T5C](https://github.com/user-attachments/assets/36710dd5-180b-4395-85db-7f98bfd6e08c)
+Олдскульное фэнтези-приключение в браузере: исследуйте Аркадию, выполняйте
+задания и развивайте своего героя в общем мире.
+
+![Arkadii Quest hero overlooking the road into Arkadia](public/images/arkadii-quest-keyart.webp)
+
+Arkadii Quest is a multiplayer top-down RPG built with Babylon.js, Colyseus,
+Express, TypeScript, and SQL persistence. The repository contains the browser
+client and game server together with local containers, observability, automated
+quality checks, and the public deployment profile for
+[`https://arkadii.world/game/`](https://arkadii.world/game/).
+
+The visual direction draws on the clarity and atmosphere of classic browser
+RPGs: forest green, aged bronze, parchment, readable silhouettes, and a compact
+adventure-focused interface. All Arkadii Quest branding is original; the
+project is not affiliated with or endorsed by RuneScape or Jagex.
 
 ## Project at a Glance
 
 | Area | Stack | Notes |
 | --- | --- | --- |
-| Client | Babylon.js, TypeScript, Webpack | 3D game client, bilingual content, adaptive controls/UI, assets, networking |
-| Server | Node.js, Express, Colyseus | REST API, WebSocket rooms, compressed static delivery, health checks, metrics |
-| Data | MySQL, SQLite fallback | Docker uses MySQL; non-Docker development can still use SQLite |
+| Client | Babylon.js, TypeScript, Webpack | 3D world, bilingual content, responsive UI, controls, assets, and networking |
+| Server | Node.js, Express, Colyseus | REST API, real-time rooms, static delivery, health checks, and metrics |
+| Data | MySQL, SQLite fallback | Docker uses MySQL; host development can use SQLite |
 | Infrastructure | Docker Compose, nginx, Caddy, Prometheus, Grafana | Local HTTPS stack and public deployment profile |
 
 ## Current Gameplay
 
-- VAT animations and instanced animated characters.
-- Camera-relative keyboard movement with WASD/arrows, number-row abilities,
-  panel hotkeys, nearest interaction/targeting, and mouse camera controls.
-- Native touch profile with an analog joystick, world-swipe camera rotation,
-  contextual action/chat/zoom controls, and touch hotbar actions.
-- Scene flow for native login, Quick Play, character selection, and character creation.
-- Map transitions, including teleporting to dungeon-style areas.
-- Global chat across zones.
-- Navmesh-based collision detection.
-- Persistent player data with SQLite or MySQL.
-- Enemy AI states: `IDLE`, `PATROL`, `CHASE`, `ATTACK`, and `DEAD`.
-- Loot drops driven by loot tables.
-- Four starter abilities: sword attack, fireball, damage-over-time, and heal.
-- Targeting for players and enemies.
-- Item pickup, inventory management, equipment, and visible character gear.
-- Player leveling with experience and ability points.
-- Functional RPG UI: experience bar, ability bar, draggable panels, inventory, quests, help, and character panels.
-- Simple quest, trainer, vendor, buy, and sell systems.
-- English and Russian localization for active UI, game data, dialogs, entity
-  names, help, metadata, accessibility text, and supported server notifications.
-- Responsive mobile HUD with compact chat, hotbar, menu, status bars, panels,
-  and separate portrait/short-landscape layouts.
-- Actionable loading and WebGL failure states instead of an indefinite loading screen.
+- Explore the fantasy world of Arkadia (`Аркадия` in Russian).
+- Create a character or use Quick Play and enter a shared multiplayer world.
+- Fight with four starter abilities: sword attack, fireball,
+  damage-over-time, and healing.
+- Complete quests, talk to trainers and vendors, trade, collect loot, equip
+  items, gain experience, and spend ability points.
+- Travel between the starting settlement, training area, and dungeon-style
+  locations with navmesh collision and persistent character data.
+- Encounter enemies with `IDLE`, `PATROL`, `CHASE`, `ATTACK`, and `DEAD` states.
+- Use global chat, targeting, item pickup, inventory, quests, abilities,
+  character/equipment, and help panels.
+- Play in English or Russian with localized interface, active game data,
+  dialogs, entity names, help, metadata, accessibility text, and supported
+  server notifications.
+- Play with keyboard or touch controls on responsive desktop, portrait, and
+  short-landscape layouts.
+
+## Controls and Onboarding
+
+The first entry into the world presents a localized onboarding guide. It
+introduces movement, interaction, targeting, combat slots, chat, and the main
+panels without requiring the player to discover controls by trial and error.
+On desktop, press `F1` at any time to reopen the controls guide. Touch players
+can use the persistent guide button.
+
+The camera follows the active character automatically and keeps the action
+framed. Mouse-wheel zoom and mouse-drag rotation are intentionally not gameplay
+controls.
+
+| Keyboard input | Action |
+| --- | --- |
+| `W`, `A`, `S`, `D` or arrow keys | Move relative to the automatic camera |
+| `1`–`9` | Use the corresponding hotbar slot |
+| `E` | Interact with the nearest available character or object |
+| `Tab` | Select the nearest valid target |
+| `Enter` | Focus or submit chat |
+| `I` | Open inventory |
+| `J` | Open quests |
+| `K` | Open abilities |
+| `C` | Open character and equipment |
+| `H` | Open help |
+| `F1` | Show the onboarding and controls guide |
+| `Escape` | Close the active panel or guide |
+| `Home` | Capture a screenshot through the game action |
+
+Touch mode provides a virtual joystick, tappable hotbar, contextual interact,
+target and chat actions, and a compact main menu. The same automatic camera
+follows the character; no world-swipe rotation is required.
 
 ## Web Quality
 
-- Accessible pre-game language/control dialog and native labeled login controls
+- Accessible pre-game language/control selection and labelled login controls
   with keyboard focus, validation, and live status.
-- Semantic HTML shell with language, main and heading landmarks, skip navigation,
-  canvas instructions, reduced-motion support, and screen-reader announcements.
+- Semantic HTML shell with language, main and heading landmarks, skip
+  navigation, canvas instructions, reduced-motion behavior, and screen-reader
+  announcements.
 - Canonical metadata, Open Graph/Twitter cards, `VideoGame` JSON-LD, a web app
   manifest, and crawler/answer-engine discovery files.
-- Runtime asset deduplication, mobile render scaling, mobile shadow reduction,
-  gzip compression, and explicit cache policy.
-- Automated catalog/data translation checks plus real WebGL desktop/touch
-  Playwright flows for movement, camera, hotkeys, chat, targeting, and layout.
+- Runtime asset deduplication, mobile render scaling, reduced mobile shadow
+  cost, compression, and an explicit cache policy.
+- Automated localization/data checks and real WebGL Playwright flows for
+  desktop and touch gameplay.
 - `scrypt` password hashing with automatic migration of valid legacy plaintext
   credentials; authentication responses never include password data.
 
-The latest measured Lighthouse result is **80 Performance / 100 Accessibility /
-100 Best Practices / 100 SEO**. See the
-[Game Quality Audit](docs/GAME_QUALITY_AUDIT.md) for the test matrix, baseline,
-asset review, and remaining risks.
+The latest recorded pre-rebrand Lighthouse result is **80 Performance / 100
+Accessibility / 100 Best Practices / 100 SEO**. It is a historical baseline,
+not a fresh production measurement for the current brand assets. See the
+[Game Quality Audit](docs/GAME_QUALITY_AUDIT.md) for the test matrix and open
+risks.
 
 ## Requirements
 
@@ -83,16 +118,11 @@ npm install
 
 ## Quick Start with Docker
 
-The Docker Compose stack is the recommended way to run the complete local
-environment: game server, MySQL, nginx HTTPS proxy, Prometheus, and Grafana.
-
 ```bash
 cp .env.example .env
 scripts/setup-local-domain.sh
 docker compose up -d --build
 ```
-
-Open:
 
 | Surface | URL |
 | --- | --- |
@@ -102,14 +132,11 @@ Open:
 | Prometheus | `https://prometheus.arkadii.game.local` |
 
 Only nginx publishes a host port: `127.0.0.1:${HTTPS_PORT:-443}:443`. The game
-server, MySQL, Prometheus, and Grafana stay private inside the Docker network.
+server, MySQL, Prometheus, and Grafana remain private inside the Docker network.
 
 ## Local Development without Docker
 
-Use this mode when you want Webpack hot reload and the TypeScript server running
-directly on the host.
-
-Start these in separate terminals:
+Start the server and Webpack client in separate terminals:
 
 ```bash
 APP_DATABASE=sqllite npm run server-dev
@@ -119,11 +146,9 @@ APP_DATABASE=sqllite npm run server-dev
 npm run client-dev
 ```
 
-`sqllite` is the existing configuration key used by the non-MySQL adapter.
-The Webpack dev client opens the game scene directly; the built client served by
-port `3000` starts at the production login screen.
-
-The default local URLs are:
+`sqllite` is the existing configuration spelling used by the fallback adapter.
+The Webpack client opens the game scene directly; the built client served on
+port `3000` starts with the production entry flow.
 
 | Surface | URL |
 | --- | --- |
@@ -137,21 +162,22 @@ The default local URLs are:
 | --- | --- |
 | `npm run client-build` | Build the production browser bundle into `dist/client` |
 | `npm run server-build` | Compile the TypeScript server and copy public assets |
-| `npm run check:localization` | Validate English/Russian key, placeholder, game-data, dialog, HTML, and typed-call coverage |
+| `npm run check:localization` | Validate English/Russian catalogs, placeholders, content, dialogs, and bindings |
 | `npm run check:web-quality` | Validate metadata, structured data, manifest, crawler files, and local references |
-| `npm run test:e2e` | Run real WebGL desktop keyboard/mouse and mobile touch Playwright projects |
-| `npx tsc --noEmit` | Type-check the complete client/server source tree without writing output |
-| `npm audit --omit=dev` | Review vulnerabilities in the production dependency tree |
-| `docker compose config` | Validate the local Compose file after env interpolation |
+| `npm run test:e2e` | Run real WebGL desktop and mobile-touch Playwright projects |
+| `npx tsc --noEmit` | Type-check the complete source tree without writing output |
+| `npm audit --omit=dev` | Review vulnerabilities in production dependencies |
+| `docker compose config` | Validate the local Compose configuration |
 | `docker compose up -d --build` | Build and run the complete local stack |
 | `npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS |
-| `npm run loadtest` | Run an interactive Colyseus chat load test |
-| `npm run check:public` | Check DNS and port readiness for the public deployment |
+| `npm run loadtest` | Run the interactive Colyseus chat load test |
+| `npm run check:public` | Check DNS and host readiness for the public deployment |
 
 ## Public Deployment
 
-The public profile serves the game at `https://arkadii.world/game/` through
-Caddy with automatic Let's Encrypt certificates.
+The public profile serves Arkadii Quest at
+[`https://arkadii.world/game/`](https://arkadii.world/game/) through Caddy with
+automatic Let's Encrypt certificates.
 
 ```bash
 cp .env.public.example .env.public
@@ -163,9 +189,6 @@ Replace every `CHANGE_ME` value in `.env.public` before starting the public
 stack. Caddy publishes only ports `80` and `443`; MySQL, Prometheus, and Grafana
 remain private inside Docker.
 
-Public discovery endpoints are served at the domain root while the game remains
-under `/game/`:
-
 | Endpoint | Purpose |
 | --- | --- |
 | `https://arkadii.world/robots.txt` | Crawler policy and sitemap location |
@@ -173,25 +196,35 @@ under `/game/`:
 | `https://arkadii.world/llms.txt` | Concise answer-engine project description |
 | `https://arkadii.world/game/manifest.webmanifest` | Browser app metadata |
 
+## Legacy Compatibility Identifiers
+
+The public product name is Arkadii Quest, but several internal identifiers still
+use the `t5c` prefix. Database names/users, Docker Compose project and volume
+names, and Prometheus metric names are temporarily kept unchanged so an in-place
+rebrand cannot disconnect existing data or dashboards. Browser preferences and
+tokens now use `arkadii_quest_*`; the former `t5c_*` browser keys are read once
+as migration aliases and then removed. Treat the remaining legacy names as
+implementation details; do not rename them without a coordinated backup, data
+migration, and metrics transition. Exact values are documented in the
+deployment guides.
+
 ## Documentation
 
 | Document | What it covers |
 | --- | --- |
-| [`docs/README.md`](docs/README.md) | Documentation index and runtime URL map |
-| [`docs/PROJECT.md`](docs/PROJECT.md) | Project architecture, runtime shape, persistence, and scripts |
-| [`docs/LOCALIZATION_AND_CONTROLS.md`](docs/LOCALIZATION_AND_CONTROLS.md) | Language flow, keyboard/mouse and touch controls, translation architecture, QA, and patch notes |
-| [`docs/API_AND_SECURITY.md`](docs/API_AND_SECURITY.md) | REST endpoints, authentication, password migration, delivery policy, and security boundaries |
-| [`docs/GAME_QUALITY_AUDIT.md`](docs/GAME_QUALITY_AUDIT.md) | UX, visual, accessibility, SEO/AEO, asset, performance, and dependency audit |
-| [`docs/INFRASTRUCTURE_AND_DEPLOYMENT.md`](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local Docker stack, TLS, validation, observability, and troubleshooting |
-| [`docs/PUBLIC_DEPLOYMENT.md`](docs/PUBLIC_DEPLOYMENT.md) | DNS, public Caddy profile, secrets, startup, and production checks |
+| [Documentation Index](docs/README.md) | Runtime URL map and guide index |
+| [Project Overview](docs/PROJECT.md) | Architecture, runtime shape, persistence, and scripts |
+| [Localization and Controls](docs/LOCALIZATION_AND_CONTROLS.md) | Language flow, onboarding, automatic camera, keyboard/touch controls, and QA |
+| [API and Security](docs/API_AND_SECURITY.md) | REST endpoints, authentication, delivery policy, and security boundaries |
+| [Game Quality Audit](docs/GAME_QUALITY_AUDIT.md) | UX, accessibility, assets, performance, and remaining risks |
+| [Infrastructure and Deployment](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local Docker stack, TLS, observability, and troubleshooting |
+| [Public Deployment](docs/PUBLIC_DEPLOYMENT.md) | DNS, Caddy, secrets, startup, and production checks |
+| [Third-Party Assets](THIRD_PARTY_ASSETS.md) | Known asset sources, license obligations, and unresolved provenance |
 
-The running Docker stack serves the same documentation at:
+## License and Attribution
 
-```text
-https://arkadii.game.local/docs
-```
-
-## Links
-
-- Babylon.js forum thread: <https://forum.babylonjs.com/t/multiplayer-top-down-rpg-babylon-js-colyseus/35733>
-- Devlogs: <https://dev.to/orion3d>
+The codebase remains available under the repository's [MIT License](LICENSE).
+Arkadii Quest preserves the copyright and license notice of the upstream work;
+the rebrand does not claim authorship of that original code. See [NOTICE](NOTICE.md)
+for provenance and [Third-Party Assets](THIRD_PARTY_ASSETS.md) before
+redistributing or commercializing any asset bundle.

@@ -1,10 +1,11 @@
 {
-    "name": "t5c",
-    "version": "0.4.0",
+    "name": "arkadii-quest",
+    "version": "0.5.0",
     "repository": {
-        "url": "git+https://github.com/orion3dgames/t5c.git"
+        "url": "git+https://github.com/senior-13j/t5c-platform-devOps.git"
     },
-    "description": "Building a basic multiplayer 3d top down rpg using babylon.js and colyseus",
+    "homepage": "https://arkadii.world/game/",
+    "description": "Arkadii Quest is a bilingual multiplayer 3D browser RPG set in Arkadia.",
     "main": "./dist/client/index.html",
     "scripts": {
         "test": "tsx --test tests/*.test.ts",
@@ -22,7 +23,7 @@
         "test:e2e": "env -u DISPLAY playwright test",
         "loadtest": "NODE_OPTIONS=--use-system-ca npx tsx loadtest/chat.ts --room chat_room --numClients 10 --endpoint wss://arkadii.game.local"
     },
-    "author": "Orion3d",
+    "author": "Arkadii",
     "license": "MIT",
     "devDependencies": {
         "@babylonjs/gui-editor": "8.28.3",
@@ -69,6 +70,10 @@
         "mysql2": "^3.10.2",
         "nanoid": "^3.0.0",
         "winston": "^3.13.0"
+    },
+    "overrides": {
+        "body-parser": "1.20.6",
+        "qs": "6.16.0"
     },
     "browserslist": {
         "production": [

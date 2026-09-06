@@ -84,7 +84,7 @@ export class Panel_Inventory extends Panel {
         goldTitle.left = "5px";
         goldTitle.fontSize = "14px";
         goldTitle.width = 1;
-        goldTitle.height = "30px;";
+        goldTitle.height = "30px";
         goldTitle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         goldTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         goldTitle.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -115,7 +115,7 @@ export class Panel_Inventory extends Panel {
         let grid = new Grid();
         grid.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         grid.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        grid.left = "0px;";
+        grid.left = "0px";
         grid.width = 1;
         grid.heightInPixels = inventorySpaceRows * (size + 10);
         inventoryGrid.addControl(grid);
@@ -220,7 +220,7 @@ export class Panel_Inventory extends Panel {
             itemTxtQty.color = "#FFF";
             itemTxtQty.top = "-2px";
             itemTxtQty.left = "-2px";
-            itemTxtQty.fontSize = "12px;";
+            itemTxtQty.fontSize = "12px";
             itemTxtQty.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             itemTxtQty.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
             itemTxtQty.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;

@@ -151,7 +151,7 @@ async function main(): Promise<void> {
     assert.equal(localizeServerMessage("You've killed Skeleton.", "ru"), "Вы победили противника: Скелет.");
 
     const html = await readFile(path.join(root, "public", "index.html"), "utf8");
-    const htmlKeys = [...html.matchAll(/data-i18n(?:-aria-label|-title)?="([^"]+)"/g)].map((match) => match[1]);
+    const htmlKeys = [...html.matchAll(/data-i18n(?:-aria-label|-title|-alt)?="([^"]+)"/g)].map((match) => match[1]);
     for (const key of htmlKeys) {
         assert.ok(key in translations.en, `Unknown HTML localization key: ${key}`);
     }

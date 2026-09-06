@@ -176,13 +176,21 @@ class App {
             });
         }
 
-        //resize if the screen is resized/rotated
+        // Resize the engine first, then reflow Babylon GUI on subsequent frames.
+        // AdvancedDynamicTexture keeps its previous dimensions until the engine
+        // has processed a frame, which otherwise briefly clips panels after a
+        // phone/tablet orientation change.
+        let pendingResizeFrame = 0;
         window.addEventListener("resize", () => {
             this.updateRenderingScale();
             this.engine.resize();
-            if (this.game.currentScene && this.game.currentScene.resize) {
-                this.game.currentScene.resize();
-            }
+
+            window.cancelAnimationFrame(pendingResizeFrame);
+            pendingResizeFrame = window.requestAnimationFrame(() => {
+                this.engine.resize();
+                this.game.currentScene?.resize?.();
+                pendingResizeFrame = window.requestAnimationFrame(() => this.game.currentScene?.resize?.());
+            });
         });
     }
 
@@ -230,8 +238,9 @@ class App {
                 loginOverlay.hidden = true;
             }
             document.getElementById("touchControls")?.setAttribute("hidden", "");
-            document.getElementById("controlHint")?.setAttribute("hidden", "");
-            document.body.classList.remove("touch-ui-obscured");
+            document.getElementById("quickGuideButton")?.setAttribute("hidden", "");
+            document.getElementById("onboardingOverlay")?.setAttribute("hidden", "");
+            document.body.classList.remove("touch-ui-obscured", "guide-open");
             this.game.engine.displayLoadingUI();
             this.game.scene.detachControl();
             this.game.scene.dispose();
@@ -254,5 +263,5 @@ class App {
 
 const app = new App();
 if (process.env.NODE_ENV !== "production") {
-    (window as any).__T5C_APP__ = app;
+    (window as any).__ARKADII_QUEST_APP__ = app;
 }

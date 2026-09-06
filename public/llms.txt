@@ -1,18 +1,40 @@
-# T5C - The 5th Continent
+# Arkadii Quest / Аркадия Квест
 
-> T5C is a free multiplayer 3D top-down browser RPG set in Eldoria.
+> Arkadii Quest is a free old-school multiplayer 3D browser RPG set in Arkadia.
 
-Players can explore shared environments, fight enemies, complete quests, collect and equip loot, improve their characters, and use global chat. The game runs directly in a WebGL-capable browser and does not require an install.
+Players explore shared environments, fight creatures, complete quests, collect
+and equip loot, improve their heroes, trade with characters, and use global
+chat. The game runs directly in a WebGL-capable browser and does not require an
+installation. Its active interface and game content support English and
+Russian.
 
 ## Canonical pages
 
 - Play: https://arkadii.world/game/
 - Technical documentation: https://arkadii.world/game/docs/
-- Localization and controls: https://arkadii.world/game/docs/#localization_and_controls
+- Localization, onboarding, and controls: https://arkadii.world/game/docs/#localization_and_controls
 - API and security reference: https://arkadii.world/game/docs/#api_and_security
 - Game quality audit: https://arkadii.world/game/docs/#game_quality_audit
-- Source repository: https://github.com/senior-13j/t5c-platform-devOps
+
+## Controls and onboarding
+
+The first entry into the world presents a localized three-step onboarding path
+and an essential control table. Desktop players can reopen it with F1; touch
+players use the persistent guide button.
+
+Keyboard play supports WASD or arrow-key movement, hotbar keys 1-9, E for
+interaction, Tab for the nearest target, Enter for chat, and panel hotkeys.
+Touch play uses a virtual joystick, a tappable hotbar, and contextual target,
+interaction, and chat buttons.
+
+The gameplay camera keeps a fixed isometric angle, follows the active hero,
+looks ahead while moving, and adjusts distance automatically. Mouse-wheel zoom,
+mouse-drag rotation, and touch-swipe rotation are not camera controls.
 
 ## Technology
 
-The browser client uses Babylon.js and TypeScript. Multiplayer rooms use Colyseus over WebSockets, with an Express API and SQL persistence. Players choose English or Russian and a keyboard/mouse or touch profile before entering. Keyboard play supports WASD, hotkeys, mouse camera control, and chat; touch play uses a virtual joystick, world swipes, a tappable hotbar, and action controls. The web shell includes an accessible preference/login flow, responsive portrait and landscape layouts, and bilingual structured VideoGame metadata.
+The browser client uses Babylon.js and TypeScript. Multiplayer rooms use
+Colyseus over WebSockets, with an Express API and SQL persistence. The web shell
+includes an accessible preference/login flow, responsive portrait and landscape
+layouts, actionable loading failures, and bilingual `VideoGame` structured
+metadata.

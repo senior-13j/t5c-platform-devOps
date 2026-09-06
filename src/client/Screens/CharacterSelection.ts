@@ -26,6 +26,7 @@ export class CharacterSelectionScene {
     private rightColumnRect;
     private characterPanel: StackPanel;
     private scrollViewerBloc: ScrollViewer;
+    private selectionBackground: Image;
 
     private charactersUI: Rectangle[] = [];
     private selectedCharacter;
@@ -54,6 +55,24 @@ export class CharacterSelectionScene {
         const guiMenu = AdvancedDynamicTexture.CreateFullscreenUI("UI");
         this._ui = guiMenu;
 
+        const background = new Image("arkadiiSelectionBackground", "./images/arkadii-quest-keyart.webp");
+        background.width = 1;
+        background.height = 1;
+        background.stretch = Image.STRETCH_FILL;
+        background.isPointerBlocker = false;
+        guiMenu.addControl(background);
+        this.selectionBackground = background;
+        this.updateBackgroundCrop();
+
+        const backdrop = new Rectangle("arkadiiSelectionBackdrop");
+        backdrop.width = 1;
+        backdrop.height = 1;
+        backdrop.thickness = 0;
+        backdrop.background = "#06100c";
+        backdrop.alpha = 0.68;
+        backdrop.isPointerBlocker = false;
+        guiMenu.addControl(backdrop);
+
         // load scene
         this._scene = scene;
         await this._scene.whenReadyAsync();
@@ -67,8 +86,9 @@ export class CharacterSelectionScene {
         // check if user token is valid
         let user = await this._game.isValidLogin();
         if (!user) {
-            // if token not valid, send back to login screen
             this._game.setScene(State.LOGIN);
+            this._scene.dispose();
+            return;
         }
 
         this.generateleftPanel();
@@ -92,9 +112,9 @@ export class CharacterSelectionScene {
         leftColumnRect.left = 0;
         leftColumnRect.width = compact ? 0.92 : "400px";
         leftColumnRect.height = compact ? 0.96 : Math.min(720, window.innerHeight * 0.9) + "px";
-        leftColumnRect.background = "#0d1519";
-        leftColumnRect.color = "#61746a";
-        leftColumnRect.cornerRadius = 6;
+        leftColumnRect.background = "#0c1711ee";
+        leftColumnRect.color = "#d9aa43";
+        leftColumnRect.cornerRadius = 3;
         leftColumnRect.thickness = 1;
         leftColumnRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         leftColumnRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -152,7 +172,7 @@ export class CharacterSelectionScene {
         logoutBtn.width = 1;
         logoutBtn.height = compact ? "36px" : "32px";
         logoutBtn.color = "white";
-        logoutBtn.background = "#26323a";
+        logoutBtn.background = "#243329";
         logoutBtn.thickness = 1;
         logoutBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         logoutBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -169,7 +189,7 @@ export class CharacterSelectionScene {
         characterEditorBtn.width = 1;
         characterEditorBtn.height = compact ? "36px" : "32px";
         characterEditorBtn.color = "white";
-        characterEditorBtn.background = "#d38b16";
+        characterEditorBtn.background = "#b97823";
         characterEditorBtn.thickness = 1;
         characterEditorBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         characterEditorBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -192,8 +212,8 @@ export class CharacterSelectionScene {
         scrollViewerBloc.left = "0px";
         scrollViewerBloc.top = "82px";
         scrollViewerBloc.thickness = 1;
-        scrollViewerBloc.color = "#35443d";
-        scrollViewerBloc.background = "#111a1f";
+        scrollViewerBloc.color = "#536b58";
+        scrollViewerBloc.background = "#08110d";
         scrollViewerBloc.barSize = compact ? 8 : 10;
         scrollViewerBloc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         scrollViewerBloc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -215,7 +235,7 @@ export class CharacterSelectionScene {
         this.characterPanel = rightStackPanel;
 
         let user = this._game.currentUser;
-        let bgColor = "#1c272d";
+        let bgColor = "#18271d";
 
         if (user.characters.length > 0) {
             let i = 0;
@@ -226,8 +246,8 @@ export class CharacterSelectionScene {
                 characterBloc.width = 1;
                 characterBloc.height = compact ? "106px" : "104px";
                 characterBloc.background = bgColor;
-                characterBloc.color = "#3e4d46";
-                characterBloc.cornerRadius = 4;
+                characterBloc.color = "#526957";
+                characterBloc.cornerRadius = 2;
                 characterBloc.thickness = 1;
                 characterBloc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
                 characterBloc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -236,7 +256,7 @@ export class CharacterSelectionScene {
                 this.charactersUI.push(characterBloc);
 
                 if (this.selectedCharacter && this.selectedCharacter.id === char.id) {
-                    characterBloc.background = "#145d3b";
+                    characterBloc.background = "#315538";
                 }
 
                 var img = new Image("itemImage_" + char.id, "./images/portrait/" + race.icon + ".png");
@@ -282,7 +302,7 @@ export class CharacterSelectionScene {
                 createBtn.top = compact ? "66px" : "64px";
                 createBtn.width = compact ? "112px" : "120px";
                 createBtn.height = compact ? "32px" : "30px";
-                createBtn.background = "#d38b16";
+                createBtn.background = "#b97823";
                 createBtn.color = "white";
                 createBtn.thickness = 1;
                 createBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -304,14 +324,18 @@ export class CharacterSelectionScene {
 
         // reset selection
         this.charactersUI.forEach((element) => {
-            element.background = "#1c272d";
+            element.background = "#18271d";
         });
 
         // set current selected
-        this.charactersUI[index].background = "#145d3b";
+        this.charactersUI[index].background = "#315538";
     }
 
     public resize() {
+        // The background exists before authentication and panel construction,
+        // so keep its cover crop correct even during those async phases.
+        this.updateBackgroundCrop();
+
         if (!this.selectionPanel || !this.leftColumnRect) {
             return;
         }
@@ -321,5 +345,29 @@ export class CharacterSelectionScene {
         this.selectionPanel.height = compact ? 0.96 : Math.min(720, window.innerHeight * 0.9) + "px";
         this.leftColumnRect.width = compact ? 0.92 : 0.9;
         this.scrollViewerBloc.height = compact ? 0.7 : 0.72;
+    }
+
+    private updateBackgroundCrop(): void {
+        if (!this.selectionBackground) {
+            return;
+        }
+        const sourceWidth = 1920;
+        const sourceHeight = 1080;
+        const viewportAspect = Math.max(window.innerWidth, 1) / Math.max(window.innerHeight, 1);
+        const sourceAspect = sourceWidth / sourceHeight;
+
+        if (viewportAspect > sourceAspect) {
+            const croppedHeight = sourceWidth / viewportAspect;
+            this.selectionBackground.sourceLeft = 0;
+            this.selectionBackground.sourceTop = (sourceHeight - croppedHeight) / 2;
+            this.selectionBackground.sourceWidth = sourceWidth;
+            this.selectionBackground.sourceHeight = croppedHeight;
+        } else {
+            const croppedWidth = sourceHeight * viewportAspect;
+            this.selectionBackground.sourceLeft = (sourceWidth - croppedWidth) / 2;
+            this.selectionBackground.sourceTop = 0;
+            this.selectionBackground.sourceWidth = croppedWidth;
+            this.selectionBackground.sourceHeight = sourceHeight;
+        }
     }
 }
