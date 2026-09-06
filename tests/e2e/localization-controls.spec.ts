@@ -65,6 +65,13 @@ test("keyboard controls and automatic camera drive the English game", async ({ p
     await expect(page.locator("#entrySetupOverlay")).toHaveAttribute("role", "dialog");
     await expect(page.locator("#entrySetupOverlay")).toHaveAttribute("aria-modal", "true");
     await expect(page.locator("#entrySetupForm fieldset")).toHaveCount(2);
+    const selectedLocale = page.locator('input[name="locale"]:checked');
+    const entryContinue = page.locator("#entrySetupForm button[type=submit]");
+    await expect(selectedLocale).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(entryContinue).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(selectedLocale).toBeFocused();
     await page.locator('input[name="locale"][value="en"]').check();
     await page.locator('input[name="controlMode"][value="keyboard"]').check();
     await page.locator("#entrySetupForm button[type=submit]").click();

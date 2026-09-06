@@ -3,7 +3,7 @@ import { Quest, QuestObjective, QuestStatus, QuestUpdate, ServerMsg } from "../.
 import Logger from "../../utils/Logger";
 import { BrainSchema, LootSchema, PlayerSchema, QuestSchema } from "../schema";
 import { GameRoomState } from "../state/GameRoomState";
-import { calculateSaturatedGoldBalance, isQuestProgressComplete } from "../gameplayRules";
+import { calculateSaturatedGoldBalance, isQuestDefinition, isQuestProgressComplete } from "../gameplayRules";
 
 const QUEST_ACTIVE_STATUS = 0;
 const QUEST_COMPLETED_STATUS = 1;
@@ -121,9 +121,9 @@ export class dynamicCTRL {
             return false;
         }
 
-        let quest = this._state.gameData.get("quest", data.key) as Quest;
+        const quest = this._state.gameData.get("quest", data.key);
 
-        if (!quest) {
+        if (!isQuestDefinition(quest, data.key)) {
             return false;
         }
 

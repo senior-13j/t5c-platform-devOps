@@ -6,25 +6,26 @@ import { QuestsDB } from "./data/QuestsDB";
 import { HelpDB } from "./data/HelpDB";
 
 import { Ability, Race, Item, Quest } from "../shared/types";
+import { getOwnDataEntry } from "./utils/getOwnDataEntry";
 
 export class GameData {
     public static get(type, key) {
         let returnData;
         switch (type) {
             case "ability":
-                returnData = (AbilitiesDB[key] as Ability) ?? false;
+                returnData = getOwnDataEntry<Ability>(AbilitiesDB, key);
                 break;
             case "race":
-                returnData = (RacesDB[key] as Race) ?? false;
+                returnData = getOwnDataEntry<Race>(RacesDB, key);
                 break;
             case "location":
-                returnData = LocationsDB[key] ?? false;
+                returnData = getOwnDataEntry(LocationsDB, key);
                 break;
             case "item":
-                returnData = (ItemsDB[key] as Item) ?? false;
+                returnData = getOwnDataEntry<Item>(ItemsDB, key);
                 break;
             case "quest":
-                returnData = (QuestsDB[key] as Quest) ?? false;
+                returnData = getOwnDataEntry<Quest>(QuestsDB, key);
                 break;
             case "":
                 returnData = false;

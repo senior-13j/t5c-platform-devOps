@@ -1,26 +1,26 @@
-# The 5th Continent - World and Story
+# Arkadii Quest - World and Story
 
-## Chapter 1: Beginnings in Eldoria
+## Chapter 1: Beginnings in Oakwatch
 
-Eldoria is a quiet village nestled between lush forests and towering mountains.
+Oakwatch is a quiet settlement nestled between lush forests and towering mountains.
 The village feels peaceful at first glance, but every corner holds a possible
 quest and every alley hints at a story waiting to unfold.
 
 The early game follows a new hero from level 1 to level 10. Each completed quest
-and defeated enemy helps the hero grow into a symbol of hope for Eldoria. The
+and defeated enemy helps the hero grow into a symbol of hope for Arkadia. The
 teachings of Athlea guide the hero through the first threats and prepare them for
-larger dangers beyond the village.
+larger dangers across Arkadia.
 
-![Map of Eldoria](./map_eldoria.jpg)
+![Early planning map for Oakwatch](./map_eldoria.jpg)
 
 ## Locations
 
 | Location | Description |
 | --- | --- |
-| Forge | The heart of Eldoria's craftsmanship, where Blacksmith Garin forges weapons and armor. |
-| Temple | A sanctuary dedicated to Athlea, watched over by Priestess Alice. The Temple also guards the entrance to the rat-infested Cellar. |
+| Forge | The heart of Oakwatch's craftsmanship, where Blacksmith Garin forges weapons and armor. |
+| Temple | A sanctuary dedicated to Athlea, watched over by Priestess Alice. The Temple also guards the entrance to the skeleton-haunted Old Barrow. |
 | Farm | A field tended by Farmer Jorin, who provides food for the village. |
-| Tavern | The lively hub of Eldoria, run by Bartender Morin, where stories and quests are exchanged. |
+| Tavern | The lively hub of Oakwatch, run by Bartender Morin, where stories and quests are exchanged. |
 | Market | A busy trading area where Merchant Elara sells potions and jewelry. |
 | Mountains | A foreboding range that hides the entrance to the Cave dungeon. |
 | Cemetery | A somber place tended by Caretaker Ren and the entrance to the Mausoleum. |
@@ -33,7 +33,7 @@ larger dangers beyond the village.
 
 | Dungeon | Location | Enemy Theme | Level Range |
 | --- | --- | --- | --- |
-| Cellar | Beneath the Temple | Rats | 1-3 |
+| Old Barrow | Beyond the Temple cemetery | Barrow Skeletons | 1-3 |
 | Mausoleum | Cemetery | Skeletons | 3-6 |
 | Cave | Mountains | Mummies | 8-10 |
 
@@ -54,7 +54,7 @@ larger dangers beyond the village.
 
 | Enemy | Encounter Role |
 | --- | --- |
-| Rats | Cellar enemies for heroes levels 1-3. |
+| Barrow Skeletons | Restless enemies in the Old Barrow for heroes levels 1-3. |
 | Skeletons | Mausoleum enemies for heroes levels 3-6. |
 | Bandits | Forest enemies for heroes levels 6-8. |
 | Mummies | Cave enemies for heroes levels 8-10. |
@@ -72,7 +72,7 @@ larger dangers beyond the village.
 
 ### Blacksmith Garin
 
-- "Greetings, adventurer! Looking for a new weapon or some sturdy armor? I've got the finest in Eldoria."
+- "Greetings, adventurer! Looking for a new weapon or some sturdy armor? I've got some of the finest work in Arkadia."
 - "If you need repairs, I'm your man. Can't have you going into battle with a broken blade!"
 
 ### Merchant Elara
@@ -98,7 +98,7 @@ larger dangers beyond the village.
 ### Bartender Morin
 
 - "Welcome to the tavern! Sit, have a drink, and share your tales of adventure."
-- "We've got the best ale in Eldoria. A drink here is the perfect end to a long day of questing."
+- "We've got the best ale in Oakwatch. A drink here is the perfect end to a long day of questing."
 
 ### Caretaker Ren
 
@@ -112,7 +112,7 @@ larger dangers beyond the village.
 | Field | Value |
 | --- | --- |
 | Quest Giver | Priestess Alice |
-| Objective | Kill 10 Rats in the Cellar. |
+| Objective | Defeat 10 Barrow Skeletons in the Old Barrow. |
 | Dialogue | Priestess Alice asks the adventurer to cleanse the Temple basement. |
 
 ### Collecting Bones

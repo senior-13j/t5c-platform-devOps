@@ -5,7 +5,7 @@ import { Network } from "./Network";
 import { AssetsController } from "./AssetsController";
 import { VatController } from "./VatController";
 import { AssetContainer } from "@babylonjs/core/assetContainer";
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
 import { Config } from "../../shared/Config";
 import { ServerMsg } from "../../shared/types";
 import { GameScene } from "../Screens/GameScene";

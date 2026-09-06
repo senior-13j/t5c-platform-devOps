@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CalculationTypes, EntityState, QuestObjective, type Ability, type Quest } from "../src/shared/types";
+import { Leveling, MAX_EXPERIENCE } from "../src/shared/Class/Leveling";
 import {
+    GROUND_LOOT_TTL_MS,
+    MAX_GROUND_LOOT_PER_ROOM,
     MAX_INVENTORY_QUANTITY,
     MAX_GOLD_BALANCE,
     MAX_HEALTH_VALUE,
@@ -12,24 +15,37 @@ import {
     calculateDroppedQuantity,
     calculatePurchaseCost,
     calculateRemainingQuantity,
+    canAddGroundLoot,
     canClaimWorldEntity,
     canProcessDefeat,
     canProcessDebugMessages,
     clampHealth,
+    canUseKnownAbility,
+    getRewardRange,
     getLocationSpawnPoint,
     getMaximumAbilityCost,
     getKnownRoomLocation,
     getSingleTargetAbilityRange,
     hasSufficientAbilityResource,
     isAbilityCooldownReady,
+    isCombatAbilityTarget,
     isEquippedItemRequestValid,
     isItemQuantityCompatibleWithStacking,
+    isConsumableCooldownReady,
+    isGroundLootExpired,
+    isQuestDefinition,
     isQuestProgressComplete,
     isSquaredDistanceWithinRange,
+    isTrainerWithinRange,
     isVendorWithinRange,
+    meetsAbilityRequirements,
+    meetsItemRequirements,
     parsePositiveQuantity,
 } from "../src/server/rooms/gameplayRules";
 import { LocationsDB } from "../src/server/data/LocationsDB";
+import { GameData } from "../src/server/GameData";
+import { gameDataCTRL } from "../src/server/rooms/controllers/gameDataCTRL";
+import { ItemsDB } from "../src/server/data/ItemDB";
 
 function ability(overrides: Partial<Ability> = {}): Ability {
     return {
@@ -204,6 +220,86 @@ test("NPC ability validation enforces both mana and cooldown before casting", ()
     assert.equal(isAbilityCooldownReady([false, false], 5), false);
 });
 
+test("hotbar casting requires ownership while trainer requirements gate learning", () => {
+    const player = {
+        level: 1,
+        player_data: { strength: 20, endurance: 20, agility: 20, intelligence: 20, wisdom: 20 },
+    };
+    const known = new Map([["slice_attack", { key: "slice_attack" }], ["fire_dart", { key: "fire_dart" }]]);
+    const slice = ability({ key: "slice_attack" });
+    const fire = ability({ key: "fire_dart", required_level: 2, required_intelligence: 21 });
+
+    assert.equal(canUseKnownAbility({ type: "ability", key: "slice_attack" }, known, slice, player), true);
+    assert.equal(canUseKnownAbility({ type: "item", key: "slice_attack" }, known, slice, player), false);
+    assert.equal(canUseKnownAbility({ type: "ability", key: "poison" }, known, ability({ key: "poison" }), player), false);
+    assert.equal(meetsAbilityRequirements(fire, player), false);
+    assert.equal(canUseKnownAbility({ type: "ability", key: "fire_dart" }, known, fire, player), true);
+    player.level = 2;
+    player.player_data.intelligence = 21;
+    assert.equal(canUseKnownAbility({ type: "ability", key: "fire_dart" }, known, fire, player), true);
+    assert.equal(meetsAbilityRequirements({ key: "broken", required_level: Number.NaN }, player), false);
+});
+
+test("skill learning requires proximity to a trainer who offers that exact ability", () => {
+    const sorceress = LocationsDB.lh_town.dynamic.spawns.find((spawn) => spawn.key === "lh_town_sorceress");
+    assert.ok(sorceress);
+    const position = sorceress.points[0];
+    const spawns = LocationsDB.lh_town.dynamic.spawns;
+
+    assert.equal(isTrainerWithinRange(position, spawns, "fire_dart"), true);
+    assert.equal(isTrainerWithinRange(position, spawns, "light_heal"), false);
+    assert.equal(isTrainerWithinRange({ x: 0, y: 0, z: 0 }, spawns, "fire_dart"), false);
+    assert.equal(isTrainerWithinRange(position, spawns, "constructor"), false);
+});
+
+test("equipment requirements are resolved from a fixed stat allowlist", () => {
+    const player = { level: 9, health: 100, mana: 100, player_data: { strength: 20 } };
+    assert.equal(meetsItemRequirements(ItemsDB.amulet_01, player), false);
+    player.level = 10;
+    assert.equal(meetsItemRequirements(ItemsDB.amulet_01, player), true);
+    assert.equal(meetsItemRequirements({ requirements: [{ key: "constructor", amount: 0 }] }, player), false);
+    assert.equal(meetsItemRequirements({ requirements: [{ key: "level", amount: Number.NaN }] }, player), false);
+});
+
+test("consumable cooldowns cannot be bypassed by repeated messages", () => {
+    assert.equal(isConsumableCooldownReady(undefined, 1_000), true);
+    assert.equal(isConsumableCooldownReady(2_000, 1_999), false);
+    assert.equal(isConsumableCooldownReady(2_000, 2_000), true);
+    assert.equal(isConsumableCooldownReady(Number.NaN, 2_000), false);
+});
+
+test("ground loot expires after five minutes and rooms enforce a hard cap", () => {
+    assert.equal(isGroundLootExpired(GROUND_LOOT_TTL_MS - 1), false);
+    assert.equal(isGroundLootExpired(GROUND_LOOT_TTL_MS), true);
+    assert.equal(isGroundLootExpired(Number.NaN), false);
+    assert.equal(canAddGroundLoot(MAX_GROUND_LOOT_PER_ROOM - 1), true);
+    assert.equal(canAddGroundLoot(MAX_GROUND_LOOT_PER_ROOM), false);
+    assert.equal(canAddGroundLoot(-1), false);
+});
+
+test("rewardless enemies and malformed rewards cannot corrupt player experience", () => {
+    const owner: any = {
+        level: 1,
+        player_data: { experience: 0 },
+        statsCTRL: { updateBaseStats: () => undefined, getStat: () => 100 },
+        getClient: () => undefined,
+    };
+
+    assert.deepEqual(getRewardRange(0), { min: 0, max: 0 });
+    assert.equal(getRewardRange(undefined), null);
+    assert.equal(getRewardRange({ min: 10, max: 5 }), null);
+    assert.equal(Leveling.addExperience(owner, Number.NaN), false);
+    assert.equal(owner.player_data.experience, 0);
+
+    owner.level = 20;
+    owner.player_data.experience = MAX_EXPERIENCE;
+    assert.equal(Leveling.addExperience(owner, 1), true);
+    assert.equal(owner.player_data.experience, MAX_EXPERIENCE);
+    assert.equal(owner.level, 20);
+    assert.equal(Leveling.convertXpToLevel(Number.NaN), 1);
+    assert.equal(Leveling.getLevelProgress(MAX_EXPERIENCE), 100);
+});
+
 test("stuck reset uses the current location spawn without healing a living player", () => {
     const spawnPoint = getLocationSpawnPoint(LocationsDB.training_ground);
     assert.deepEqual(spawnPoint, { x: 0, y: 0, z: 0, rot: -180 });
@@ -232,4 +328,32 @@ test("death rewards only process for a newly defeated target and a living attack
     assert.equal(canProcessDefeat(false, true, 0), false);
     assert.equal(canProcessDefeat(false, false, 1), false);
     assert.equal(canProcessDefeat(false, false, Number.NaN), false);
+});
+
+test("combat abilities reject loot and malformed targets without throwing", () => {
+    const player = {
+        sessionId: "player-1",
+        type: "player" as const,
+        getPosition: () => ({ x: 0, y: 0, z: 0 }),
+        isEntityDead: () => false,
+    };
+    const loot = {
+        sessionId: "loot-1",
+        type: "item",
+        getPosition: () => ({ x: 0, y: 0, z: 0 }),
+    };
+
+    assert.equal(isCombatAbilityTarget(player), true);
+    assert.equal(isCombatAbilityTarget(loot), false);
+    assert.equal(isCombatAbilityTarget({ type: "entity", sessionId: "npc" }), false);
+});
+
+test("game data and quest updates reject prototype keys without throwing", () => {
+    const roomGameData = new gameDataCTRL();
+    assert.equal(GameData.get("quest", "toString"), false);
+    assert.equal(GameData.get("item", "constructor"), false);
+    assert.equal(roomGameData.get("quest", "toString"), false);
+
+    assert.equal(isQuestDefinition(Object.prototype.toString, "toString"), false);
+    assert.equal(isQuestDefinition({ key: "quest", quantity: 1, isRepeatable: false }, "quest"), false);
 });

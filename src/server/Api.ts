@@ -3,12 +3,16 @@ import path from "path";
 import Logger from "./utils/Logger";
 import { generateRandomPlayerName } from "../shared/Utils";
 import { GameData } from "./GameData";
-import type { Database } from "./Database";
-import { generateId } from "colyseus";
+import { CharacterLimitError, DuplicateUsernameError, type Database } from "./Database";
+import { nanoid } from "nanoid";
 
 export const QUICK_PLAY_RATE_LIMIT_COUNT = 5;
 export const QUICK_PLAY_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 export const QUICK_PLAY_USERNAME_ATTEMPTS = 20;
+export const LOGIN_RATE_LIMIT_COUNT = 10;
+export const LOGIN_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+export const CHARACTER_CREATE_RATE_LIMIT_COUNT = 5;
+export const CHARACTER_CREATE_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 export const CHARACTER_NAME_MAX_LENGTH = 24;
 
 export type ValidCharacterCustomization = {
@@ -123,12 +127,22 @@ class Api {
     constructor(
         app,
         database: Database,
-        options: { quickPlayRateLimiter?: FixedWindowRateLimiter } = {}
+        options: {
+            quickPlayRateLimiter?: FixedWindowRateLimiter;
+            loginRateLimiter?: FixedWindowRateLimiter;
+            characterCreateRateLimiter?: FixedWindowRateLimiter;
+        } = {}
     ) {
         const quickPlayRateLimiter =
             options.quickPlayRateLimiter ??
             new FixedWindowRateLimiter(QUICK_PLAY_RATE_LIMIT_COUNT, QUICK_PLAY_RATE_LIMIT_WINDOW_MS);
+        const loginRateLimiter =
+            options.loginRateLimiter ?? new FixedWindowRateLimiter(LOGIN_RATE_LIMIT_COUNT, LOGIN_RATE_LIMIT_WINDOW_MS);
+        const characterCreateRateLimiter =
+            options.characterCreateRateLimiter ??
+            new FixedWindowRateLimiter(CHARACTER_CREATE_RATE_LIMIT_COUNT, CHARACTER_CREATE_RATE_LIMIT_WINDOW_MS);
         const requestValue = (req, key: string) => req.body?.[key] ?? req.query?.[key];
+        const requestIp = (req) => String(req.ip ?? req.socket?.remoteAddress ?? "unknown");
         const safeUser = (user) => {
             const result = { ...user };
             delete result.password;
@@ -189,6 +203,11 @@ class Api {
         ///////////// ESPRESS MINI API ///////////////////
         //////////////////////////////////////////////////
         app.post("/login", async (req, res) => {
+            if (!loginRateLimiter.allow(requestIp(req))) {
+                res.setHeader("Retry-After", Math.ceil(LOGIN_RATE_LIMIT_WINDOW_MS / 1000));
+                return res.status(429).send({ message: "Too Many Login Attempts" });
+            }
+
             const username = String(requestValue(req, "username") ?? "").trim().slice(0, 64);
             const password = String(requestValue(req, "password") ?? "").slice(0, 128);
             if (!username || !password) {
@@ -205,12 +224,37 @@ class Api {
                 if (!user) {
                     const existingUser = await database.hasUser(username);
                     if (existingUser) {
-                        Logger.info("[api][/login] invalid credentials.");
-                        return res.status(401).send({ message: "Invalid Credentials" });
-                    }
+                        // Another request may have created this account after
+                        // our first lookup. Recheck the password so concurrent
+                        // first logins with identical credentials converge on
+                        // the one durable row instead of producing a false 401.
+                        user = await database.getUser(username, password);
+                        if (!user) {
+                            Logger.info("[api][/login] invalid credentials.");
+                            return res.status(401).send({ message: "Invalid Credentials" });
+                        }
+                        user = await database.getUserById(user.id);
+                    } else {
+                        Logger.info("[api][/login] user not found, creating new user.");
+                        try {
+                            user = await database.saveUser(username, password);
+                        } catch (error) {
+                            if (!(error instanceof DuplicateUsernameError)) {
+                                throw error;
+                            }
 
-                    Logger.info("[api][/login] user not found, creating new user.");
-                    user = await database.saveUser(username, password);
+                            // The database unique key is the final arbiter
+                            // across processes. A matching concurrent creator
+                            // shares its current token; a different password
+                            // remains an ordinary invalid-credentials result.
+                            const concurrentUser = await database.getUser(username, password);
+                            if (!concurrentUser) {
+                                Logger.info("[api][/login] invalid credentials after concurrent account creation.");
+                                return res.status(401).send({ message: "Invalid Credentials" });
+                            }
+                            user = await database.getUserById(concurrentUser.id);
+                        }
+                    }
                 } else {
                     Logger.info("[api][/login] user found, refreshing login token.");
                     user = await database.refreshToken(user.id);
@@ -278,6 +322,11 @@ class Api {
         });
 
         app.post("/create_character", async (req, res) => {
+            if (!characterCreateRateLimiter.allow(requestIp(req))) {
+                res.setHeader("Retry-After", Math.ceil(CHARACTER_CREATE_RATE_LIMIT_WINDOW_MS / 1000));
+                return res.status(429).send({ message: "Too Many Character Creation Requests" });
+            }
+
             const token = String(requestValue(req, "token") ?? "").trim().slice(0, 256);
             if (!token) {
                 return res.status(400).send({ message: "Missing Token" });
@@ -315,6 +364,9 @@ class Api {
                     character,
                 });
             } catch (error) {
+                if (error instanceof CharacterLimitError) {
+                    return res.status(409).send({ message: "Character Limit Reached" });
+                }
                 Logger.error("[api][/create_character] request failed.", error);
                 return res.status(500).send({ message: "Create Failed" });
             }
@@ -365,7 +417,7 @@ class Api {
         app.post("/returnRandomUser", async (req, res) => {
             // Express only honors X-Forwarded-For according to its configured
             // trust-proxy policy. Do not parse that attacker-controlled header here.
-            const clientIp = String(req.ip ?? req.socket?.remoteAddress ?? "unknown");
+            const clientIp = requestIp(req);
             if (!quickPlayRateLimiter.allow(clientIp)) {
                 res.setHeader("Retry-After", Math.ceil(QUICK_PLAY_RATE_LIMIT_WINDOW_MS / 1000));
                 return res.status(429).send({ message: "Too Many Quick Play Requests" });
@@ -377,7 +429,7 @@ class Api {
                     return res.status(503).send({ message: "Could Not Allocate Guest Name" });
                 }
 
-                const password = generateId();
+                const password = nanoid();
                 const user = await database.saveUser(username, password);
                 const race = GameData.get("race", "humanoid");
                 if (!user || !race || !Array.isArray(race.materials) || race.materials.length === 0) {

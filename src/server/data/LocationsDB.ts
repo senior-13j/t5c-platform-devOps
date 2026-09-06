@@ -27,7 +27,6 @@ let LocationsDB = {
         waterPlane: true,
         skyColor: [0, 0, 0, 1],
         fog: true,
-        music: "MUSIC_01",
         dynamic: {
             interactive: [
                 {
@@ -47,6 +46,13 @@ let LocationsDB = {
                     type: "teleport",
                     from: new Vector3(-8.4, 0, -49.08),
                     to_vector: new Vector3(-22, 0, -37.8),
+                },
+                {
+                    // hidden entrance from the secret grove to the Old Barrow
+                    type: "zone_change",
+                    from: new Vector3(-8, 0, -55),
+                    to_map: "lh_dungeon_01",
+                    to_vector: new Vector3(0, 0, 0),
                 },
             ],
             spawns: [
@@ -453,7 +459,6 @@ let LocationsDB = {
         },
         waterPlane: false,
         skyColor: [0, 0, 0, 1],
-        music: "MUSIC_01",
         dynamic: {
             interactive: [
                 {
@@ -524,7 +529,6 @@ let LocationsDB = {
         },
         waterPlane: false,
         skyColor: [0, 0, 0, 1],
-        music: "MUSIC_01",
         dynamic: {
             interactive: [
                 {
@@ -551,9 +555,9 @@ let LocationsDB = {
                     ],
                     radius: 0,
                     amount: 25,
-                    race: "rat_01",
+                    race: "skeleton_01",
                     material: 0,
-                    name: "Rat",
+                    name: "Barrow Skeleton",
                     baseSpeed: Speed.VERY_SLOW,
                 },
             ],

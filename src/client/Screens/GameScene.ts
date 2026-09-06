@@ -11,7 +11,7 @@ import { UserInterface } from "../Controllers/UserInterface";
 import { Player } from "../Entities/Player";
 import { Entity } from "../Entities/Entity";
 import { Item } from "../Entities/Item";
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
 import { NavMesh } from "../../shared/Libs/yuka-min";
 
 import { createConvexRegionHelper } from "../Utils/navMeshHelper";
@@ -26,6 +26,7 @@ import { CubeTexture } from "@babylonjs/core/Materials/Textures/cubeTexture";
 import { ShadowGenerator } from "@babylonjs/core/Lights/Shadows/shadowGenerator";
 import { PlayerCamera } from "../Entities/Player/PlayerCamera";
 import { SoundController } from "../Controllers/SoundController";
+import { getRoomCallbacks } from "../Controllers/RoomCallbacks";
 
 export class GameScene {
     public _game: GameController;
@@ -211,12 +212,10 @@ export class GameScene {
         this._camera = new PlayerCamera(this);
         this._sound = new SoundController(this);
 
-        // start music controller
-        //this._sound.play(this._game.currentLocation.music, true);
-
         ////////////////////////////////////////////////////
         //  when a entity joins the room event
-        this.room.state.entities.onAdd((entity, sessionId) => {
+        const callbacks = getRoomCallbacks(this.room);
+        callbacks.onAdd("entities", (entity, sessionId) => {
             if (entity.type === "player" && entity.sessionId === this.room.sessionId) {
                 // Invalidate a previous pending local-player spawn before queuing
                 // the latest state. Its async continuation will fail the
@@ -233,7 +232,7 @@ export class GameScene {
         });
 
         // when an entity is removed
-        this.room.state.entities.onRemove((entity, sessionId) => {
+        callbacks.onRemove("entities", (entity, sessionId) => {
             this.toSpawnOthers.delete(sessionId);
 
             if (sessionId === this.room.sessionId) {

@@ -7,7 +7,7 @@ import { applyTheme } from "../Theme";
 import { Scene } from "@babylonjs/core/scene";
 import { GameController } from "../../GameController";
 import { UserInterface } from "../../UserInterface";
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
 import { TrainerDialog } from "./Dialog/TrainerDialog";
 import { VendorDialog } from "./Dialog/VendorDialog";
 import { QuestDialog } from "./Dialog/QuestDialog";

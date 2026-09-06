@@ -39,8 +39,6 @@ export class TrainerDialog {
                 abilityAvailableToLearn.push(ability);
             }
         });
-        console.log("AVAILABLE TO LEARN", abilityAvailableToLearn);
-
         // create ui
         this.create(abilityAvailableToLearn);
     }
@@ -77,7 +75,10 @@ export class TrainerDialog {
     }
 
     playerHasAbility(ability) {
-        return this.panel._currentPlayer.player_data.abilities[ability.key] ? true : false;
+        const learned = this.panel._currentPlayer.player_data.abilities;
+        return typeof learned?.get === "function"
+            ? Boolean(learned.get(ability.key))
+            : Boolean(learned && Object.prototype.hasOwnProperty.call(learned, ability.key));
     }
 
     create(abilities) {

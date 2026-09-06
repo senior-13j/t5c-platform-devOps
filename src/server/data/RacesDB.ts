@@ -30,17 +30,6 @@ let RaceVAT = {
             ],
         },
     },
-    rat: {
-        key: "rat_01",
-        animations: {
-            ATTACK_1: { name: "Rat_Attack", duration: 2000, speed: 1 },
-            DEATH: { name: "Rat_Death", duration: 1000, speed: 1 },
-            IDLE: { name: "Rat_Idle", duration: 1000, speed: 1 },
-            WALK: { name: "Rat_Walk", duration: 1000, speed: 1.3 },
-        },
-        bones: {},
-        meshes: {},
-    },
 };
 
 let RacesDB: raceDataMap = {

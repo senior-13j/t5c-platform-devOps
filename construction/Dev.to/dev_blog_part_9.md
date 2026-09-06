@@ -1,4 +1,4 @@
-# Devlog Part 9 - Eldoria Level Design
+# Devlog Part 9 - Oakwatch Level Design
 
 Hi all,
 
@@ -14,14 +14,14 @@ characters.
 I already had a good idea of the world, but it took a while to write everything
 down and clean up the structure. The current starting point is:
 
-> Eldoria is a quaint village nestled between lush forests and towering mountains.
+> Oakwatch is a weathered village nestled between lush forests and towering mountains in Arkadia.
 
 ### Locations
 
-- **Forge**: The heart of Eldoria's craftsmanship, where Blacksmith Garin forges weapons and armor.
-- **Temple**: A sanctuary dedicated to Athlea, watched over by Priestess Alice, who also guards the entrance to the rat-infested Cellar dungeon.
+- **Forge**: The heart of Oakwatch's craftsmanship, where Blacksmith Garin forges weapons and armor.
+- **Temple**: A sanctuary dedicated to Athlea, watched over by Priestess Alice, near the entrance to the skeleton-haunted Old Barrow.
 - **Farm**: A sprawling field tended by Farmer Jorin, who provides food for the village.
-- **Tavern**: The lively hub of Eldoria, run by Bartender Morin, where stories and quests are exchanged.
+- **Tavern**: The lively hub of Oakwatch, run by Bartender Morin, where stories and quests are exchanged.
 - **Market**: A busy trading area where Merchant Elara sells potions and jewelry.
 - **Mountains**: A majestic and foreboding range that houses the entrance to the Cave dungeon.
 - **Cemetery**: A somber place tended by Caretaker Ren and the entrance to the Mausoleum dungeon.
@@ -32,7 +32,7 @@ down and clean up the structure. The current starting point is:
 
 ### Dungeons
 
-- **Cellar**: Beneath the Temple, infested with Rats and tuned for novice adventurers.
+- **Old Barrow**: Beyond the Temple cemetery, haunted by skeletons and tuned for novice adventurers.
 - **Mausoleum**: In the Cemetery, filled with powerful Skeletons for a greater challenge.
 - **Cave**: In the Mountains, housing Mummies for the most seasoned early-game heroes.
 
@@ -49,7 +49,7 @@ down and clean up the structure. The current starting point is:
 
 ### Enemies
 
-- **Rats**: Cellar enemies for heroes levels 1-3.
+- **Barrow Skeletons**: Old Barrow enemies for heroes levels 1-3.
 - **Skeletons**: Mausoleum enemies for heroes levels 3-6.
 - **Bandits**: Forest enemies for heroes levels 6-8.
 - **Mummies**: Cave enemies for heroes levels 8-10.
@@ -84,7 +84,7 @@ Open items:
 - Place the market closer to the town center.
 - Revisit the Velvet Veil placement in front of the Temple.
 
-![Map of Eldoria](../map_eldoria.jpg)
+![Early planning map for Oakwatch](../map_eldoria.jpg)
 
 What do you think of the result?
 

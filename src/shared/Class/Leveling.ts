@@ -1,7 +1,8 @@
-import { PlayerSchema } from "./../../server/rooms/schema";
+import type { PlayerSchema } from "./../../server/rooms/schema";
 import { roundTo } from "../Utils";
 import { ServerMsg } from "../types";
-import Logger from "../../server/utils/Logger";
+
+export const MAX_EXPERIENCE = 4_294_967_295;
 
 // level progression
 const LEVEL_EXPERIENCE = [
@@ -34,7 +35,10 @@ export class Leveling {
      * @returns level number
      */
     public static getTotalLevelXp(level: number): number {
-        return LEVEL_EXPERIENCE[level];
+        if (!Number.isSafeInteger(level) || level < 0) {
+            return 0;
+        }
+        return LEVEL_EXPERIENCE[Math.min(level, LEVEL_EXPERIENCE.length - 1)];
     }
 
     /**
@@ -43,7 +47,10 @@ export class Leveling {
      * @returns level number
      */
     public static convertXpToLevel(experience: number): number {
-        let level = 0;
+        if (!Number.isFinite(experience) || experience < 0) {
+            return 1;
+        }
+        let level = 1;
         LEVEL_EXPERIENCE.forEach((v, i) => {
             if (experience >= v) {
                 level = i + 1;
@@ -60,9 +67,19 @@ export class Leveling {
      * @returns boolean (true if player has levelled up, false otherwise)
      */
     public static doesPlayerlevelUp(currentLevel: number, currentExperience: number, amount: number) {
+        if (
+            !Number.isSafeInteger(currentLevel) ||
+            currentLevel < 1 ||
+            !Number.isFinite(currentExperience) ||
+            currentExperience < 0 ||
+            !Number.isFinite(amount) ||
+            amount < 0
+        ) {
+            return false;
+        }
         let newExperience = currentExperience + amount;
         let nextExpCap = LEVEL_EXPERIENCE[currentLevel];
-        if (newExperience >= nextExpCap) {
+        if (nextExpCap !== undefined && newExperience >= nextExpCap) {
             return true;
         }
         return false;
@@ -74,26 +91,42 @@ export class Leveling {
      * @returns percentage
      */
     public static getLevelProgress(experience: number) {
+        if (!Number.isFinite(experience) || experience < 0) {
+            return 0;
+        }
         let currentLevel = this.convertXpToLevel(experience);
+        if (currentLevel >= LEVEL_EXPERIENCE.length) {
+            return 100;
+        }
         let xpEarnedThisLevel = experience - LEVEL_EXPERIENCE[currentLevel - 1];
         let xpThisLevel = LEVEL_EXPERIENCE[currentLevel] - LEVEL_EXPERIENCE[currentLevel - 1];
         return roundTo((xpEarnedThisLevel / xpThisLevel) * 100, 0);
     }
 
-    public static addExperience(owner: PlayerSchema, amount) {
+    public static addExperience(owner: PlayerSchema, amount): boolean {
+        const currentExperience = Number(owner?.player_data?.experience);
+        const reward = Number(amount);
+        if (
+            !owner ||
+            !Number.isSafeInteger(currentExperience) ||
+            currentExperience < 0 ||
+            currentExperience > MAX_EXPERIENCE ||
+            !Number.isSafeInteger(reward) ||
+            reward < 0
+        ) {
+            return false;
+        }
+
         // add experience to player
         let currentLevel = owner.level;
-        owner.player_data.experience += amount;
+        owner.player_data.experience = Math.min(MAX_EXPERIENCE, currentExperience + reward);
         owner.level = Leveling.convertXpToLevel(owner.player_data.experience);
-
-        console.log(`[gameroom][addExperience] player has gained ${amount} experience`);
 
         // has the level changed
         if (owner.level > currentLevel) {
             let levelDifference = owner.level - currentLevel;
             let levelUpChange = 50 * levelDifference;
 
-            console.log(`[gameroom][addExperience] player has gained ${levelDifference} level and are now level ${owner.level}`);
             owner.statsCTRL.updateBaseStats("maxMana", levelUpChange);
             owner.statsCTRL.updateBaseStats("maxHealth", levelUpChange);
             owner.health = owner.statsCTRL.getStat("maxHealth");
@@ -102,11 +135,12 @@ export class Leveling {
 
             // inform player
             let client = owner.getClient();
-            client.send(ServerMsg.SERVER_MESSAGE, {
+            client?.send(ServerMsg.SERVER_MESSAGE, {
                 type: "event",
                 message: "You've gained knowledge and are now level " + owner.level + ".",
                 date: new Date(),
             });
         }
+        return true;
     }
 }

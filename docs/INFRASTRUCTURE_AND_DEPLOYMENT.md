@@ -60,6 +60,14 @@ Only this host binding is expected in the local profile:
 | `prometheus` | `prom/prometheus:v3.13.1` | Metrics scraping and storage |
 | `grafana` | `grafana/grafana-oss:13.0.2` | Observability dashboard UI |
 
+The multi-stage server image prunes development-only packages after the build
+and runs the final Node.js process as the unprivileged `node` user.
+On startup, the supported single server resets stale character-presence flags
+left by an interrupted previous process. Horizontal replicas require a shared
+lease/heartbeat design instead of the current boolean marker.
+Both Compose profiles rotate each container's JSON logs at 10 MiB and retain
+three files, preventing routine runtime output from growing without bound.
+
 ## Network Exposure
 
 | Port | Service | Local Access |
@@ -109,6 +117,7 @@ Important local defaults:
 | `CLIENT_API_URL` | empty | Optional build-time API URL override |
 | `CLIENT_WS_URL` | empty | Optional build-time WebSocket URL override |
 | `CLIENT_BASE_PATH` | empty | Optional browser base path |
+| `CORS_ALLOWED_ORIGINS` | Arkadii/local origins | Comma-separated exact browser origins allowed for HTTP CORS and WebSocket upgrades |
 
 When `CLIENT_API_URL` and `CLIENT_WS_URL` are empty, the production client uses
 the current HTTPS origin and `wss://` host.
@@ -189,21 +198,22 @@ docker compose config
 Validate source, browser discovery files, and both production builds:
 
 ```bash
+npm test
 npm run check:localization
 npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+npm audit
 npm audit --omit=dev
 ```
 
 `client-build` currently emits size warnings for the 2.7 MiB entrypoint and
 large world/VAT/audio assets. Those warnings are tracked performance debt, not a
-failed build. The September 2026 production audit reports one high transitive
-`nanoid` finding in Colyseus 0.15 and no critical findings. Its required major
-protocol migration, plus the remaining moderate/low advisories, is documented
-in the quality audit.
+failed build. After the tested Colyseus 0.18 migration, both the full and
+production npm audits reported zero known vulnerabilities on 6 September 2026.
+Audit data changes over time, so both commands remain part of pre-deployment QA.
 
 The Playwright configuration starts an isolated SQLite server and Webpack dev
 client when ports `3000` and `8080` are free. It runs one English desktop
@@ -266,31 +276,62 @@ curl -sS -D - -o /dev/null \
 curl -I http://127.0.0.1:3000/robots.txt
 ```
 
+HTTP CORS and browser WebSocket upgrades use the same exact-origin allowlist.
+Production defaults to `https://arkadii.world` and
+`https://www.arkadii.world`; local defaults additionally include
+`https://arkadii.game.local` and the documented localhost development ports.
+Set `CORS_ALLOWED_ORIGINS` to a comma-separated list of complete `http://` or
+`https://` origins when an intentional frontend host differs. Origin-less CLI,
+same-origin, and health-check requests remain valid.
+
 ## WebSocket Smoke Test
 
 Run the Colyseus smoke test through the local HTTPS/WSS domain:
 
 ```bash
+SMOKE_TOKEN='<account-token>' \
+SMOKE_CHARACTER_ID='<owned-character-id>' \
 npm run smoke:ws
 ```
 
-The default endpoint is `wss://arkadii.game.local`. Override it when testing a
-different environment:
+The default endpoint is `wss://arkadii.game.local` and the default room is
+`chat_room`. Both credentials are required because smoke testing now exercises
+the same token/character ownership boundary as the browser. Override the
+endpoint when testing another environment:
 
 ```bash
-SMOKE_WS_URL=wss://arkadii.world/game npm run smoke:ws
+SMOKE_WS_URL=wss://arkadii.world/game \
+SMOKE_TOKEN='<account-token>' \
+SMOKE_CHARACTER_ID='<owned-character-id>' \
+npm run smoke:ws
+```
+
+To verify location-filtered game matchmaking, also provide the character's
+persisted location (default `lh_town`):
+
+```bash
+SMOKE_ROOM=game_room \
+SMOKE_LOCATION=lh_town \
+SMOKE_TOKEN='<account-token>' \
+SMOKE_CHARACTER_ID='<owned-character-id>' \
+npm run smoke:ws
 ```
 
 ## Load Testing
 
-Run the interactive Colyseus load test:
+Run the authenticated interactive Colyseus load test with a token and character
+owned by that account:
 
 ```bash
+LOADTEST_TOKEN=<account-token> \
+LOADTEST_CHARACTER_ID=<owned-character-id> \
 npm run loadtest
 ```
 
 The default load test joins `chat_room` with 10 clients over
-`wss://arkadii.game.local`. Quit the interactive terminal UI with `q` or
+`wss://arkadii.game.local`. The scenario intentionally accepts only
+`chat_room`; concurrent `game_room` load testing needs a different owned
+character for every client. Quit the interactive terminal UI with `q` or
 `Ctrl-C`.
 
 ## Observability
@@ -348,13 +389,35 @@ docker compose up -d --build
 
 Only use `down -v` when you intentionally want to remove local MySQL data.
 
+### Transactional Character Writes
+
+Complete new-character creation (character row plus starter abilities, hotbar,
+equipment, and inventory) and complete player snapshot saves run in one adapter
+transaction. MySQL uses begin/commit/rollback and SQLite uses an immediate
+transaction. Database operations are serialized per adapter so another
+statement cannot enter the active transaction; any failed relation write rolls
+the complete operation back. Creation is limited to five characters per account
+inside that transaction; MySQL locks the owning user row so concurrent server
+processes cannot both pass the count check.
+
 ### Credential Migration
 
 New account passwords are stored with salted `scrypt`. A successful login with
 an older plaintext row upgrades that row automatically. Back up MySQL before
 deploying the new server over an existing user database, and define a password
 reset plan for dormant accounts that cannot self-migrate. Authentication
-responses no longer include the password column.
+responses no longer include the password column. Password login is limited per
+resolved client IP to 10 attempts in 10 minutes, and Quick Play to five requests
+in 10 minutes. Direct character creation has a separate five-request limit and
+a durable five-character account cap; the fixed-window maps are process-local.
+
+MySQL startup also runs an idempotent username migration after either a fresh
+bootstrap or detection of an existing schema. Clean databases receive a
+single-column unique key on `users.username`, closing cross-process first-login
+races. Null, empty, overlong, or duplicate legacy usernames stop startup with a
+non-destructive diagnostic; the server never guesses which credentials or
+characters should be merged. Take a verified backup and resolve those rows
+manually before retrying the deployment.
 
 ## Operations
 
@@ -424,7 +487,9 @@ docker compose logs --tail=100 web
 ```
 
 The nginx config forwards `Upgrade` and `Connection` headers for Colyseus
-WebSocket traffic.
+WebSocket traffic. A browser upgrade whose `Origin` is absent from
+`CORS_ALLOWED_ORIGINS` is deliberately rejected with `403`; check that variable
+before treating this response as a proxy fault.
 
 ### Browser Shows the Startup Fallback
 

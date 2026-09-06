@@ -6,6 +6,7 @@ import { StackPanel } from "@babylonjs/gui/2D/controls/stackPanel";
 import { TextBlock, TextWrapping } from "@babylonjs/gui/2D/controls/textBlock";
 import { QuestObjective } from "../../../../shared/types";
 import { QuestsHelper } from "../../../../shared/Class/QuestsHelper";
+import { getRoomCallbacks } from "../../RoomCallbacks";
 
 export class Panel_Quests extends Panel {
     private panel: Rectangle;
@@ -18,17 +19,14 @@ export class Panel_Quests extends Panel {
 
         // dynamic events
         let entity = this._currentPlayer.entity;
-        entity.player_data.quests.onAdd((item, sessionId) => {
+        const callbacks = getRoomCallbacks(this._room);
+        callbacks.onAdd(entity.player_data, "quests", (item) => {
             this.refresh();
-            // todo: could be a performance issue here?
-            // orion to keep an eye on this one
-            item.onChange((item, sessionId) => {
-                this.refresh();
-            });
-            item.onRemove((item, sessionId) => {
+            callbacks.onChange(item, () => {
                 this.refresh();
             });
         });
+        callbacks.onRemove(entity.player_data, "quests", () => this.refresh());
     }
 
     // open panel

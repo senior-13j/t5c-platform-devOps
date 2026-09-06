@@ -11,6 +11,7 @@ import { UserInterface } from "../../Controllers/UserInterface";
 import { VatController } from "../../Controllers/VatController";
 import { EquippableType } from "../../../shared/types";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { getRoomCallbacks } from "../../Controllers/RoomCallbacks";
 
 export class EntityMesh {
     private _entity: Entity;
@@ -137,10 +138,11 @@ export class EntityMesh {
             }
 
             // check for any equipment changes
-            this._entity.entity.equipment.onAdd((e) => {
+            const callbacks = getRoomCallbacks(this._entity._room);
+            callbacks.onAdd(this._entity.entity, "equipment", (e) => {
                 this.equipItem(e);
             });
-            this._entity.entity.equipment.onRemove((e) => {
+            callbacks.onRemove(this._entity.entity, "equipment", (e) => {
                 this.removeItem(e);
             });
         }, 300);

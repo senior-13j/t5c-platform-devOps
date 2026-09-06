@@ -123,9 +123,12 @@ Both profiles use the same automatic follow camera. It tracks the active
 character and maintains a stable top-down composition, so mouse-wheel zoom,
 mouse-drag rotation, and touch-swipe rotation are not part of normal play.
 
-Movement vectors are normalized client-side and clamped again server-side.
-Input is suspended on blur, page hiding, chat focus, and scene disposal. Touch
-panels hide underlying HUD controls to avoid overlap and accidental activation.
+Movement vectors are normalized client-side and validated again server-side.
+The server rejects stale sequences and non-finite input, bounds the resulting
+navmesh displacement, shares one step per simulation tick across direct and
+automated movement, and applies movement/action/message budgets per client.
+Input is suspended on blur, page hiding, chat focus, and scene disposal.
+Touch panels hide underlying HUD controls to avoid overlap and accidental activation.
 See [Localization and Controls](./LOCALIZATION_AND_CONTROLS.md) for the complete
 mapping and validation matrix.
 
@@ -177,8 +180,10 @@ TLS and paths.
 The server process starts:
 
 - the selected SQL database adapter;
-- Express with a 32 KiB JSON limit, compression, CORS, and static cache policy;
-- the Colyseus game server and `game_room` / `chat_room` handlers;
+- Express with a 32 KiB JSON limit, compression, exact-origin CORS, and static
+  cache policy;
+- the Colyseus 0.18 game server and `game_room` / `chat_room` handlers, with the
+  same origin policy applied to browser WebSocket upgrades;
 - static client and docs delivery from `dist/client`;
 - `/health` and `/metrics` operational endpoints;
 - authentication, character, game-data, and help routes.
@@ -186,8 +191,9 @@ The server process starts:
 Authentication requests use JSON bodies in the current client. New passwords
 are stored with salted `scrypt`; a valid login automatically upgrades a legacy
 plaintext row. Password fields are removed from every authentication response.
-See [API and Security](./API_AND_SECURITY.md) for endpoint behavior and remaining
-hardening work.
+Password login and Quick Play have process-local per-IP fixed-window limits.
+See [API and Security](./API_AND_SECURITY.md) for endpoint behavior and
+remaining hardening work.
 
 ## Persistence
 
@@ -222,6 +228,19 @@ already exists, startup skips importing the schema so container restarts do not
 drop persistent data. Database backups are still required before deployment,
 especially when rolling out credential migration behavior.
 
+After the MySQL bootstrap guard, an idempotent migration still verifies that
+`users.username` is non-null and uniquely indexed. It applies the missing key to
+clean legacy data, while null/empty/overlong or duplicate usernames fail startup
+without mutating or merging ambiguous accounts. Concurrent first logins are
+resolved by this database constraint and credential recheck, so separate server
+processes cannot create two identities with the same name.
+
+New-character creation, including its starter relations, is atomic and capped
+at five characters per account. Periodic, zone-transition, and disconnect saves
+persist a complete immutable snapshot in one transaction. Both MySQL and SQLite
+serialize adapter operations and roll back the complete character operation
+after any failed relation write.
+
 ## Search and Discovery
 
 The game entry document includes:
@@ -249,6 +268,7 @@ browser reports Do Not Track.
 
 | Command | Purpose |
 | --- | --- |
+| `npm test` | Run unit, security, database rollback, and Colyseus protocol tests |
 | `npm run client-dev` | Run the Webpack client with hot reload on port `8080` |
 | `APP_DATABASE=sqllite npm run server-dev` | Run the host server with reload and SQLite on port `3000` |
 | `npm run client-build` | Build the production client and copy assets/docs |
@@ -257,10 +277,11 @@ browser reports Do Not Track.
 | `npm run check:web-quality` | Validate HTML semantics, JSON-LD, manifest, crawler files, and references |
 | `npm run test:e2e` | Start SQLite/server/client fixtures and run desktop plus touch Chromium projects |
 | `npx tsc --noEmit` | Type-check client and server without writing output |
-| `npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS |
-| `npm run loadtest` | Run the Colyseus chat-room load test |
+| `SMOKE_TOKEN=... SMOKE_CHARACTER_ID=... npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS with owned-character credentials |
+| `LOADTEST_TOKEN=... LOADTEST_CHARACTER_ID=... npm run loadtest` | Run the authenticated Colyseus chat-room load test |
 | `npm run check:public` | Check DNS and host readiness for `arkadii.world` |
-| `npm audit --omit=dev` | Audit the production dependency tree |
+| `npm audit` | Audit the complete dependency tree |
+| `npm audit --omit=dev` | Audit the production dependency tree only |
 | `scripts/setup-local-domain.sh` | Prepare local HTTPS domains and certificates |
 | `docker compose up -d --build` | Build and run the complete local container stack |
 

@@ -7,6 +7,7 @@ import { TextBlock } from "@babylonjs/gui/2D/controls/textBlock";
 import { Image } from "@babylonjs/gui/2D/controls/image";
 import { ServerMsg } from "../../../../shared/types";
 import { Rarity } from "../../../../shared/Class/Rarity";
+import { getRoomCallbacks } from "../../RoomCallbacks";
 
 export class Panel_Character extends Panel {
     // inventory tab
@@ -101,14 +102,15 @@ export class Panel_Character extends Panel {
         // dynamic events
         let entity = this._currentPlayer.entity;
         if (entity) {
-            entity.player_data.onChange((item, sessionId) => {
+            const callbacks = getRoomCallbacks(this._room);
+            callbacks.onChange(entity.player_data, () => {
                 this.leftPanelContent(this.leftPanel);
                 this.rightPanelContent(this.rightPanel);
             });
-            entity.equipment.onAdd((item, sessionId) => {
+            callbacks.onAdd(entity, "equipment", (item) => {
                 this.slotPanelContentRefresh("ADD", this.slotPanel, item);
             });
-            entity.equipment.onRemove((item, sessionId) => {
+            callbacks.onRemove(entity, "equipment", (item) => {
                 this.slotPanelContentRefresh("REMOVE", this.slotPanel, item);
             });
         }

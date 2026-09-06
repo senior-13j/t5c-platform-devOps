@@ -8,6 +8,7 @@ import { Button } from "@babylonjs/gui/2D/controls/button";
 import { applyTheme } from "../Theme";
 import { ScrollViewer } from "@babylonjs/gui/2D/controls/scrollViewers/scrollViewer";
 import { ServerMsg } from "../../../../shared/types";
+import { getRoomCallbacks } from "../../RoomCallbacks";
 
 export class Panel_Abilities extends Panel {
     // inventory tab
@@ -20,17 +21,14 @@ export class Panel_Abilities extends Panel {
 
         // dynamic events
         let entity = this._currentPlayer.entity;
-        entity.player_data.abilities.onAdd((item, sessionId) => {
+        const callbacks = getRoomCallbacks(this._room);
+        callbacks.onAdd(entity.player_data, "abilities", (item) => {
             this.refresh();
-            // todo: could be a performance issue here?
-            // orion to keep an eye on this one
-            item.onChange((item, sessionId) => {
-                this.refresh();
-            });
-            item.onRemove((item, sessionId) => {
+            callbacks.onChange(item, () => {
                 this.refresh();
             });
         });
+        callbacks.onRemove(entity.player_data, "abilities", () => this.refresh());
     }
 
     // open panel

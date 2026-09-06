@@ -15,6 +15,7 @@ import { Database } from "./Database";
 
 import Logger from "./utils/Logger";
 import { Config } from "../shared/Config";
+import { createCorsOptions, createWebSocketOriginGuard, MAX_WEBSOCKET_PAYLOAD_BYTES } from "./HttpSecurity";
 
 import "dotenv/config";
 
@@ -37,6 +38,7 @@ class GameServer {
         this.database = new Database(this.config);
         await this.database.init();
         await this.database.create();
+        await this.database.resetOnlineStatuses();
 
         //////////////////////////////////////////////////
         ///////////// COLYSEUS GAME SERVER ///////////////
@@ -50,17 +52,19 @@ class GameServer {
         app.set("trust proxy", process.env.TRUST_PROXY || "loopback, linklocal, uniquelocal");
         app.use(compression());
         app.use(express.json({ limit: "32kb" }));
-        app.use(cors());
+        app.use(cors(createCorsOptions()));
 
         // create colyseus server
         const gameServer = new Server({
             transport: new WebSocketTransport({
                 server: createServer(app),
+                beforeUpgrade: createWebSocketOriginGuard(),
+                maxPayload: MAX_WEBSOCKET_PAYLOAD_BYTES,
             }),
         });
 
         // define all rooms
-        gameServer.define("game_room", GameRoom);
+        gameServer.define("game_room", GameRoom).filterBy(["location"]);
         gameServer.define("chat_room", ChatRoom).on("create", (room: ChatRoom) => {
             room.setDatabase(this.database);
         });

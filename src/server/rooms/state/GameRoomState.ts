@@ -1,5 +1,5 @@
-import { Client } from "colyseus";
-import { Schema, type, MapSchema, filterChildren } from "@colyseus/schema";
+import { Client } from "@colyseus/core";
+import { Schema, type, MapSchema } from "@colyseus/schema";
 import { BrainSchema, Entity, EquipmentSchema, LootSchema, PlayerSchema } from "../schema";
 
 import { spawnCTRL } from "../controllers/spawnCTRL";
@@ -12,7 +12,8 @@ import { NavMesh, Vector3 } from "../../../shared/Libs/yuka-min";
 import Logger from "../../utils/Logger";
 import { ItemClass, ServerMsg, Speed } from "../../../shared/types";
 import { Config } from "../../../shared/Config";
-import { canProcessDebugMessages } from "../gameplayRules";
+import { canAddGroundLoot, canProcessDebugMessages, isGroundLootExpired } from "../gameplayRules";
+import { getPingTimestamp, isClickToMoveTargetAllowed } from "../GameplayMessageGuard";
 
 const DEBUG_MESSAGE_TYPES = new Set<ServerMsg>([
     ServerMsg.DEBUG_BOTS,
@@ -71,13 +72,21 @@ export class GameRoomState extends Schema {
     }
 
     public update(deltaTime: number) {
+        const expiredLoot: string[] = [];
         // updating entities
         if (this.entityCTRL.hasEntities()) {
             this.entityCTRL.all.forEach((entity) => {
                 entity.update(deltaTime);
-                // todo: remove item/loot that's been on the ground over 5 minutes
+                if (entity instanceof LootSchema && isGroundLootExpired(entity.spawnTimer)) {
+                    expiredLoot.push(entity.sessionId);
+                }
             });
         }
+
+        expiredLoot.forEach((sessionId) => {
+            this.deleteEntity(sessionId);
+            this.removeTarget(sessionId);
+        });
 
         // update spawn controller
         this.spawnCTRL.update(deltaTime);
@@ -88,13 +97,44 @@ export class GameRoomState extends Schema {
     }
 
     deleteEntity(sessionId) {
-        this.entities.delete(sessionId);
+        const entity = this.entities.get(sessionId);
+        if (entity) {
+            this.entityCTRL.delete(entity);
+        }
+    }
+
+    addGroundLoot(entity: LootSchema): boolean {
+        if (
+            !(entity instanceof LootSchema) ||
+            typeof entity.sessionId !== "string" ||
+            entity.sessionId.length === 0 ||
+            this.entities.has(entity.sessionId)
+        ) {
+            return false;
+        }
+
+        let groundLootCount = 0;
+        this.entities.forEach((existing) => {
+            if (existing instanceof LootSchema) {
+                groundLootCount += 1;
+            }
+        });
+        if (!canAddGroundLoot(groundLootCount)) {
+            return false;
+        }
+
+        this.entityCTRL.add(entity);
+        return true;
     }
 
     removeTarget(sessionId) {
         this.entityCTRL.all.forEach((entity) => {
-            if (entity.type === "entity" && entity.AI_TARGET && entity.AI_TARGET.sessionId === sessionId) {
+            if (entity.AI_TARGET?.sessionId === sessionId) {
                 entity.AI_TARGET = null;
+                if (entity instanceof PlayerSchema) {
+                    entity.AI_TARGET_FOUND = false;
+                    entity.moveCTRL?.cancelTargetDestination();
+                }
             }
         });
     }
@@ -103,7 +143,7 @@ export class GameRoomState extends Schema {
      * Add player
      * @param client
      */
-    addPlayer(client: Client): void {
+    addPlayer(client: Client): PlayerSchema {
         // prepare player data
         let data = client.auth;
 
@@ -151,10 +191,12 @@ export class GameRoomState extends Schema {
             initial_hotbar: data.hotbar ?? [],
         };
 
-        this.entityCTRL.add(new PlayerSchema(this, player));
+        const playerSchema = new PlayerSchema(this, player);
+        this.entityCTRL.add(playerSchema);
 
         // log
         Logger.info(`[gameroom][onJoin] player ${client.sessionId} joined room ${this._gameroom.roomId}.`);
+        return playerSchema;
     }
 
     processMessage(client, type, data) {
@@ -162,12 +204,12 @@ export class GameRoomState extends Schema {
         ////////// SERVER EVENTS ///////////
         ////////////////////////////////////
 
-        if (type !== ServerMsg.PING) {
-            Logger.info(`[gameroom][` + ServerMsg[type] + `] player message`, data);
-        }
-
         if (type === ServerMsg.PING) {
-            client.send(ServerMsg.PONG, data);
+            const timestamp = getPingTimestamp(data);
+            if (timestamp === null) {
+                return false;
+            }
+            client.send(ServerMsg.PONG, { date: timestamp });
             return true;
         }
 
@@ -209,7 +251,8 @@ export class GameRoomState extends Schema {
         /////////////////////////////////////
         // on player learn skill
         if (type === ServerMsg.PLAYER_LEARN_SKILL) {
-            //playerState.abilitiesCTRL.learnAbility(data.key);
+            const key = typeof data?.key === "string" ? data.key : "";
+            return key ? playerState.abilitiesCTRL.learnAbility(key) : false;
         }
 
         /////////////////////////////////////
@@ -237,14 +280,18 @@ export class GameRoomState extends Schema {
 
         // on player click to move
         if (type === ServerMsg.PLAYER_MOVE_TO) {
-            const x = Number(data?.x);
-            const y = Number(data?.y);
-            const z = Number(data?.z);
-            if (![x, y, z].every(Number.isFinite)) {
+            const x = data?.x;
+            const y = data?.y;
+            const z = data?.z;
+            if (![x, y, z].every((value) => typeof value === "number")) {
+                return false;
+            }
+            const destination = new Vector3(x, y, z);
+            if (!isClickToMoveTargetAllowed(playerState.getPosition(), destination)) {
                 return false;
             }
             //playerState.abilitiesCTRL.cancelAutoAttack(playerState);
-            playerState.moveCTRL.setTargetDestination(new Vector3(x, y, z));
+            return playerState.moveCTRL.setClickToMoveDestination(destination);
         }
 
         /////////////////////////////////////
@@ -253,9 +300,12 @@ export class GameRoomState extends Schema {
             //playerState.abilitiesCTRL.cancelAutoAttack(playerState);
             const sessionId = typeof data?.sessionId === "string" ? data.sessionId : "";
             const itemState = sessionId ? this.getEntity(sessionId) : null;
-            if (itemState) {
+            if (itemState instanceof LootSchema) {
+                playerState.moveCTRL.cancelAutomatedMovement();
                 playerState.setTarget(itemState);
+                return true;
             }
+            return false;
         }
 
         if (type === ServerMsg.PLAYER_DROP_ITEM) {
@@ -327,12 +377,18 @@ export class GameRoomState extends Schema {
 
             // get players involved
             const targetId = typeof data?.targetId === "string" ? data.targetId : "";
-            let targetState = targetId ? (this.getEntity(targetId) as Entity) : null;
+            const targetCandidate = targetId ? this.getEntity(targetId) : null;
+            const targetState =
+                targetCandidate instanceof BrainSchema || targetCandidate instanceof PlayerSchema ? targetCandidate : null;
             let hotbarData = playerState.player_data.hotbar.get("" + digit);
 
             Logger.warning(`[ServerMsg.PLAYER_HOTBAR_ACTIVATED]`, digit);
 
             if (!hotbarData) {
+                return false;
+            }
+
+            if (targetId && !targetState) {
                 return false;
             }
 
@@ -347,6 +403,7 @@ export class GameRoomState extends Schema {
 
             // if ability
             if (hotbarData && hotbarData.type === "ability") {
+                playerState.moveCTRL.cancelAutomatedMovement();
                 playerState.abilitiesCTRL.addAbility(playerState, targetState, { ...data, digit });
                 return false;
             }

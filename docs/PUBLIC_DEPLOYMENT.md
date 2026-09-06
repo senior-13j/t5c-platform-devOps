@@ -107,6 +107,7 @@ Replace every `CHANGE_ME` value before starting the stack.
 | `HTTP_PORT` | `80` | Public HTTP port for redirects and ACME challenges |
 | `HTTPS_PORT` | `443` | Public HTTPS port |
 | `CLIENT_BASE_PATH` | `/game` | Browser base path baked into the game bundle |
+| `CORS_ALLOWED_ORIGINS` | `https://arkadii.world,https://www.arkadii.world` | Exact browser origins allowed for HTTP CORS and WebSocket upgrades |
 | `DATABASE_PASSWORD` | required | MySQL application password |
 | `MYSQL_ROOT_PASSWORD` | required | MySQL root password |
 | `GRAFANA_ADMIN_PASSWORD` | required | Grafana admin password, even though Grafana is not publicly routed |
@@ -168,12 +169,14 @@ docker run --rm \
 Validate application metadata and production builds before creating the image:
 
 ```bash
+npm test
 npm run check:localization
 npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+npm audit
 npm audit --omit=dev
 ```
 
@@ -198,7 +201,10 @@ Run these checks from the deployment host:
 ```bash
 docker compose --env-file .env.public -f docker-compose.public.yml ps
 curl -fsS https://arkadii.world/health
-SMOKE_WS_URL=wss://arkadii.world/game npm run smoke:ws
+SMOKE_WS_URL=wss://arkadii.world/game \
+SMOKE_TOKEN='<account-token>' \
+SMOKE_CHARACTER_ID='<owned-character-id>' \
+npm run smoke:ws
 ```
 
 Verify search, answer-engine, manifest, compression, and cache delivery:
@@ -222,7 +228,9 @@ Expected results:
 - the manifest and entry HTML revalidate instead of receiving a long immutable
   cache lifetime;
 - the bundle is compressed and does not expose `X-Powered-By`;
-- WebSocket smoke testing can join through `/game`.
+- authenticated WebSocket smoke testing can join through `/game`;
+- a browser WebSocket upgrade from an origin outside
+  `CORS_ALLOWED_ORIGINS` receives `403`.
 
 Run this from another network, such as a phone on mobile data:
 
@@ -312,10 +320,24 @@ host, network, and proxy load; semantic/discovery checks should remain stable.
 - New passwords use salted `scrypt`; valid legacy plaintext rows migrate during
   login. Keep a verified pre-deployment backup and handle dormant accounts with
   a reset policy.
+- MySQL startup idempotently enforces a unique, non-null username. Before the
+  first rollout over legacy data, inspect `users` for null/empty/overlong names
+  and `GROUP BY username HAVING COUNT(*) > 1`; resolve every result manually
+  after taking a verified backup. Startup refuses unsafe rows without merging or
+  deleting accounts.
 - Password fields are removed from authentication payloads, but tokens remain
   bearer credentials and must not enter URLs, logs, or analytics.
-- Add rate limiting and production CORS restrictions before treating the
-  prototype login and Quick Play endpoints as a hardened account service.
+- Password login and Quick Play have process-local per-IP fixed-window limits;
+  use an infrastructure/shared-store limiter before scaling to multiple Node
+  workers or hosts.
+- HTTP CORS and browser WebSocket upgrades share an exact-origin allowlist.
+  Keep `CORS_ALLOWED_ORIGINS` synchronized with every intentional public
+  frontend origin; this browser boundary does not replace authentication.
+- New-character/default-loadout creation and complete player snapshot saves are
+  atomic MySQL transactions. Keep verified backups despite rollback coverage.
+- Gameplay messages have known-type, per-client all/movement/action budgets and
+  movement replay/displacement validation. Continue treating combat/economy
+  anomaly detection as defense-in-depth work, not a solved anti-cheat problem.
 - Add backups before depending on the public MySQL volume for persistent data.
 - Resolve the asset provenance gaps recorded in the repository root
   `THIRD_PARTY_ASSETS.md` before a commercial release.

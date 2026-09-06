@@ -143,6 +143,12 @@ async function main(): Promise<void> {
         localizedData.locations.lh_town.dynamic.spawns[0].name,
         gameContent.entities.lh_town.lh_town_blacksmith.name.ru
     );
+    assert.equal(localizedData.locations.lh_dungeon_01.dynamic.spawns[0].race, "skeleton_01");
+    assert.equal(
+        localizedData.locations.lh_dungeon_01.dynamic.spawns[0].name,
+        gameContent.entities.lh_dungeon_01.spawn_01.name.ru
+    );
+    assert.doesNotMatch(localizedData.locations.lh_dungeon_01.dynamic.spawns[0].name, /крыса/i);
     assert.equal(localizedData.help.tab_01.objects[1].description, gameContent.help.movementTouch.ru);
     assert.equal(
         localizeServerMessage("You've gained knowledge and are now level 3.", "ru"),

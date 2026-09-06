@@ -14,6 +14,9 @@ import State from "./Screens";
 import { StackPanel } from "@babylonjs/gui/2D/controls/stackPanel";
 import { Engine } from "@babylonjs/core/Engines/engine";
 import { GameController } from "../Controllers/GameController";
+import { KeyboardEventTypes } from "@babylonjs/core/Events/keyboardEvents";
+import { MAX_CHARACTERS_PER_USER } from "../../shared/Config";
+import { canCreateCharacter } from "./characterCreation";
 
 export class CharacterSelectionScene {
     public _game: GameController;
@@ -30,6 +33,7 @@ export class CharacterSelectionScene {
 
     private charactersUI: Rectangle[] = [];
     private selectedCharacter;
+    private selectedCharacterIndex = -1;
 
     public sceneRendered = false;
 
@@ -97,6 +101,12 @@ export class CharacterSelectionScene {
         if (user.characters.length > 0) {
             let index = user.characters.length - 1;
             this.selectCharacter(index, user.characters[index]);
+        }
+
+        this.bindKeyboardNavigation();
+        if (this._game.controlMode === "keyboard") {
+            this.announce(this._game.t("character.keyboardHint"));
+            window.requestAnimationFrame(() => this._game.engine.getRenderingCanvas()?.focus());
         }
 
         // hide loading gui
@@ -181,16 +191,21 @@ export class CharacterSelectionScene {
             this._game.logout();
         });
 
+        const characterLimitReached = !canCreateCharacter(this._game.currentUser.characters.length);
         const characterEditorBtn = Button.CreateSimpleButton(
             "characterEditorBtn",
-            this._game.t("character.createAdventurer")
+            this._game.t(characterLimitReached ? "character.limitReached" : "character.createAdventurer", {
+                limit: MAX_CHARACTERS_PER_USER,
+            })
         );
         characterEditorBtn.top = compact ? "-46px" : "-40px";
         characterEditorBtn.width = 1;
         characterEditorBtn.height = compact ? "36px" : "32px";
         characterEditorBtn.color = "white";
-        characterEditorBtn.background = "#b97823";
+        characterEditorBtn.background = characterLimitReached ? "#38433d" : "#b97823";
         characterEditorBtn.thickness = 1;
+        characterEditorBtn.alpha = characterLimitReached ? 0.72 : 1;
+        characterEditorBtn.isEnabled = !characterLimitReached;
         characterEditorBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         characterEditorBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         leftColumnBottomActions.addControl(characterEditorBtn);
@@ -320,7 +335,11 @@ export class CharacterSelectionScene {
     }
 
     selectCharacter(index, char) {
+        if (!char || index < 0 || index >= this.charactersUI.length) {
+            return;
+        }
         this.selectedCharacter = char;
+        this.selectedCharacterIndex = index;
 
         // reset selection
         this.charactersUI.forEach((element) => {
@@ -329,6 +348,71 @@ export class CharacterSelectionScene {
 
         // set current selected
         this.charactersUI[index].background = "#315538";
+        if (this.charactersUI.length > 1 && this.scrollViewerBloc) {
+            this.scrollViewerBloc.verticalBar.value = index / (this.charactersUI.length - 1);
+        }
+    }
+
+    private bindKeyboardNavigation(): void {
+        this._scene.onKeyboardObservable.add((keyboardInfo) => {
+            if (keyboardInfo.type !== KeyboardEventTypes.KEYDOWN || this._game.controlMode !== "keyboard") {
+                return;
+            }
+
+            const event = keyboardInfo.event;
+            const characters = this._game.currentUser?.characters ?? [];
+            if (["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft"].includes(event.code) && characters.length) {
+                const direction = event.code === "ArrowDown" || event.code === "ArrowRight" ? 1 : -1;
+                const current = this.selectedCharacterIndex >= 0 ? this.selectedCharacterIndex : 0;
+                const next = (current + direction + characters.length) % characters.length;
+                this.selectCharacter(next, characters[next]);
+                this.announce(
+                    this._game.t("character.selectedAnnouncement", {
+                        name: characters[next].name,
+                        position: next + 1,
+                        total: characters.length,
+                    })
+                );
+                event.preventDefault();
+                return;
+            }
+
+            if (event.code === "Enter" && this.selectedCharacter) {
+                this.playSelectedCharacter();
+                event.preventDefault();
+                return;
+            }
+
+            if (event.code === "KeyN") {
+                if (canCreateCharacter(characters.length)) {
+                    this._game.setScene(State.CHARACTER_EDITOR);
+                } else {
+                    this.announce(this._game.t("character.limitReached", { limit: MAX_CHARACTERS_PER_USER }));
+                }
+                event.preventDefault();
+                return;
+            }
+
+            if (event.code === "Escape") {
+                this._game.logout();
+                event.preventDefault();
+            }
+        });
+    }
+
+    private playSelectedCharacter(): void {
+        if (!this.selectedCharacter) {
+            return;
+        }
+        this._game.setCharacter(this.selectedCharacter);
+        this._game.setScene(State.GAME);
+    }
+
+    private announce(message: string): void {
+        const announcements = document.getElementById("gameAnnouncements");
+        if (announcements) {
+            announcements.textContent = message;
+        }
     }
 
     public resize() {

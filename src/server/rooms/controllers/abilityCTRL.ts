@@ -7,11 +7,15 @@ import { HotbarSchema } from "../schema/player/HotbarSchema";
 import { dropCTRL } from "./dropCTRL";
 import {
     canProcessDefeat,
+    canUseKnownAbility,
     clampHealth,
     getSingleTargetAbilityRange,
     hasSufficientAbilityResource,
+    isCombatAbilityTarget,
     isAbilityCooldownReady,
     isSquaredDistanceWithinRange,
+    isTrainerWithinRange,
+    meetsAbilityRequirements,
 } from "../gameplayRules";
 
 export class abilitiesCTRL {
@@ -33,6 +37,9 @@ export class abilitiesCTRL {
      * @param ability
      */
     public learnAbility(key) {
+        if (typeof key !== "string" || key.length === 0 || this._owner?.type !== "player") {
+            return false;
+        }
         const ability = this._owner._state.gameData.get("ability", key);
 
         // only proceed if the ability exists
@@ -41,27 +48,36 @@ export class abilitiesCTRL {
         }
 
         // only proceed if the ability does not already
-        if (!this._owner.player_data.abilities.get(ability.key)) {
-            // add ability to player
-            this._owner.player_data.abilities.set(
-                ability.key,
-                new AbilitySchema({
-                    key: ability.key,
-                })
-            );
-            // add ability to the hotbar
-            let slotAvailable = this._owner.findNextAvailableHotbarSlot();
-            if (slotAvailable) {
-                this._owner.player_data.hotbar.set(
-                    slotAvailable,
-                    new HotbarSchema({
-                        digit: slotAvailable,
-                        type: "ability",
-                        key: ability.key,
-                    })
-                );
-            }
+        if (this._owner.player_data.abilities.has(ability.key)) {
+            return false;
         }
+
+        const spawns = this._owner._state?.roomDetails?.dynamic?.spawns ?? [];
+        const price = Number(ability.value ?? 0);
+        const gold = Number(this._owner.player_data.gold);
+        if (
+            !meetsAbilityRequirements(ability, this._owner) ||
+            !isTrainerWithinRange(this._owner.getPosition(), spawns, ability.key) ||
+            !Number.isSafeInteger(price) ||
+            price < 0 ||
+            !Number.isSafeInteger(gold) ||
+            gold < price
+        ) {
+            return false;
+        }
+
+        const learnedAbility = new AbilitySchema({ key: ability.key });
+        const slotAvailable = this._owner.findNextAvailableHotbarSlot();
+        const hotbarEntry = slotAvailable
+            ? new HotbarSchema({ digit: slotAvailable, type: "ability", key: ability.key })
+            : null;
+
+        this._owner.player_data.gold = gold - price;
+        this._owner.player_data.abilities.set(ability.key, learnedAbility);
+        if (slotAvailable && hotbarEntry) {
+            this._owner.player_data.hotbar.set(String(slotAvailable), hotbarEntry);
+        }
+        return true;
     }
 
     public addAbility(owner, target, data) {
@@ -76,7 +92,7 @@ export class abilitiesCTRL {
 
         // make sure player can cast this ability
         if (!this.canEntityCastAbility(owner, target, ability, digit)) {
-            Logger.warning(`[canEntityCastAbility] ability can be cast`, ability.key);
+            Logger.warning(`[canEntityCastAbility] ability cannot be cast`, ability.key);
             return false;
         }
 
@@ -94,7 +110,7 @@ export class abilitiesCTRL {
                 Logger.warning(`[addAbility] ability must be cast close to target`, ability.key);
                 ability.digit = digit;
                 owner.AI_TARGET = target;
-                owner.AI_ABILITY = ability; // store ability to use once user gets close enough
+                owner.AI_ABILITY = { ...ability, digit }; // store ability to use once user gets close enough
                 return false;
             }
         }
@@ -249,7 +265,7 @@ export class abilitiesCTRL {
     }
 
     shouldAffectTarget(owner, target, ability) {
-        if (!owner || !target || !ability || !owner.getPosition || !target.getPosition) {
+        if (!owner || !ability || !owner.getPosition || !isCombatAbilityTarget(target)) {
             return false;
         }
 
@@ -344,6 +360,16 @@ export class abilitiesCTRL {
             owner._state?.entities?.get(owner.sessionId) !== owner
         ) {
             Logger.warning(`[canEntityCastAbility] owner no longer exists`);
+            return false;
+        }
+
+        if (target && !isCombatAbilityTarget(target)) {
+            Logger.warning(`[canEntityCastAbility] invalid combat target`);
+            return false;
+        }
+
+        if (owner.type === "player" && this.getByDigit(digit)?.key !== ability?.key) {
+            Logger.warning(`[canEntityCastAbility] ability is not authorized for this hotbar slot`);
             return false;
         }
 
@@ -452,10 +478,17 @@ export class abilitiesCTRL {
     }
 
     getByDigit(digit): Ability {
-        let hotbarData = this._owner.player_data.hotbar.get("" + digit);
-        if (hotbarData) {
-            return this.abilitiesDB[hotbarData.key] as Ability;
+        if (!Number.isSafeInteger(digit) || digit < 1 || digit >= this.ability_in_cooldown.length) {
+            return undefined;
         }
+        const hotbarData = this._owner.player_data?.hotbar?.get("" + digit);
+        const key = typeof hotbarData?.key === "string" ? hotbarData.key : "";
+        const ability = key && Object.prototype.hasOwnProperty.call(this.abilitiesDB, key)
+            ? (this.abilitiesDB[key] as Ability)
+            : undefined;
+        return canUseKnownAbility(hotbarData, this._owner.player_data?.abilities, ability, this._owner)
+            ? ability
+            : undefined;
     }
 
     //////////////////////////////////////////////

@@ -4,9 +4,10 @@ import { ExecuteCodeAction } from "@babylonjs/core/Actions/directActions";
 import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Rectangle } from "@babylonjs/gui/2D/controls/rectangle";
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
 import { UserInterface } from "../Controllers/UserInterface";
 import { PlayerInput } from "../Controllers/PlayerInput";
+import { getRoomCallbacks } from "../Controllers/RoomCallbacks";
 
 import { randomNumberInRange } from "../../shared/Utils";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
@@ -163,7 +164,7 @@ export class Item extends TransformNode {
         //////////////////////////////////////////////
         // entity network event
         // colyseus automatically sends entity updates, so let's listen to those changes
-        this.entity.onChange(() => {
+        getRoomCallbacks(this._room).onChange(this.entity, () => {
             // update player data from server data
             Object.assign(this, this.entity);
 

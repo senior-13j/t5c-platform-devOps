@@ -21,7 +21,7 @@ export type PlayerPersistenceSnapshot = {
     abilities: Array<{ key: string }>;
     equipment: Array<{ key: string; slot: number }>;
     quests: Array<{ key: string; status: number; qty: number }>;
-    hotbar: Array<{ digit: string; type: string; key: string }>;
+    hotbar: Array<{ digit: number; type: string; key: string }>;
 };
 
 type PersistablePlayer = {
@@ -37,12 +37,7 @@ type PersistablePlayer = {
 };
 
 type PersistenceDatabase = {
-    updateCharacter(characterId: number, snapshot: PlayerPersistenceSnapshot): Promise<unknown>;
-    saveItems(characterId: number, items: PlayerPersistenceSnapshot["inventory"]): Promise<unknown>;
-    saveAbilities(characterId: number, abilities: PlayerPersistenceSnapshot["abilities"]): Promise<unknown>;
-    saveEquipment(characterId: number, equipment: PlayerPersistenceSnapshot["equipment"]): Promise<unknown>;
-    saveQuests(characterId: number, quests: PlayerPersistenceSnapshot["quests"]): Promise<unknown>;
-    saveHotbar(characterId: number, hotbar: PlayerPersistenceSnapshot["hotbar"]): Promise<unknown>;
+    savePlayerSnapshot(characterId: number, snapshot: PlayerPersistenceSnapshot): Promise<unknown>;
 };
 
 export function createPlayerPersistenceSnapshot(player: PersistablePlayer): PlayerPersistenceSnapshot {
@@ -78,12 +73,7 @@ export async function persistPlayerSnapshot(
     characterId: number,
     snapshot: PlayerPersistenceSnapshot
 ): Promise<void> {
-    // Keep every destructive DELETE/INSERT pair ordered and ensure no sibling
-    // write is still running if this save rejects.
-    await database.updateCharacter(characterId, snapshot);
-    await database.saveItems(characterId, snapshot.inventory);
-    await database.saveAbilities(characterId, snapshot.abilities);
-    await database.saveEquipment(characterId, snapshot.equipment);
-    await database.saveQuests(characterId, snapshot.quests);
-    await database.saveHotbar(characterId, snapshot.hotbar);
+    // Database owns the transaction so every destructive relation replacement
+    // either commits together with the character row or is rolled back.
+    await database.savePlayerSnapshot(characterId, snapshot);
 }

@@ -6,6 +6,7 @@ import { Grid } from "@babylonjs/gui/2D/controls/grid";
 import { Item, ServerMsg } from "../../../../shared/types";
 import { Rarity } from "../../../../shared/Class/Rarity";
 import { Panel } from "./Panel";
+import { getRoomCallbacks } from "../../RoomCallbacks";
 
 export class Panel_Inventory extends Panel {
     // inventory tab
@@ -22,18 +23,15 @@ export class Panel_Inventory extends Panel {
         // dynamic events
         let entity = this._currentPlayer.entity;
         if (entity) {
-            entity.player_data.inventory.onAdd((item, sessionId) => {
+            const callbacks = getRoomCallbacks(this._room);
+            callbacks.onAdd(entity.player_data, "inventory", (item) => {
                 this.refresh();
-                // todo: could be a performance issue here?
-                // orion to keep an eye on this one
-                item.onChange((item, sessionId) => {
-                    this.refresh();
-                });
-                item.onRemove((item, sessionId) => {
+                callbacks.onChange(item, () => {
                     this.refresh();
                 });
             });
-            entity.player_data.listen("gold", (currentValue, previousValue) => {
+            callbacks.onRemove(entity.player_data, "inventory", () => this.refresh());
+            callbacks.listen(entity.player_data, "gold", () => {
                 this.updateGold();
             });
         }

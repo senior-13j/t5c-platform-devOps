@@ -128,6 +128,7 @@ const sharedChatRateLimiter = new ChatRateLimiter();
 
 export class ChatRoom extends Room {
     public maxClients = 1000;
+    public maxMessagesPerSecond = 20;
     private database?: ChatDatabase;
     private identities = new Map<string, ChatIdentity>();
     private rateLimiter = sharedChatRateLimiter;
@@ -168,7 +169,7 @@ export class ChatRoom extends Room {
     }
 
     // When a client leaves the room
-    onLeave(client: Client, consented: boolean) {
+    onLeave(client: Client, _code?: number) {
         this.identities.delete(client.sessionId);
     }
 

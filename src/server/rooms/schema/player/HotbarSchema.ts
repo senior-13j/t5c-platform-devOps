@@ -6,19 +6,37 @@ export class HotbarSchema extends Schema {
     // networked player specific
     @type("string") public type: string = "";
     @type("string") public key: string = "";
-    @type("uint8") public digit: string = "";
+    @type("uint8") public digit: number = 0;
 
-    public class?: ItemClass.CONSUMABLE;
+    public class?: ItemClass;
 
-    constructor(data) {
-        super(data);
+    constructor(data: { digit: number | string; type: string; key: string }) {
+        super();
 
-        if (data.type === "ability") {
-            Object.assign(this, GameData.get("ability", data.key));
+        const digit = Number(data?.digit);
+        if (!Number.isSafeInteger(digit) || digit < 0 || digit > 255) {
+            throw new Error("Invalid hotbar digit.");
         }
-        if (data.type === "item") {
-            Object.assign(this, GameData.get("item", data.key));
+
+        const hotbarType = data?.type;
+        const key = data?.key;
+        if ((hotbarType !== "ability" && hotbarType !== "item") || typeof key !== "string" || key.length === 0) {
+            throw new Error("Invalid hotbar entry.");
         }
-        Object.assign(this, data);
+
+        const gameEntry = GameData.get(hotbarType, key);
+        if (!gameEntry) {
+            throw new Error(`Unknown ${hotbarType} hotbar entry: ${key}`);
+        }
+
+        // Hotbar's `type` is the entry kind ("ability" or "item"). Never copy
+        // the whole game-data record here: abilities also have a numeric combat
+        // `type`, which would corrupt this networked string field under Schema 5.
+        this.type = hotbarType;
+        this.key = key;
+        this.digit = digit;
+        if (hotbarType === "item") {
+            this.class = gameEntry.class;
+        }
     }
 }

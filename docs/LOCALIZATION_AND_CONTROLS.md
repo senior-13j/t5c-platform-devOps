@@ -225,6 +225,8 @@ console errors, or unexpected failed requests.
 - Removed duplicate `Version` text from the displayed client version.
 - Normalized client and server movement vectors, including diagonal input and
   contradictory key combinations, and rejected non-finite movement values.
+- Shared one server-side movement step per simulation tick between manual,
+  click-to-move, pickup, and combat pursuit, with normalized diagonal pathing.
 - Cleared movement on blur, page hiding, chat focus, and scene disposal to stop
   stuck movement.
 - Blocked movement for dead or server-blocked players.

@@ -3,6 +3,8 @@ const Env = {
     APP_DATABASE: process.env.APP_DATABASE,
 };
 
+export const MAX_CHARACTERS_PER_USER = 5;
+
 class Config {
     private envString(key: keyof typeof Env, fallback: string): string {
         return Env[key] || fallback;

@@ -30,7 +30,7 @@ import {
     Watermark,
 } from "./UI";
 
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
 
 import { Entity } from "../Entities/Entity";
 import { Player } from "../Entities/Player";

@@ -32,10 +32,10 @@ project is not affiliated with or endorsed by RuneScape or Jagex.
 
 - Explore the fantasy world of Arkadia (`Аркадия` in Russian).
 - Create a character or use Quick Play and enter a shared multiplayer world.
-- Fight with four starter abilities: sword attack, fireball,
-  damage-over-time, and healing.
+- Begin with a basic attack and sweeping strike, then unlock fire, poison, and
+  healing abilities from the appropriate trainers as your level and stats grow.
 - Complete quests, talk to trainers and vendors, trade, collect loot, equip
-  items, gain experience, and spend ability points.
+  items, gain experience, spend stat points, and purchase training.
 - Travel between the starting settlement, training area, and dungeon-style
   locations with navmesh collision and persistent character data.
 - Encounter enemies with `IDLE`, `PATROL`, `CHASE`, `ATTACK`, and `DEAD` states.
@@ -93,7 +93,13 @@ follows the character; no world-swipe rotation is required.
 - Automated localization/data checks and real WebGL Playwright flows for
   desktop and touch gameplay.
 - `scrypt` password hashing with automatic migration of valid legacy plaintext
-  credentials; authentication responses never include password data.
+  credentials, durable unique usernames with race-safe first login, and no
+  password data in authentication responses.
+- Exact HTTP/WebSocket origin allowlisting, bounded login/gameplay message
+  rates and payloads, replay/displacement checks, authoritative training and
+  item cooldowns, and transactional character writes.
+- A tested Colyseus 0.18 client/server protocol with server-side location
+  matchmaking and connection-scoped private player state.
 
 The latest recorded pre-rebrand Lighthouse result is **80 Performance / 100
 Accessibility / 100 Best Practices / 100 SEO**. It is a historical baseline,
@@ -154,23 +160,25 @@ port `3000` starts with the production entry flow.
 | --- | --- |
 | Client dev server | `http://localhost:8080` |
 | API and game server | `http://localhost:3000` |
-| Colyseus monitor | `http://localhost:3000/monitor` |
+| Colyseus monitor | `http://localhost:3000/colyseus` |
 
 ## Useful Commands
 
 | Command | Purpose |
 | --- | --- |
+| `npm test` | Run the Node unit, security, database rollback, and Colyseus protocol tests |
 | `npm run client-build` | Build the production browser bundle into `dist/client` |
 | `npm run server-build` | Compile the TypeScript server and copy public assets |
 | `npm run check:localization` | Validate English/Russian catalogs, placeholders, content, dialogs, and bindings |
 | `npm run check:web-quality` | Validate metadata, structured data, manifest, crawler files, and local references |
 | `npm run test:e2e` | Run real WebGL desktop and mobile-touch Playwright projects |
 | `npx tsc --noEmit` | Type-check the complete source tree without writing output |
-| `npm audit --omit=dev` | Review vulnerabilities in production dependencies |
+| `npm audit` | Review the complete dependency tree for known vulnerabilities |
+| `npm audit --omit=dev` | Review production dependencies only |
 | `docker compose config` | Validate the local Compose configuration |
 | `docker compose up -d --build` | Build and run the complete local stack |
-| `npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS |
-| `npm run loadtest` | Run the interactive Colyseus chat load test |
+| `SMOKE_TOKEN=... SMOKE_CHARACTER_ID=... npm run smoke:ws` | Authenticated Colyseus join through local HTTPS/WSS |
+| `LOADTEST_TOKEN=... LOADTEST_CHARACTER_ID=... npm run loadtest` | Run the authenticated Colyseus chat load test |
 | `npm run check:public` | Check DNS and host readiness for the public deployment |
 
 ## Public Deployment

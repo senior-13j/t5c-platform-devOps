@@ -4,7 +4,13 @@ import type { AddressInfo } from "node:net";
 import { test } from "node:test";
 import express from "express";
 import { Api, FixedWindowRateLimiter, findAvailableRandomUsername, validateCharacterCustomization } from "../src/server/Api";
-import { Database } from "../src/server/Database";
+import {
+    CharacterLimitError,
+    Database,
+    DuplicateUsernameError,
+    isDuplicateUsernameConstraintError,
+} from "../src/server/Database";
+import { hasSingleColumnUniqueUsernameIndex } from "../src/server/utils/database/mysql";
 import {
     createPlayerPersistenceSnapshot,
     persistPlayerSnapshot,
@@ -160,23 +166,14 @@ test("character updates use bound parameters for every persisted value", async (
     assert.equal(queries[0].params.at(-1), 42);
 });
 
-test("queued persistence snapshots base stats and completes relation writes in order", async () => {
+test("queued persistence snapshots base stats and delegates one atomic database save", async () => {
     const calls: string[] = [];
     let savedCharacter: any;
-    let savedInventory: any[];
     const database = {
-        updateCharacter: async (_id: number, snapshot: any) => {
-            calls.push("character");
+        savePlayerSnapshot: async (_id: number, snapshot: any) => {
+            calls.push("transaction");
             savedCharacter = snapshot;
         },
-        saveItems: async (_id: number, items: any[]) => {
-            calls.push("items");
-            savedInventory = items;
-        },
-        saveAbilities: async () => calls.push("abilities"),
-        saveEquipment: async () => calls.push("equipment"),
-        saveQuests: async () => calls.push("quests"),
-        saveHotbar: async () => calls.push("hotbar"),
     };
 
     const baseStats = {
@@ -209,7 +206,7 @@ test("queued persistence snapshots base stats and completes relation writes in o
             inventory: new Map([["0", { key: "potion_small_red", qty: 2 }]]),
             abilities: new Map([["base_attack", { key: "base_attack" }]]),
             quests: new Map(),
-            hotbar: new Map([["1", { digit: "1", type: "ability", key: "base_attack" }]]),
+            hotbar: new Map([["1", { digit: 1, type: "ability", key: "base_attack" }]]),
         },
         equipment: new Map([["sword_01", { key: "sword_01", slot: 6 }]]),
     };
@@ -221,10 +218,10 @@ test("queued persistence snapshots base stats and completes relation writes in o
     player.player_data.inventory.get("0").qty = 999;
     await save;
 
-    assert.deepEqual(calls, ["character", "items", "abilities", "equipment", "quests", "hotbar"]);
+    assert.deepEqual(calls, ["transaction"]);
     assert.equal(savedCharacter.location, "lh_town");
     assert.equal(savedCharacter.player_data.strength, 20);
-    assert.deepEqual(savedInventory, [{ key: "potion_small_red", qty: 2 }]);
+    assert.deepEqual(savedCharacter.inventory, [{ key: "potion_small_red", qty: 2 }]);
 });
 
 test("Database.close closes its adapter once and createCharacter rejects an unknown token", async () => {
@@ -232,12 +229,15 @@ test("Database.close closes its adapter once and createCharacter rejects an unkn
     let writes = 0;
     const database = new Database({} as any);
     (database as any).querier = {
-        get: async () => undefined,
+        transaction: async (work: (executor: any) => Promise<unknown>) =>
+            work({
+                get: async () => undefined,
+                run: async () => {
+                    writes += 1;
+                },
+            }),
         close: async () => {
             closes += 1;
-        },
-        run: async () => {
-            writes += 1;
         },
     };
 
@@ -292,6 +292,160 @@ test("quick play rate limiting is per resolved Express client IP", () => {
     assert.equal(limiter.allow("127.0.0.1", 1_200), false);
     assert.equal(limiter.allow("127.0.0.2", 1_200), true);
     assert.equal(limiter.allow("127.0.0.1", 2_000), true);
+});
+
+test("login rejects excess requests before another password lookup", async (t) => {
+    let passwordLookups = 0;
+    const database = {
+        getUser: async () => {
+            passwordLookups += 1;
+            return { id: 7, username: "Alice" };
+        },
+        refreshToken: async () => ({ id: 7, username: "Alice", token: "fresh-token" }),
+    };
+    const { server, baseUrl } = await startApi(database as Partial<Database>, {
+        loginRateLimiter: new FixedWindowRateLimiter(1, 60_000),
+    });
+    t.after(() => closeServer(server));
+
+    const request = () =>
+        fetch(`${baseUrl}/login`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ username: "Alice", password: "secret" }),
+        });
+    assert.equal((await request()).status, 200);
+    const limited = await request();
+    assert.equal(limited.status, 429);
+    assert.equal(limited.headers.get("retry-after"), "600");
+    assert.equal(passwordLookups, 1);
+});
+
+test("username uniqueness helpers recognize only the account-name constraint", () => {
+    assert.equal(
+        isDuplicateUsernameConstraintError({
+            code: "ER_DUP_ENTRY",
+            errno: 1062,
+            sqlMessage: "Duplicate entry for key 'users.uq_users_username'",
+        }),
+        true
+    );
+    assert.equal(
+        isDuplicateUsernameConstraintError({
+            code: "ER_DUP_ENTRY",
+            errno: 1062,
+            sqlMessage: "Duplicate entry for key 'users.uq_users_token'",
+        }),
+        false
+    );
+    assert.equal(
+        isDuplicateUsernameConstraintError({
+            code: "SQLITE_CONSTRAINT",
+            message: "SQLITE_CONSTRAINT: UNIQUE constraint failed: users.username",
+        }),
+        true
+    );
+
+    assert.equal(
+        hasSingleColumnUniqueUsernameIndex([
+            { index_name: "PRIMARY", non_unique: 0, sequence: 1, column_name: "id" },
+            { index_name: "uq_users_username", non_unique: "0", sequence: "1", column_name: "username" },
+        ]),
+        true
+    );
+    assert.equal(
+        hasSingleColumnUniqueUsernameIndex([
+            { index_name: "composite", non_unique: 0, sequence: 1, column_name: "username" },
+            { index_name: "composite", non_unique: 0, sequence: 2, column_name: "token" },
+        ]),
+        false
+    );
+});
+
+test("a duplicate-key login race rechecks credentials instead of returning 500", async (t) => {
+    let userLookups = 0;
+    const database = {
+        getUser: async () => {
+            userLookups += 1;
+            return userLookups === 1 ? null : { id: 7, username: "Alice", token: "shared-token", password: "hidden" };
+        },
+        hasUser: async () => null,
+        saveUser: async () => {
+            throw new DuplicateUsernameError();
+        },
+        getUserById: async () => ({
+            id: 7,
+            username: "Alice",
+            token: "shared-token",
+            password: "hidden",
+            characters: [],
+        }),
+    };
+    const { server, baseUrl } = await startApi(database as Partial<Database>);
+    t.after(() => closeServer(server));
+
+    const response = await fetch(`${baseUrl}/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: "Alice", password: "secret" }),
+    });
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.user.token, "shared-token");
+    assert.equal("password" in body.user, false);
+    assert.equal(userLookups, 2);
+});
+
+test("concurrent first logins create one SQLite user and return one durable identity", async (t) => {
+    const previousPath = process.env.DATABASE_PATH;
+    process.env.DATABASE_PATH = ":memory:";
+    const database = new Database({ database: "sqllite" } as any);
+    await database.init();
+    await database.create();
+    const querier = (database as any).querier;
+    const originalGetUser = database.getUser.bind(database);
+    let releaseInitialLookups!: () => void;
+    const initialLookupGate = new Promise<void>((resolve) => {
+        releaseInitialLookups = resolve;
+    });
+    let initialLookups = 0;
+    database.getUser = async (...args: Parameters<Database["getUser"]>) => {
+        if (initialLookups < 2) {
+            initialLookups += 1;
+            if (initialLookups === 2) {
+                releaseInitialLookups();
+            }
+            await initialLookupGate;
+        }
+        return originalGetUser(...args);
+    };
+    const { server, baseUrl } = await startApi(database);
+    t.after(async () => {
+        await closeServer(server);
+        await database.close();
+        if (previousPath === undefined) {
+            delete process.env.DATABASE_PATH;
+        } else {
+            process.env.DATABASE_PATH = previousPath;
+        }
+    });
+
+    const request = () =>
+        fetch(`${baseUrl}/login`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ username: "Concurrent Hero", password: "same-secret" }),
+        });
+    const responses = await Promise.all([request(), request()]);
+    const bodies = await Promise.all(responses.map((response) => response.json()));
+
+    assert.deepEqual(responses.map((response) => response.status), [200, 200]);
+    assert.equal(bodies[0].user.id, bodies[1].user.id);
+    assert.equal(bodies[0].user.token, bodies[1].user.token);
+    assert.equal("password" in bodies[0].user, false);
+    assert.equal(initialLookups, 2);
+    assert.equal((await querier.get("SELECT COUNT(*) AS count FROM users WHERE username=?;", ["Concurrent Hero"])).count, 1);
 });
 
 test("quick play username allocation stops after twenty collisions", async () => {
@@ -398,6 +552,56 @@ test("create_character authenticates and validates before writing", async (t) =>
     });
     assert.equal(valid.status, 200);
     assert.deepEqual(createCalls, [["valid-token", "Alice Quest", "humanoid", 1, "Head_Mage"]]);
+});
+
+test("create_character rate limiting runs before another database lookup", async (t) => {
+    let tokenLookups = 0;
+    let creates = 0;
+    const database = {
+        getUserByToken: async () => {
+            tokenLookups += 1;
+            return { id: 7 };
+        },
+        createCharacter: async () => {
+            creates += 1;
+            return { id: 42 };
+        },
+    };
+    const { server, baseUrl } = await startApi(database as Partial<Database>, {
+        characterCreateRateLimiter: new FixedWindowRateLimiter(1, 60_000),
+    });
+    t.after(() => closeServer(server));
+
+    const request = () => fetch(`${baseUrl}/create_character`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: "valid-token", name: "Alice", race: "humanoid", material: 0, head: "Head_Base" }),
+    });
+    assert.equal((await request()).status, 200);
+    const limited = await request();
+    assert.equal(limited.status, 429);
+    assert.equal(limited.headers.get("retry-after"), "600");
+    assert.equal(tokenLookups, 1);
+    assert.equal(creates, 1);
+});
+
+test("create_character returns a conflict when the account reached its durable limit", async (t) => {
+    const database = {
+        getUserByToken: async () => ({ id: 7 }),
+        createCharacter: async () => {
+            throw new CharacterLimitError();
+        },
+    };
+    const { server, baseUrl } = await startApi(database as Partial<Database>);
+    t.after(() => closeServer(server));
+
+    const response = await fetch(`${baseUrl}/create_character`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token: "valid-token", name: "Alice", race: "humanoid", material: 0, head: "Head_Base" }),
+    });
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { message: "Character Limit Reached" });
 });
 
 test("create_character converts database failures into a 500 response", async (t) => {

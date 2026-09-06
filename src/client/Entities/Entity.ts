@@ -5,7 +5,8 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Rectangle } from "@babylonjs/gui/2D/controls/rectangle";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
+import { getRoomCallbacks } from "../Controllers/RoomCallbacks";
 
 import { PlayerCamera } from "./Player/PlayerCamera";
 import { EntityAnimator } from "./Entity/EntityAnimator";
@@ -195,7 +196,7 @@ export class Entity extends TransformNode {
         ///////////////////////////////////////////////////////////
         // entity network event
         // colyseus automatically sends entity updates, so let's listen to those changes
-        this.entity.onChange(() => {
+        getRoomCallbacks(this._room).onChange(this.entity, () => {
             if (this._removed || !this.mesh || this.mesh.isDisposed()) {
                 return;
             }

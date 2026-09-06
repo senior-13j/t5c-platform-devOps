@@ -15,11 +15,20 @@ short-landscape `915x412` viewports.
 The current Arkadii Quest release changes visible branding, introduces original
 brand artwork, renames the world to Arkadia (`Аркадия`), adds localized
 onboarding with an `F1` controls table, and replaces player-steered camera input
-with an automatic follow camera. The post-rebrand verification completed on
-2026-09-06: all 46 Node tests, localization and web-quality checks, TypeScript,
-client/server production builds, Compose validation, and the applicable desktop
-and touch Chromium gameplay scenarios passed. The two E2E cases that do not
-belong to their current Playwright device project were intentionally skipped.
+with an automatic follow camera. The 2026-09-06 hardening pass also migrated the
+real-time protocol to Colyseus 0.18, added exact HTTP/WebSocket origin policy,
+bounded authentication/gameplay traffic, strengthened movement and gameplay
+authority, completed trainer learning, capped transient loot, and made
+multi-table character creation and persistence transactional. The
+verification run passed all 80 Node tests, localization and web-quality checks,
+TypeScript, client/server production builds, Compose validation, and the
+applicable desktop and touch Chromium gameplay scenarios. The two E2E cases
+that do not belong to their current Playwright device project were
+intentionally skipped. A clean MySQL 8.4 container additionally verified fresh
+and repeated schema migration, one-winner concurrent account insertion, and
+non-destructive refusal of ambiguous legacy duplicates. The final runtime image
+passed health, branded-shell, game-data, login, character creation, game-room,
+chat-room, disconnect-save, and offline-status checks as UID/GID 1000.
 
 The following Lighthouse measurements belong to the immediately preceding web
 quality audit and remain the latest production-profile baseline. The
@@ -65,6 +74,15 @@ route-based asset streaming remains a separate performance project.
 - Hardened movement on both sides of the network by normalizing vectors,
   rejecting non-finite components, stopping near-zero input, and blocking
   movement for dead/blocked players.
+- Added sequence/replay checks, navmesh-result displacement bounds, known-message
+  allowlisting, shared direct/click movement budgets, and one server-owned
+  horizontal step allowance per simulation tick.
+- Migrated server, schema, browser SDK, callback, private-view, and matchmaking
+  behavior from Colyseus 0.15 to the tested 0.18 protocol.
+- Restricted HTTP CORS and browser WebSocket upgrades to an exact configurable
+  origin allowlist, with safe production and local-development defaults.
+- Added a password-login limiter and SQL transactions for complete character
+  creation and snapshot persistence on MySQL and SQLite.
 - Preserved the prior canonical, Open Graph/Twitter, `VideoGame` JSON-LD,
   manifest, crawler, answer-engine, reduced-motion, and failure-state work.
 
@@ -101,7 +119,25 @@ current requirements.
 | Chat hotkey | The same `Enter` event could focus and immediately blur chat | Focus is deferred to the next event-loop turn and movement is suspended first |
 | Version text | Configuration included the word `Version`, while the localized label added it again | Configuration now stores only `0.5.0` |
 | Movement speed | Diagonal and oversized vectors could move faster | Client vectors are normalized and the server independently clamps magnitude to one |
-| Invalid movement | Modified clients could submit missing, `NaN`, or infinite movement components | The server converts invalid components to zero and ignores near-zero input |
+| Mixed movement modes | Direct input plus click/pickup/combat pursuit could spend two independent steps in one tick, and diagonal paths advanced on both axes | Direct and automated movement now share one simulation-step allowance; mode switches cancel the competing path and path steps are vector-normalized |
+| Failed pickup pursuit | A rejected pickup, such as with a full inventory, could rebuild its path and retry each server tick | Every pickup click performs one transfer attempt and then clears its pursuit state |
+| Invalid movement | Modified clients could submit missing, `NaN`, or infinite movement components | The server rejects malformed components and ignores near-zero input |
+| Replayed/forged movement | A modified client could replay sequence values or rely on an abnormal navmesh result | The server requires a fresh safe-integer sequence and rejects horizontal displacement beyond its own requested step |
+| Message flooding | Gameplay actions and movement had no per-client application budget | Known message types pass through separate global, movement, and action token buckets; Colyseus also applies room-level message ceilings |
+| Ping amplification | Ping bypassed the action bucket and reflected an arbitrary payload | Ping now has its own one-per-second budget, accepts only an integer timestamp, and returns a newly constructed bounded object; inbound WebSocket frames are capped at 8 KiB |
+| Browser origins | HTTP CORS was permissive and WebSocket upgrades had no matching origin check | Exact configurable production/development origins now govern both HTTP responses and browser upgrades |
+| Password guessing | `/login` performed an unbounded password lookup for every request | A process-local per-IP fixed window returns `429` before lookup after 10 attempts in 10 minutes |
+| Concurrent registration | MySQL lacked a username unique key, so simultaneous first logins could create ambiguous duplicate identities | Fresh and existing schemas enforce one username row; duplicate-key races recheck matching credentials, while unsafe legacy duplicates stop migration without automatic merging |
+| Character-creation abuse | One token could create unlimited fully provisioned character rows | Creation is limited to five HTTP attempts per IP per 10 minutes and five durable characters per account inside a serialized transaction |
+| Character-creation feedback | Rejected create requests produced an unhandled promise with no visible explanation, while the selection screen still offered creation at the account limit | Both character screens use the shared five-character limit; the action disables at the limit, duplicate submits are blocked, and `400`/`401`/`409`/`429`/server failures receive specific live EN/RU feedback |
+| Entry-dialog focus | The modal preference chooser did not take or contain keyboard focus | It focuses the selected language, cycles through current tab stops, removes its listener on submit, and restores focus to the prior control or game canvas |
+| Character-screen keyboard access | Selecting, starting, or creating an adventurer required pointer input | Arrow keys select with wrap-around, Enter starts the selected hero, N opens creation, Escape signs out/goes back, and the editor focuses the name field for keyboard creation |
+| Partial character writes | Character creation and relation replacement could commit only a subset after an adapter error | MySQL and SQLite now serialize operations and roll back complete create/save transactions on failure |
+| Skill authority | Trainer requests were disabled while unlearned hotbar skills could still resolve from global data | New heroes receive only two starter skills; trainers now validate exact offer, proximity, level, stats, and gold on the server before learning and hotbar assignment |
+| Item authority | Equipment requirements and consumable cooldowns were client-side assumptions | The server checks canonical equipment requirements and enforces per-item cooldowns with inventory decrement before applying bounded health/mana effects |
+| Ground-loot growth | Dropped objects never expired and had no room ceiling | Loot expires after five minutes, is capped at 128 per room, and a rejected drop leaves the inventory untouched |
+| Rewardless enemies | Missing reward ranges could introduce `NaN` experience and level zero | Reward ranges and experience are validated; absent rewards are safe no-ops and experience saturates at the networked limit |
+| Legacy real-time protocol | Colyseus 0.15 exposed a vulnerable transitive dependency and obsolete client callback/matchmaking APIs | The stack now uses Colyseus 0.18, proxy callbacks, server-side location matching, and `StateView` privacy |
 | Stuck movement | Held keys or joystick input could survive focus loss, page hiding, chat opening, or scene disposal | Lifecycle handlers clear key state, analog state, and player movement |
 | Opposing keys | Contradictory direction keys could leave inconsistent movement state | Direction is recomputed from the complete pressed-key set on every key transition |
 | Room startup | `GameRoomState.init()` ran asynchronously from its constructor and could race joins/updates | `GameRoom.onCreate()` now awaits initialization before publishing state and starting handlers/simulation |
@@ -180,28 +216,32 @@ are project-created derivatives. These replace the retired public logo and
 external README screenshots.
 
 The broader legacy game asset library is not yet cleared as a whole. The goblin
-source has an explicit CC BY-SA 4.0 record and the construction-only Breathe
-Fire III font is recorded as freeware/non-commercial. The runtime font and most
-models, textures, sounds, icons, portraits, and editable source files do not
-have complete source/author/license records in the repository. Treat those gaps
-as release blockers for commercial distribution. The authoritative working
-ledger and required actions are in the root `THIRD_PARTY_ASSETS.md` file.
+source has an explicit CC BY-SA 4.0 record; the unused non-commercial Breathe
+Fire III font and 38 unused public files were removed. KayKit character,
+skeleton, animation, and dungeon inputs have pinned permissive records, while
+the current town/training world outputs, local dungeon contribution, selected
+models, live sounds, UI icons, and textures still have provenance gaps. Treat
+the remaining entries marked restricted or verification required as blockers
+for commercial distribution. The authoritative working ledger and required
+actions are in the root `THIRD_PARTY_ASSETS.md` file.
 
 ## Dependency Review
 
-On 6 September 2026, the full dependency tree reported 2 low, 11 moderate, 1
-high, and 0 critical findings. The production tree reported 2 low, 9 moderate,
-1 high, and 0 critical findings. The high finding is the nested legacy
-`nanoid@2.1.11` used by `@colyseus/core@0.15.57`; npm offers only a breaking
-Colyseus/core 0.18 upgrade for that chain. Current game-generated IDs use the
-patched top-level `nanoid@3.3.18`, but the transitive advisory remains real and
-requires a tested Colyseus protocol migration. Safe non-breaking audit updates
-were applied; no forced major upgrade was used. Run a current audit before
-deployment because advisory data changes over time.
+On 6 September 2026, both `npm audit` and `npm audit --omit=dev` reported zero
+known low, moderate, high, or critical vulnerabilities. The real-time stack was
+migrated from Colyseus 0.15 to pinned compatible 0.18 packages, removing the
+legacy `@colyseus/core`/`nanoid@2.1.11` advisory chain. The browser and load-test
+clients now use `@colyseus/sdk`; server runtime packages are production
+dependencies, and the obsolete `colyseus`/`colyseus.js` packages are absent.
+The migration is covered by an in-process WebSocket test for server-side
+location matching, proxy collection callbacks, and private `StateView` data.
+Run current audits before every deployment because registry advisory data can
+change after this dated result.
 
 ## Reproduce
 
 ```bash
+npm test
 npm run check:localization
 npm run check:web-quality
 npx tsc --noEmit
@@ -209,6 +249,7 @@ npm run client-build
 npm run server-build
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 docker compose --env-file .env.public.example -f docker-compose.public.yml config --quiet
+npm audit
 npm audit --omit=dev
 ```
 

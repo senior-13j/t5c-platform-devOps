@@ -1,5 +1,5 @@
-import http from "http";
-import { Room, Client, Delayed } from "@colyseus/core";
+import { Room, Client, Delayed, AuthContext } from "@colyseus/core";
+import { StateView } from "@colyseus/schema";
 import { GameRoomState } from "./state/GameRoomState";
 import loadNavMeshFromFile from "../utils/loadNavMeshFromFile";
 import Logger from "../utils/Logger";
@@ -17,9 +17,11 @@ import {
 import { GameData } from "../GameData";
 import { getKnownRoomLocation } from "./gameplayRules";
 import { createPlayerPersistenceSnapshot, persistPlayerSnapshot } from "./playerPersistence";
+import { GameplayMessageGuard, dispatchGameplayMessageSafely } from "./GameplayMessageGuard";
 
-export class GameRoom extends Room<GameRoomState> {
+export class GameRoom extends Room<{ state: GameRoomState }> {
     public maxClients = 64;
+    public maxMessagesPerSecond = 60;
     public database: any;
     public delayedInterval!: Delayed;
     public navMesh: NavMesh;
@@ -27,6 +29,7 @@ export class GameRoom extends Room<GameRoomState> {
 
     public disposeTimer;
     private persistenceByCharacterId = new Map<number, Promise<void>>();
+    private gameplayMessageGuard = new GameplayMessageGuard();
 
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
@@ -62,7 +65,7 @@ export class GameRoom extends Room<GameRoomState> {
         this.setPatchRate(this.config.updateRate);
 
         //Set a simulation interval that can change the state of the game
-        this.setSimulationInterval((dt) => {
+        this.setTimestep((dt) => {
             this.state.update(dt);
         }, this.config.updateRate);
 
@@ -94,7 +97,7 @@ export class GameRoom extends Room<GameRoomState> {
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     // authorize client based on provided options before WebSocket handshake is complete
-    async onAuth(client: Client, authData: any, request: http.IncomingMessage) {
+    async onAuth(client: Client, authData: any, _context: AuthContext) {
         const character = await Auth.check(this.database, authData, this.metadata?.location);
         if (!character) {
             return false;
@@ -120,7 +123,9 @@ export class GameRoom extends Room<GameRoomState> {
 
         let playerAdded = false;
         try {
-            this.state.addPlayer(client);
+            client.view = new StateView();
+            const player = this.state.addPlayer(client);
+            client.view.add(player);
             playerAdded = true;
             await this.database.toggleOnlineStatus(characterId, 1);
         } catch (error) {
@@ -149,15 +154,25 @@ export class GameRoom extends Room<GameRoomState> {
         /////////////////////////////////////
         // on player input
         this.onMessage("*", (client, type, data) => {
-            this.state.processMessage(client, type, data);
+            if (!this.gameplayMessageGuard.allow(client.sessionId, type)) {
+                return;
+            }
+            dispatchGameplayMessageSafely(this.state, client, type, data, (error) => {
+                Logger.error(`[gameroom][message] rejected malformed message ${String(type)}.`, error);
+            });
         });
+    }
+
+    onUncaughtException(error: unknown, methodName: string) {
+        Logger.error(`[gameroom][${methodName}] uncaught room exception.`, error);
     }
 
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     // when a client leaves the room
-    async onLeave(client: Client, consented: boolean) {
+    async onLeave(client: Client, code?: number) {
+        this.gameplayMessageGuard.remove(client.sessionId);
         const characterId = Number(client.auth?.id);
         const player = this.state?.getEntity(client.sessionId);
 
@@ -191,7 +206,7 @@ export class GameRoom extends Room<GameRoomState> {
 
         // log
         Logger.info(
-            `[onLeave] player ${client.auth?.name ?? client.sessionId} left (${consented ? "consented" : "disconnected"})`
+            `[onLeave] player ${client.auth?.name ?? client.sessionId} left (close code ${code ?? "unknown"})`
         );
     }
 
@@ -200,6 +215,7 @@ export class GameRoom extends Room<GameRoomState> {
     //////////////////////////////////////////////////////////////////////////
     // cleanup callback, called after there are no more clients in the room. (see `autoDispose`)
     async onDispose() {
+        this.gameplayMessageGuard.clear();
         this.delayedInterval?.clear();
         const pendingSaves = Array.from(this.persistenceByCharacterId.values());
         if (pendingSaves.length > 0) {

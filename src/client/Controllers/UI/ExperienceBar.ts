@@ -5,6 +5,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { getBg } from "./Theme";
 import { Rectangle } from "@babylonjs/gui/2D/controls/rectangle";
 import { Leveling } from "../../../shared/Class/Leveling";
+import { getRoomCallbacks } from "../RoomCallbacks";
 
 export class ExperienceBar {
     private _UI;
@@ -31,7 +32,7 @@ export class ExperienceBar {
         // some ui must be refreshed as things change
         let entity = this._currentPlayer.entity;
         if (entity && entity.player_data) {
-            entity.player_data.onChange((item, sessionId) => {
+            getRoomCallbacks(this._UI._room).onChange(entity.player_data, () => {
                 this.update();
             });
         }

@@ -1,5 +1,4 @@
-import { Client } from "@colyseus/core";
-import { Schema, MapSchema, type, filter } from "@colyseus/schema";
+import { Schema, MapSchema, type, view } from "@colyseus/schema";
 import { abilitiesCTRL } from "../controllers/abilityCTRL";
 import { animationCTRL } from "../controllers/animationCTRL";
 import { moveCTRL } from "../controllers/moveCTRL";
@@ -14,6 +13,7 @@ import { nanoid } from "nanoid";
 import {
     MAX_INVENTORY_QUANTITY,
     MAX_TRADE_QUANTITY,
+    STARTER_ABILITY_KEYS,
     calculateDroppedQuantity,
     calculateIncreasedBalance,
     calculatePurchaseCost,
@@ -22,8 +22,10 @@ import {
     clampHealth,
     getLocationSpawnPoint,
     isEquippedItemRequestValid,
+    isConsumableCooldownReady,
     isItemQuantityCompatibleWithStacking,
     isVendorWithinRange,
+    meetsItemRequirements,
     parsePositiveQuantity,
 } from "../gameplayRules";
 
@@ -73,9 +75,7 @@ export class PlayerSchema extends Entity {
     ////////////////////////////////////////////////////////////////////////////
     // the below data only need to synchronized to the player it belongs too
     // player data
-    @filter(function (this: PlayerSchema, client: Client) {
-        return this.sessionId === client.sessionId;
-    })
+    @view()
     @type(PlayerData)
     player_data: PlayerData = new PlayerData();
 
@@ -121,6 +121,7 @@ export class PlayerSchema extends Entity {
 
     // inventory
     public INVENTORY_LENGTH = 25;
+    private itemCooldownUntil = new Map<string, number>();
 
     constructor(state: GameRoomState, data) {
         super();
@@ -145,9 +146,21 @@ export class PlayerSchema extends Entity {
         this.statsCTRL = new statsCTRL(this);
 
         // add abilities
-        console.log(data.initial_abilities);
         data.initial_abilities.forEach((element) => {
-            this.player_data.abilities.set(element.key, new AbilitySchema(element));
+            const key = typeof element?.key === "string" ? element.key : "";
+            if (key && this._state.gameData.get("ability", key)) {
+                this.player_data.abilities.set(key, new AbilitySchema({ key }));
+            }
+        });
+
+        // Older Arkadii Quest characters were created with starter skills on
+        // their hotbar but only two rows in character_abilities. Reconcile that
+        // historical loadout once on load so the server can enforce ownership
+        // without breaking existing characters.
+        STARTER_ABILITY_KEYS.forEach((key) => {
+            if (!this.player_data.abilities.has(key) && this._state.gameData.get("ability", key)) {
+                this.player_data.abilities.set(key, new AbilitySchema({ key }));
+            }
         });
 
         // add equipment
@@ -162,7 +175,20 @@ export class PlayerSchema extends Entity {
 
         // add hotbar
         data.initial_hotbar.forEach((element) => {
-            this.player_data.hotbar.set(element.digit, new HotbarSchema(element));
+            const digit = Number(element?.digit);
+            const entryType = element?.type;
+            const key = typeof element?.key === "string" ? element.key : "";
+            const isKnownAbility = entryType === "ability" && this.player_data.abilities.has(key);
+            const isKnownItem = entryType === "item" && Boolean(this._state.gameData.get("item", key));
+            if (
+                Number.isSafeInteger(digit) &&
+                digit >= 1 &&
+                digit <= this._state.config.PLAYER_HOTBAR_SIZE &&
+                key &&
+                (isKnownAbility || isKnownItem)
+            ) {
+                this.player_data.hotbar.set(String(digit), new HotbarSchema({ digit, type: entryType, key }));
+            }
         });
 
         // add inventory items
@@ -338,15 +364,17 @@ export class PlayerSchema extends Entity {
             qty: droppedQuantity,
         };
         let entity = new LootSchema(this._state, data);
-        this._state.entityCTRL.add(entity);
+        if (!this._state.addGroundLoot(entity)) {
+            return false;
+        }
 
         if (dropAll) {
             this.player_data.inventory.delete("" + inventoryItem.i);
-        } else {
-            this.reduceItemQuantity(inventoryItem, 1);
+        } else if (!this.reduceItemQuantity(inventoryItem, 1)) {
+            this._state.deleteEntity(entity.sessionId);
+            return false;
         }
 
-        console.log("dropItem", dropAll, droppedQuantity, inventoryItem.qty);
         return true;
     }
 
@@ -372,7 +400,6 @@ export class PlayerSchema extends Entity {
         }
 
         this.player_data.gold -= totalPrice;
-        console.log("BUYING", item.key, "QTY: " + quantity, "TOTAL: " + totalPrice);
         return true;
     }
 
@@ -398,7 +425,6 @@ export class PlayerSchema extends Entity {
         // add gold to player
         this.player_data.gold = updatedBalance;
 
-        console.log("SELLING", inventoryItem.key, "QTY: 1");
         return true;
     }
 
@@ -432,7 +458,6 @@ export class PlayerSchema extends Entity {
         } else {
             const availableSlot = this.findNextAvailableInventorySlot();
             if (availableSlot === false) {
-                console.error("PICK UP", loot.key, "QTY: " + quantity, "INVENTORY IS FULL");
                 return false;
             }
 
@@ -443,12 +468,12 @@ export class PlayerSchema extends Entity {
             };
             // add inventory item
             this.player_data.inventory.set("" + data.i, new InventorySchema(data));
-            console.log("PICK UP", loot.key, "QTY: " + quantity, "SLOT: " + availableSlot);
         }
 
         // delete loot
         if (this._state.entities.get(loot.sessionId) === loot) {
-            this._state.entities.delete(loot.sessionId);
+            this._state.deleteEntity(loot.sessionId);
+            this._state.removeTarget(loot.sessionId);
         }
 
         // stop chasing target
@@ -461,49 +486,92 @@ export class PlayerSchema extends Entity {
         return isVendorWithinRange(this.getPosition(), spawns, itemKey);
     }
 
-    consumeItem(item) {
-        // process
-        for (let stat in item.statModifiers) {
-            item.statModifiers[stat].forEach((modifier) => {
-                if (CalculationTypes.ADD === modifier.type) {
-                    this[stat] += modifier.value;
-                }
-                if (CalculationTypes.REMOVE === modifier.type) {
-                    this[stat] -= modifier.value;
-                }
-            });
+    consumeItem(item, now: number = Date.now()) {
+        const key = typeof item?.key === "string" ? item.key : "";
+        const definition = key ? this._state.gameData.get("item", key) : null;
+        const ownedItem = item?.i !== undefined ? this.getInventoryItemByIndex(item.i) : null;
+        const cooldown = Number(definition?.cooldown ?? 0);
+        if (
+            !key ||
+            ownedItem !== item ||
+            definition?.class !== ItemClass.CONSUMABLE ||
+            !Number.isFinite(cooldown) ||
+            cooldown < 0 ||
+            !isConsumableCooldownReady(this.itemCooldownUntil.get(key), now) ||
+            parsePositiveQuantity(item.qty) === null
+        ) {
+            return false;
         }
 
-        // reduce item quantity
-        this.reduceItemQuantity(item, 1);
+        const modifiers = definition.statModifiers;
+        if (!modifiers || typeof modifiers !== "object") {
+            return false;
+        }
 
-        // make sure not stats are out of bounds
+        const nextStats = new Map<string, number>();
+        for (const [stat, effects] of Object.entries(modifiers)) {
+            if ((stat !== "health" && stat !== "mana") || !Array.isArray(effects)) {
+                return false;
+            }
+            let value = Number(nextStats.get(stat) ?? this[stat]);
+            if (!Number.isFinite(value)) {
+                return false;
+            }
+            for (const modifier of effects as any[]) {
+                const amount = Number(modifier?.value);
+                if (!Number.isFinite(amount) || amount < 0) {
+                    return false;
+                }
+                if (modifier.type === CalculationTypes.ADD) {
+                    value += amount;
+                } else if (modifier.type === CalculationTypes.REMOVE) {
+                    value -= amount;
+                } else {
+                    return false;
+                }
+            }
+            nextStats.set(stat, value);
+        }
+
+        // Consume first; effects and cooldown are committed only when the
+        // authoritative inventory decrement succeeds.
+        if (!this.reduceItemQuantity(item, 1)) {
+            return false;
+        }
+        this.itemCooldownUntil.set(key, now + cooldown);
+        nextStats.forEach((value, stat) => {
+            this[stat] = value;
+        });
         this.normalizeStats();
+        return true;
     }
 
     equipItem(item) {
-        if (item.class !== ItemClass.ARMOR && item.class !== ItemClass.WEAPON) {
-            console.log("this item class cannot be equipped", item);
+        const key = typeof item?.key === "string" ? item.key : "";
+        const definition = key ? this._state.gameData.get("item", key) : null;
+        if (definition?.class !== ItemClass.ARMOR && definition?.class !== ItemClass.WEAPON) {
             return false;
         }
 
         // make sure item is equipable
-        if (!item.equippable) {
-            console.log("item cannot be equipped", item);
+        if (!definition.equippable) {
             return false;
         }
 
-        let slot = item.equippable.slot;
-        let key = item.key;
+        let slot = definition.equippable.slot;
 
         // if can equip
-        if (this.canEquip(item, slot)) {
+        if (this.canEquip(item, slot, definition)) {
             // remove from inventory
-            this.reduceItemQuantity(item, 1);
+            if (!this.reduceItemQuantity(item, 1)) {
+                return false;
+            }
 
             // equip
             this.equipment.set(key, new EquipmentSchema({ key: key, slot: slot }, this));
+            return true;
         }
+        return false;
     }
 
     unequipItem(key, slot?) {
@@ -530,8 +598,15 @@ export class PlayerSchema extends Entity {
         return true;
     }
 
-    canEquip(item, slot) {
-        return item && item.qty > 0 && this.isEquipementSlotAvailable(slot) === true;
+    canEquip(item, slot, definition = item) {
+        return (
+            item &&
+            this.getInventoryItemByIndex(item.i) === item &&
+            parsePositiveQuantity(item.qty) !== null &&
+            definition?.equippable?.slot === slot &&
+            meetsItemRequirements(definition, this) &&
+            this.isEquipementSlotAvailable(slot) === true
+        );
     }
 
     ///////////////////////////////////////////////

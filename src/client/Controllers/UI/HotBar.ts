@@ -6,8 +6,9 @@ import { Player } from "../../Entities/Player";
 import { generatePanel, getBg, getPadding } from "./Theme";
 import { GameController } from "../GameController";
 import { ServerMsg } from "../../../shared/types";
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
 import { UserInterface } from "../UserInterface";
+import { getRoomCallbacks } from "../RoomCallbacks";
 
 type HotbarLayout = {
     columns: number;
@@ -42,17 +43,14 @@ export class HotBar {
 
         // add ui events
         let entity = this._currentPlayer.entity;
-        entity.player_data.hotbar.onAdd((item, sessionId) => {
+        const callbacks = getRoomCallbacks(this._room);
+        callbacks.onAdd(entity.player_data, "hotbar", (item) => {
             this._createUI();
-            // todo: could be a performance issue here?
-            // orion to keep an eye on this one
-            item.onChange((item, sessionId) => {
-                this._createUI();
-            });
-            item.onRemove((item, sessionId) => {
+            callbacks.onChange(item, () => {
                 this._createUI();
             });
         });
+        callbacks.onRemove(entity.player_data, "hotbar", () => this._createUI());
     }
 
     _createUI() {
