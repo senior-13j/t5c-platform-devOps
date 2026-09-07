@@ -34,4 +34,5 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/database ./database
 
 EXPOSE 3000
+USER node
 CMD ["node", "dist/server/server/index.js"]

@@ -3,5 +3,6 @@ const common = require("./webpack.common.js");
 
 module.exports = merge(common, {
     mode: "production",
-    devtool: "source-map",
+    // Do not publish the full TypeScript source tree alongside the browser bundle.
+    devtool: false,
 });

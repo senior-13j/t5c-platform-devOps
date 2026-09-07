@@ -4,51 +4,55 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-        <title>T5C - The 5th Continent | Multiplayer Browser RPG</title>
+        <title>Arkadii Quest | Old-School Multiplayer Browser RPG</title>
         <meta
             name="description"
-            content="Play T5C, a free multiplayer 3D browser RPG. Explore Eldoria, battle enemies, complete quests, collect loot, and build your character."
+            content="Play Arkadii Quest, a free old-school multiplayer 3D browser RPG. Explore Arkadia, battle creatures, complete quests, collect loot, and shape your hero."
         >
-        <meta name="application-name" content="T5C - The 5th Continent">
-        <meta name="theme-color" content="#111815">
+        <meta name="application-name" content="Arkadii Quest">
+        <meta name="theme-color" content="#132a20">
         <meta name="color-scheme" content="dark">
         <meta name="robots" content="index, follow, max-image-preview:large">
 
         <link rel="canonical" href="https://arkadii.world/game/">
         <link rel="manifest" href="./manifest.webmanifest">
-        <link rel="icon" type="image/x-icon" href="./favicon.ico">
-        <link rel="preload" href="./fonts/font.ttf" as="font" type="font/ttf" crossorigin>
-        <link rel="preload" href="./images/background_mainmenu_1.jpg" as="image" fetchpriority="high">
+        <link rel="icon" type="image/svg+xml" href="./images/arkadii-quest-mark.svg">
+        <link rel="alternate icon" type="image/x-icon" href="./favicon.ico">
+        <link rel="preload" href="./images/arkadii-quest-keyart.webp" as="image" type="image/webp" fetchpriority="high">
 
         <meta property="og:type" content="website">
-        <meta property="og:site_name" content="T5C - The 5th Continent">
-        <meta property="og:title" content="T5C - The 5th Continent | Multiplayer Browser RPG">
+        <meta property="og:site_name" content="Arkadii Quest">
+        <meta property="og:title" content="Arkadii Quest | Old-School Multiplayer Browser RPG">
         <meta
             property="og:description"
-            content="Explore Eldoria with other players in a free 3D browser RPG with quests, combat, loot, character progression, and global chat."
+            content="Enter Arkadia in a free old-school 3D browser RPG with quests, tactical combat, loot, character progression, and global chat."
         >
         <meta property="og:url" content="https://arkadii.world/game/">
-        <meta property="og:image" content="https://arkadii.world/game/images/background_mainmenu_1.jpg">
-        <meta property="og:image:width" content="1280">
-        <meta property="og:image:height" content="720">
-        <meta property="og:image:alt" content="A town and forest environment from T5C">
+        <meta property="og:locale" content="en_US">
+        <meta property="og:locale:alternate" content="ru_RU">
+        <meta property="og:image" content="https://arkadii.world/game/images/arkadii-quest-social.webp">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:image:type" content="image/webp">
+        <meta property="og:image:alt" content="Arkadii Quest — an adventurer overlooking the realm of Arkadia">
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="T5C - The 5th Continent">
+        <meta name="twitter:title" content="Arkadii Quest">
         <meta
             name="twitter:description"
-            content="A free multiplayer 3D browser RPG set in the continent of Eldoria."
+            content="An old-school multiplayer fantasy adventure in your browser."
         >
-        <meta name="twitter:image" content="https://arkadii.world/game/images/background_mainmenu_1.jpg">
+        <meta name="twitter:image" content="https://arkadii.world/game/images/arkadii-quest-social.webp">
+        <meta name="twitter:image:alt" content="Arkadii Quest — an adventurer overlooking the realm of Arkadia">
 
         <script type="application/ld+json">
             {
                 "@context": "https://schema.org",
                 "@type": "VideoGame",
-                "name": "T5C - The 5th Continent",
-                "alternateName": "T5C",
+                "name": "Arkadii Quest",
+                "alternateName": "Аркадия Квест",
                 "url": "https://arkadii.world/game/",
-                "image": "https://arkadii.world/game/images/background_mainmenu_1.jpg",
-                "description": "A free multiplayer 3D top-down browser RPG set in Eldoria, with quests, combat, loot, character progression, and global chat.",
+                "image": "https://arkadii.world/game/images/arkadii-quest-social.webp",
+                "description": "A free old-school multiplayer 3D browser RPG set in Arkadia, with quests, combat, loot, character progression, and global chat.",
                 "genre": ["Role-playing game", "Multiplayer online game"],
                 "gamePlatform": "Web browser",
                 "applicationCategory": "Game",
@@ -60,35 +64,20 @@
         </script>
 
         <link rel="stylesheet" href="./styles.css">
-        <script>
-            if (!["localhost", "127.0.0.1"].includes(window.location.hostname) && navigator.doNotTrack !== "1") {
-                window.dataLayer = window.dataLayer || [];
-                window.gtag = function () {
-                    window.dataLayer.push(arguments);
-                };
-                window.gtag("js", new Date());
-                window.gtag("config", "G-JYH151E26D", { anonymize_ip: true });
-
-                const analyticsScript = document.createElement("script");
-                analyticsScript.async = true;
-                analyticsScript.src = "https://www.googletagmanager.com/gtag/js?id=G-JYH151E26D";
-                document.head.appendChild(analyticsScript);
-            }
-        </script>
     </head>
     <body class="disable-selection">
         <a class="skip-link" href="#renderCanvas" data-i18n="a11y.skip">Skip to the game</a>
 
         <main id="gameShell" aria-labelledby="gameTitle">
-            <h1 id="gameTitle" class="sr-only" data-i18n="a11y.gameTitle">T5C - The 5th Continent multiplayer browser RPG</h1>
+            <h1 id="gameTitle" class="sr-only" data-i18n="a11y.gameTitle">Arkadii Quest multiplayer browser RPG</h1>
             <p id="gameDescription" class="sr-only" data-i18n="a11y.gameDescription">
-                Explore Eldoria, fight enemies, complete quests, collect equipment, and chat with other players.
+                Explore Arkadia, fight enemies, complete quests, collect equipment, and chat with other players.
             </p>
             <section id="gameInstructions" class="sr-only" aria-labelledby="gameInstructionsTitle">
                 <h2 id="gameInstructionsTitle" data-i18n="a11y.controlsTitle">Game controls</h2>
                 <p id="gameInstructionsText">
-                    Move with W, A, S, and D. Use the mouse to select and interact, number keys 1 through 9 for hotbar
-                    actions, Enter for chat, and letter hotkeys for game panels.
+                    Move with W, A, S, and D while the camera follows automatically. Use the mouse to select and
+                    interact, number keys 1 through 9 for hotbar actions, Enter for chat, and F1 for the full guide.
                 </p>
             </section>
 
@@ -99,13 +88,14 @@
                 aria-modal="true"
                 aria-labelledby="entrySetupTitle"
                 aria-describedby="entrySetupDescription"
+                hidden
             >
                 <form id="entrySetupForm" class="entry-setup__panel">
-                    <img src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
+                    <img src="./images/arkadii-quest-logo.svg" alt="Arkadii Quest" data-i18n-alt="brand.logoAlt" width="760" height="280">
                     <p class="entry-setup__eyebrow" data-i18n="entry.eyebrow">Player setup</p>
                     <h2 id="entrySetupTitle" data-i18n="entry.title">Choose your experience</h2>
                     <p id="entrySetupDescription" class="entry-setup__subtitle" data-i18n="entry.subtitle">
-                        Select a language and control mode before entering Eldoria.
+                        Select a language and control mode before entering Arkadia.
                     </p>
 
                     <fieldset class="entry-fieldset">
@@ -151,8 +141,8 @@
 
             <div id="loadingScreen" role="status" aria-live="polite" aria-atomic="true" hidden>
                 <div class="loading-panel">
-                    <img class="loading-logo" src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
-                    <p id="loadingText" class="loading-title" data-i18n="loading.title">Preparing Eldoria</p>
+                    <img class="loading-logo" src="./images/arkadii-quest-logo.svg" alt="Arkadii Quest" data-i18n-alt="brand.logoAlt" width="760" height="280">
+                    <p id="loadingText" class="loading-title" data-i18n="loading.title">Preparing Arkadia</p>
                     <div
                         id="loadingProgress"
                         class="loading-progress"
@@ -171,7 +161,7 @@
 
             <section id="fatalError" class="fatal-error" role="alert" aria-labelledby="fatalErrorTitle" hidden>
                 <div class="fatal-error__panel">
-                    <p class="fatal-error__eyebrow" data-i18n="fatal.eyebrow">T5C could not start</p>
+                    <p class="fatal-error__eyebrow" data-i18n="fatal.eyebrow">Arkadii Quest could not start</p>
                     <h2 id="fatalErrorTitle" data-i18n="fatal.title">Your adventure is paused</h2>
                     <p id="fatalErrorMessage" data-i18n="fatal.default">
                         Check that WebGL is enabled and that your connection is available, then try again.
@@ -183,9 +173,9 @@
 
             <section id="loginOverlay" class="login-overlay" aria-labelledby="loginTitle" hidden>
                 <div class="login-panel">
-                    <img src="./images/logo.png" alt="T5C - The 5th Continent" width="308" height="182">
+                    <img src="./images/arkadii-quest-logo.svg" alt="Arkadii Quest" data-i18n-alt="brand.logoAlt" width="760" height="280">
                     <p class="login-panel__eyebrow" data-i18n="login.eyebrow">Multiplayer browser RPG</p>
-                    <h2 id="loginTitle" data-i18n="login.title">Enter Eldoria</h2>
+                    <h2 id="loginTitle" data-i18n="login.title">Enter Arkadia</h2>
                     <p id="loginVersion" class="login-panel__version">Version 0.5.0</p>
 
                     <form id="loginForm">
@@ -220,19 +210,22 @@
                         <span data-i18n="login.quickPlay">Quick Play</span>
                     </button>
                     <p class="login-panel__hint" data-i18n="login.hint">Start immediately with a generated adventurer.</p>
+                    <button id="changePreferencesButton" class="login-preferences" type="button" data-i18n="entry.change">
+                        Language and controls
+                    </button>
                 </div>
             </section>
 
             <canvas
                 id="renderCanvas"
                 role="application"
-                aria-label="T5C interactive 3D game"
+                aria-label="Arkadii Quest interactive 3D game"
                 data-i18n="a11y.canvasFallback"
                 data-i18n-aria-label="a11y.canvas"
                 aria-describedby="gameDescription gameInstructions"
                 tabindex="0"
             >
-                T5C requires a browser with canvas and WebGL support. Visit the technical help page for compatibility
+                Arkadii Quest requires a browser with canvas and WebGL support. Visit the technical help page for compatibility
                 information.
             </canvas>
 
@@ -270,37 +263,101 @@
                         data-i18n-aria-label="touch.chat"
                         data-i18n-title="touch.chat"
                     ><span aria-hidden="true">#</span></button>
-                    <button
-                        id="touchZoomInButton"
-                        class="touch-action touch-action--small"
-                        type="button"
-                        data-i18n-aria-label="touch.zoomIn"
-                        data-i18n-title="touch.zoomIn"
-                    ><span aria-hidden="true">+</span></button>
-                    <button
-                        id="touchZoomOutButton"
-                        class="touch-action touch-action--small"
-                        type="button"
-                        data-i18n-aria-label="touch.zoomOut"
-                        data-i18n-title="touch.zoomOut"
-                    ><span aria-hidden="true">−</span></button>
                 </div>
             </section>
 
-            <aside id="controlHint" class="control-hint" role="status" hidden>
-                <div>
-                    <strong id="controlHintTitle"></strong>
-                    <p id="controlHintBody"></p>
+            <button
+                id="quickGuideButton"
+                class="quick-guide-button"
+                type="button"
+                data-i18n-aria-label="guide.open"
+                data-i18n-title="guide.open"
+                hidden
+            ><span aria-hidden="true">?</span></button>
+
+            <section
+                id="onboardingOverlay"
+                class="onboarding"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="onboardingTitle"
+                aria-describedby="onboardingSubtitle"
+                hidden
+            >
+                <div class="onboarding__panel">
+                    <header class="onboarding__header">
+                        <img src="./images/arkadii-quest-mark.svg" alt="" width="512" height="512">
+                        <div>
+                            <p class="onboarding__eyebrow" data-i18n="guide.eyebrow">New adventurer training</p>
+                            <h2 id="onboardingTitle" data-i18n="guide.title">Welcome to Arkadia</h2>
+                            <p id="onboardingSubtitle" data-i18n="guide.subtitle">
+                                Learn the essentials now; reopen this guide any time with F1.
+                            </p>
+                        </div>
+                        <button id="onboardingClose" class="onboarding__close" type="button" data-i18n-aria-label="guide.later">×</button>
+                    </header>
+
+                    <div class="onboarding__body">
+                        <section class="tutorial-path" aria-labelledby="tutorialPathTitle">
+                            <div class="onboarding__section-heading">
+                                <h3 id="tutorialPathTitle" data-i18n="guide.pathTitle">Your first quest</h3>
+                                <span id="tutorialProgress" class="tutorial-progress">0 / 3</span>
+                            </div>
+                            <ol class="tutorial-steps">
+                                <li data-tutorial-step="move">
+                                    <span class="tutorial-step__number" aria-hidden="true">1</span>
+                                    <div><strong data-i18n="guide.step.move.title">Find your footing</strong><p data-i18n="guide.step.move.body">Move a few steps and let the camera frame the road ahead.</p></div>
+                                </li>
+                                <li data-tutorial-step="combat">
+                                    <span class="tutorial-step__number" aria-hidden="true">2</span>
+                                    <div><strong data-i18n="guide.step.combat.title">Choose a target</strong><p data-i18n="guide.step.combat.body">Select a creature, then use an ability from the hotbar.</p></div>
+                                </li>
+                                <li data-tutorial-step="explore">
+                                    <span class="tutorial-step__number" aria-hidden="true">3</span>
+                                    <div><strong data-i18n="guide.step.explore.title">Open your journal</strong><p data-i18n="guide.step.explore.body">Check quests, inventory, or chat before exploring Arkadia.</p></div>
+                                </li>
+                            </ol>
+                        </section>
+
+                        <section class="control-reference" aria-labelledby="controlReferenceTitle">
+                            <h3 id="controlReferenceTitle" data-i18n="guide.controlsTitle">Quick controls</h3>
+                            <dl class="control-grid control-grid--keyboard" data-guide-mode="keyboard">
+                                <div><dt><kbd>WASD</kbd><span aria-hidden="true"> / </span><kbd>↑←↓→</kbd></dt><dd data-i18n="guide.control.move">Move</dd></div>
+                                <div><dt><kbd>1–9</kbd></dt><dd data-i18n="guide.control.hotbar">Use hotbar</dd></div>
+                                <div><dt><kbd>E</kbd></dt><dd data-i18n="guide.control.interact">Interact</dd></div>
+                                <div><dt><kbd>Tab</kbd></dt><dd data-i18n="guide.control.target">Nearest target</dd></div>
+                                <div><dt><kbd>Enter</kbd></dt><dd data-i18n="guide.control.chat">Chat</dd></div>
+                                <div><dt><kbd>I</kbd></dt><dd data-i18n="guide.control.inventory">Inventory</dd></div>
+                                <div><dt><kbd>J</kbd></dt><dd data-i18n="guide.control.quests">Quests</dd></div>
+                                <div><dt><kbd>K</kbd></dt><dd data-i18n="guide.control.abilities">Abilities</dd></div>
+                                <div><dt><kbd>C</kbd></dt><dd data-i18n="guide.control.character">Character</dd></div>
+                                <div><dt><kbd>H</kbd></dt><dd data-i18n="guide.control.help">Help</dd></div>
+                                <div><dt><kbd>Esc</kbd></dt><dd data-i18n="guide.control.close">Close panel</dd></div>
+                                <div><dt><kbd>F1</kbd></dt><dd data-i18n="guide.control.guide">This guide</dd></div>
+                            </dl>
+                            <dl class="control-grid control-grid--touch" data-guide-mode="touch">
+                                <div><dt data-i18n="guide.touch.joystickTitle">Left stick</dt><dd data-i18n="guide.touch.joystick">Move</dd></div>
+                                <div><dt data-i18n="guide.touch.tapTitle">Tap the world</dt><dd data-i18n="guide.touch.tap">Select and interact</dd></div>
+                                <div><dt data-i18n="guide.touch.actionsTitle">Right buttons</dt><dd data-i18n="guide.touch.actions">Target, interact, and chat</dd></div>
+                                <div><dt data-i18n="guide.touch.hotbarTitle">Bottom hotbar</dt><dd data-i18n="guide.touch.hotbar">Use abilities</dd></div>
+                            </dl>
+                            <p class="camera-note"><span aria-hidden="true">✦</span> <span data-i18n="guide.camera">The camera follows, looks ahead, and zooms automatically.</span></p>
+                        </section>
+                    </div>
+
+                    <footer class="onboarding__actions">
+                        <button id="onboardingLater" class="onboarding__later" type="button" data-i18n="guide.later">Maybe later</button>
+                        <button id="onboardingStart" class="onboarding__start" type="button" data-i18n="guide.start">Begin the quest</button>
+                    </footer>
                 </div>
-                <button id="controlHintDismiss" type="button" data-i18n-aria-label="hint.dismiss" title="Dismiss">×</button>
-            </aside>
+            </section>
             <div id="gameAnnouncements" class="sr-only" aria-live="polite" aria-atomic="false"></div>
         </main>
 
         <noscript>
             <section class="noscript-message">
                 <h2 data-i18n="noscript.title">JavaScript is required</h2>
-                <p data-i18n="noscript.body">T5C is an interactive 3D browser game and needs JavaScript to run.</p>
+                <p data-i18n="noscript.body">Arkadii Quest is an interactive 3D browser game and needs JavaScript to run.</p>
             </section>
         </noscript>
 

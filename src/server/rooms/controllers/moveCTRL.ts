@@ -2,70 +2,106 @@ import Logger from "../../utils/Logger";
 import { Vector3 } from "../../../shared/Libs/yuka-min";
 import { EntityState, PlayerInputs } from "../../../shared/types";
 import { BrainSchema, LootSchema, PlayerSchema } from "../schema";
+import { getSingleTargetAbilityRange } from "../gameplayRules";
+import { isMovementDisplacementAllowed, normalizeMovementInput } from "../GameplayMessageGuard";
 
 export class moveCTRL {
     private _owner: PlayerSchema;
 
     private currentRegion;
+    private movementMode: "manual" | "path" | null = null;
+    private movementStepConsumed = false;
 
     constructor(owner) {
         this._owner = owner;
     }
 
     public update() {
-        // if player has a target
-        if (this._owner.hasTarget()) {
-            // monitor player's target position
-            this._owner.monitorTarget();
+        try {
+            // if player has a target
+            if (this._owner.hasTarget()) {
+                const activeTarget = this._owner.AI_TARGET;
+                const registeredTarget = activeTarget?.sessionId
+                    ? this._owner._state?.entities?.get(activeTarget.sessionId)
+                    : null;
+                const isLootTarget = activeTarget instanceof LootSchema;
+                const isCombatTarget =
+                    Boolean(this._owner.AI_ABILITY) &&
+                    (activeTarget instanceof BrainSchema || activeTarget instanceof PlayerSchema);
+                if (registeredTarget !== activeTarget || (!isLootTarget && !isCombatTarget)) {
+                    this.cancelAutomatedMovement();
+                    return;
+                }
 
-            // find the path to target position
-            if (this._owner.AI_TARGET_WAYPOINTS.length < 1) {
-                this.setTargetDestination(this._owner.AI_TARGET_POSITION);
-            }
+                // monitor player's target position
+                this._owner.monitorTarget();
 
-            // check distance to target
-            let distance = this._owner.AI_TARGET_DISTANCE;
-            let target = this._owner.AI_TARGET;
-            let ability = this._owner.AI_ABILITY;
-
-            // do pickup item if close enough
-            if (distance < 1 && target instanceof LootSchema) {
-                this._owner.pickupItem(target);
-                this._owner.AI_TARGET = null;
-                this.cancelTargetDestination();
-            }
-
-            // do auto attack
-            if (this._owner.AI_ABILITY && (target instanceof BrainSchema || target instanceof PlayerSchema)) {
-                if (distance <= ability.minRange) {
-                    // cast ability
-                    this._owner.abilitiesCTRL.cast(this._owner, target, ability, 1);
-
-                    // if ai entity
-                    if (target instanceof BrainSchema) {
-                        this._owner.AI_TARGET = null;
+                // find the path to target position
+                if (this._owner.AI_TARGET_WAYPOINTS.length < 1) {
+                    if (!this.setTargetDestination(this._owner.AI_TARGET_POSITION)) {
+                        this.cancelAutomatedMovement();
+                        return;
                     }
+                }
 
-                    // if player entity
-                    if (target instanceof PlayerSchema) {
-                        this._owner.AI_TARGET_FOUND = true;
+                // check distance to target
+                let distance = this._owner.AI_TARGET_DISTANCE;
+                let target = this._owner.AI_TARGET;
+                let ability = this._owner.AI_ABILITY;
+
+                // do pickup item if close enough
+                if (distance < 1 && target instanceof LootSchema) {
+                    this._owner.pickupItem(target);
+                    // One click produces one pickup attempt. A full inventory
+                    // or otherwise rejected transfer must not rebuild a path
+                    // and retry every simulation tick until the loot expires.
+                    this.cancelAutomatedMovement();
+                }
+
+                // do auto attack
+                if (this._owner.AI_ABILITY && (target instanceof BrainSchema || target instanceof PlayerSchema)) {
+                    if (distance <= getSingleTargetAbilityRange(ability)) {
+                        // Revalidate resources/cooldown after the potentially long
+                        // path to the target, then cast with the original hotbar digit.
+                        const castSucceeded = this._owner.abilitiesCTRL.castIfAllowed(
+                            this._owner,
+                            target,
+                            ability,
+                            ability.digit ?? 1
+                        );
+
+                        if (castSucceeded) {
+                            this._owner.AI_TARGET_FOUND = true;
+                        }
+
+                        // Abilities are one-shot. Keeping a target without an
+                        // ability would rebuild the same path every server tick.
+                        this.cancelAutomatedMovement();
                     }
+                }
 
-                    this.cancelTargetDestination();
+                // if already found and target escapes
+                if (distance > 2.5 && this._owner.AI_TARGET_FOUND) {
+                    //this._owner.abilitiesCTRL.cancelAutoAttack(this._owner);
+                    this.cancelAutomatedMovement();
                 }
             }
 
-            // if already found and target escapes
-            if (distance > 2.5 && this._owner.AI_TARGET_FOUND) {
-                //this._owner.abilitiesCTRL.cancelAutoAttack(this._owner);
-                this._owner.AI_TARGET = null;
-                this._owner.AI_TARGET_FOUND = false;
+            // A manual message and an automated path are allowed to consume at
+            // most one horizontal movement step between simulation updates.
+            if (
+                !this.movementStepConsumed &&
+                this._owner.AI_TARGET_WAYPOINTS &&
+                this._owner.AI_TARGET_WAYPOINTS.length > 0
+            ) {
+                this.movementMode = "path";
+                this.movementStepConsumed = this.moveTowards();
             }
-        }
-
-        // head towards next waypoint
-        if (this._owner.AI_TARGET_WAYPOINTS && this._owner.AI_TARGET_WAYPOINTS.length > 0) {
-            this.moveTowards();
+        } finally {
+            this.movementStepConsumed = false;
+            if (this.movementMode === "manual") {
+                this.movementMode = null;
+            }
         }
     }
 
@@ -74,17 +110,38 @@ export class moveCTRL {
         this._owner.AI_TARGET_DISTANCE = 0;
         this._owner.AI_TARGET_POSITION = null;
         this._owner.AI_ABILITY = null;
+        this.movementMode = null;
     }
 
-    setTargetDestination(targetPos: Vector3): void {
+    cancelAutomatedMovement() {
+        this._owner.AI_TARGET = null;
+        this._owner.AI_TARGET_FOUND = false;
+        this.cancelTargetDestination();
+    }
+
+    setClickToMoveDestination(targetPos: Vector3): boolean {
+        this.cancelAutomatedMovement();
+        return this.setTargetDestination(targetPos);
+    }
+
+    setTargetDestination(targetPos: Vector3): boolean {
+        if (!targetPos || !this._owner?._navMesh) {
+            return false;
+        }
         const foundPath: any = this._owner._navMesh.checkPath(this._owner.getPosition(), targetPos);
         if (foundPath) {
-            this._owner.AI_TARGET_WAYPOINTS = this._owner._navMesh.findPath(this._owner.getPosition(), targetPos);
-            this._owner.AI_TARGET_WAYPOINTS.push(targetPos);
+            const waypoints = this._owner._navMesh.findPath(this._owner.getPosition(), targetPos);
+            if (Array.isArray(waypoints)) {
+                this._owner.AI_TARGET_WAYPOINTS = waypoints;
+                this._owner.AI_TARGET_WAYPOINTS.push(targetPos);
+                this.movementMode = "path";
+                return true;
+            }
         }
+        return false;
     }
 
-    moveTowards(type: string = "seek") {
+    moveTowards(type: string = "seek"): boolean {
         // move entity
         if (this._owner.AI_TARGET_WAYPOINTS.length > 0) {
             let currentPos = this._owner.getPosition();
@@ -103,11 +160,13 @@ export class moveCTRL {
             if (destinationOnPath.distanceTo(updatedPos) < 1) {
                 this._owner.AI_TARGET_WAYPOINTS.shift();
             }
+            return Math.hypot(updatedPos.x - currentPos.x, updatedPos.z - currentPos.z) > 1e-6;
         } else {
             console.error("moveTowards failed");
             // something is wrong, let's look for a new destination
             //this.resetDestination();
         }
+        return false;
     }
 
     /**
@@ -138,24 +197,26 @@ export class moveCTRL {
             return false;
         }
 
-        // make not already moving somewhere
-        if (this._owner.AI_TARGET_WAYPOINTS.length > 0) {
-            this._owner.AI_TARGET = null;
-            this._owner.AI_TARGET_WAYPOINTS = [];
-        }
-
         // cancel any auto attack
         //this._owner.abilitiesCTRL.cancelAutoAttack(this._owner);
-        const rawHorizontal = Number.isFinite(playerInput?.h) ? playerInput.h : 0;
-        const rawVertical = Number.isFinite(playerInput?.v) ? playerInput.v : 0;
-        const inputMagnitude = Math.hypot(rawHorizontal, rawVertical);
-        if (inputMagnitude < 0.001) {
+        const normalizedInput = normalizeMovementInput(playerInput, this._owner.sequence);
+        if (!normalizedInput) {
             return false;
         }
-        const inputScale = inputMagnitude > 1 ? 1 / inputMagnitude : 1;
-        const horizontal = rawHorizontal * inputScale;
-        const vertical = rawVertical * inputScale;
-        let speed = this._owner.speed;
+        const horizontal = normalizedInput.h;
+        const vertical = normalizedInput.v;
+        const speed = Number(this._owner.speed);
+        if (!Number.isFinite(speed) || speed <= 0) {
+            return false;
+        }
+
+        // A valid manual input explicitly takes control away from click-to-move,
+        // pickup and combat pursuit. Do not let both modes move in one tick.
+        this.cancelAutomatedMovement();
+        this.movementMode = "manual";
+        if (this.movementStepConsumed) {
+            return false;
+        }
 
         // save current position
         let oldX = this._owner.x;
@@ -175,13 +236,18 @@ export class moveCTRL {
 
         // get clamped position
         let clampedPosition = this._owner._navMesh.clampMovementV2(sourcePos, destinationPos) as Vector3;
+        const requestedDistance = speed * Math.hypot(horizontal, vertical);
+        if (!clampedPosition || !isMovementDisplacementAllowed(sourcePos, clampedPosition, requestedDistance + 0.01)) {
+            return false;
+        }
 
         // collision detected, return player old position
         this._owner.x = clampedPosition.x;
         this._owner.y = clampedPosition.y;
         this._owner.z = clampedPosition.z;
         this._owner.rot = newRot;
-        this._owner.sequence = playerInput.seq;
+        this._owner.sequence = normalizedInput.seq;
+        this.movementStepConsumed = true;
 
         //
         let nextRegion = this._owner._navMesh.getRegionForPoint(clampedPosition, 0.5);
@@ -189,6 +255,7 @@ export class moveCTRL {
             const distance = nextRegion.plane.distanceToPoint(clampedPosition);
             newY -= distance; // smooth transition
         }
+        return true;
     }
 
     /**
@@ -199,38 +266,23 @@ export class moveCTRL {
      * @returns {Vector3} new position
      */
     moveTo(source: Vector3, destination: Vector3, speed: number): Vector3 {
-        let currentX = source.x;
-        let currentZ = source.z;
-        let targetX = destination.x;
-        let targetZ = destination.z;
         let newPos = new Vector3(source.x, source.y, source.z);
-
-        if (targetX < currentX) {
-            newPos.x -= speed;
-            if (newPos.x < targetX) {
-                newPos.x = targetX;
-            }
+        const deltaX = destination?.x - source?.x;
+        const deltaZ = destination?.z - source?.z;
+        const horizontalDistance = Math.hypot(deltaX, deltaZ);
+        if (
+            ![source?.x, source?.y, source?.z, destination?.x, destination?.y, destination?.z, speed, horizontalDistance].every(
+                Number.isFinite
+            ) ||
+            speed <= 0
+        ) {
+            return newPos;
         }
 
-        if (targetX > currentX) {
-            newPos.x += speed;
-            if (newPos.x > targetX) {
-                newPos.x = targetX;
-            }
-        }
-
-        if (targetZ < currentZ) {
-            newPos.z -= speed;
-            if (newPos.z < targetZ) {
-                newPos.z = targetZ;
-            }
-        }
-
-        if (targetZ > currentZ) {
-            newPos.z += speed;
-            if (newPos.z > targetZ) {
-                newPos.z = targetZ;
-            }
+        if (horizontalDistance > 0) {
+            const step = Math.min(speed, horizontalDistance);
+            newPos.x += (deltaX / horizontalDistance) * step;
+            newPos.z += (deltaZ / horizontalDistance) * step;
         }
 
         // adjust height of the entity according to the ground

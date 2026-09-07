@@ -7,6 +7,7 @@ import { TextBlock } from "@babylonjs/gui/2D/controls/textBlock";
 import { Image } from "@babylonjs/gui/2D/controls/image";
 import { ServerMsg } from "../../../../shared/types";
 import { Rarity } from "../../../../shared/Class/Rarity";
+import { getRoomCallbacks } from "../../RoomCallbacks";
 
 export class Panel_Character extends Panel {
     // inventory tab
@@ -101,14 +102,15 @@ export class Panel_Character extends Panel {
         // dynamic events
         let entity = this._currentPlayer.entity;
         if (entity) {
-            entity.player_data.onChange((item, sessionId) => {
+            const callbacks = getRoomCallbacks(this._room);
+            callbacks.onChange(entity.player_data, () => {
                 this.leftPanelContent(this.leftPanel);
                 this.rightPanelContent(this.rightPanel);
             });
-            entity.equipment.onAdd((item, sessionId) => {
+            callbacks.onAdd(entity, "equipment", (item) => {
                 this.slotPanelContentRefresh("ADD", this.slotPanel, item);
             });
-            entity.equipment.onRemove((item, sessionId) => {
+            callbacks.onRemove(entity, "equipment", (item) => {
                 this.slotPanelContentRefresh("REMOVE", this.slotPanel, item);
             });
         }
@@ -135,12 +137,12 @@ export class Panel_Character extends Panel {
         leftPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         leftPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         leftPanel.top = "0px";
-        leftPanel.left = "0px;";
+        leftPanel.left = "0px";
         leftPanel.width = 0.485;
         leftPanel.height = 0.8;
         leftPanel.thickness = 0;
-        leftPanel.paddingLeft = "0px;";
-        leftPanel.paddingBottom = "5px;";
+        leftPanel.paddingLeft = "0px";
+        leftPanel.paddingBottom = "5px";
         panel.addControl(leftPanel);
         this.leftPanel = leftPanel;
 
@@ -153,8 +155,8 @@ export class Panel_Character extends Panel {
         rightPanel.width = 0.485;
         rightPanel.height = 0.8;
         rightPanel.thickness = 0;
-        rightPanel.paddingLeft = "0px;";
-        rightPanel.paddingBottom = "5px;";
+        rightPanel.paddingLeft = "0px";
+        rightPanel.paddingBottom = "5px";
         panel.addControl(rightPanel);
         this.rightPanel = rightPanel;
 
@@ -167,9 +169,9 @@ export class Panel_Character extends Panel {
         slotPanel.width = 1;
         slotPanel.adaptHeightToChildren = true;
         slotPanel.thickness = 0;
-        slotPanel.paddingLeft = "7px;";
-        slotPanel.paddingRight = "7px;";
-        slotPanel.paddingBottom = "7px;";
+        slotPanel.paddingLeft = "7px";
+        slotPanel.paddingRight = "7px";
+        slotPanel.paddingBottom = "7px";
         panel.addControl(slotPanel);
         this.slotPanel = slotPanel;
     }
@@ -198,13 +200,13 @@ export class Panel_Character extends Panel {
             panelRectangle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             panelRectangle.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             panelRectangle.top = "0px";
-            panelRectangle.left = "0px;";
+            panelRectangle.left = "0px";
             panelRectangle.width = 1;
             panelRectangle.height = touchMode ? 44 * viewport.scaleY + "px" : "30px";
             panelRectangle.background = "#CCC";
             panelRectangle.thickness = 1;
-            panelRectangle.paddingLeft = "0px;";
-            panelRectangle.paddingBottom = "5px;";
+            panelRectangle.paddingLeft = "0px";
+            panelRectangle.paddingBottom = "5px";
             applyTheme(panelRectangle);
             stackPanel.addControl(panelRectangle);
 
@@ -264,13 +266,13 @@ export class Panel_Character extends Panel {
             panelRectangle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             panelRectangle.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             panelRectangle.top = "0px";
-            panelRectangle.left = "0px;";
+            panelRectangle.left = "0px";
             panelRectangle.width = 1;
             panelRectangle.height = touchMode ? 44 * viewport.scaleY + "px" : "30px";
             panelRectangle.background = "#CCC";
             panelRectangle.thickness = 1;
-            panelRectangle.paddingLeft = "0px;";
-            panelRectangle.paddingBottom = "5px;";
+            panelRectangle.paddingLeft = "0px";
+            panelRectangle.paddingBottom = "5px";
             applyTheme(panelRectangle);
             stackPanel.addControl(panelRectangle);
 

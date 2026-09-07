@@ -1,20 +1,26 @@
-import Logger from "../Logger";
-import sqlite3 from "sqlite3";
 import fs from "fs";
+import sqlite3 from "sqlite3";
+import Logger from "../Logger";
+import type { DatabaseExecutor } from "./DatabaseExecutor";
 
 export class DB_SQLLITE {
     db;
+    private operationQueue: Promise<void> = Promise.resolve();
 
     constructor() {}
 
-    async init(config) {
-        let dbFilePath = process.env.DATABASE_PATH || "./database.db";
-        this.db = new sqlite3.Database(dbFilePath, (err: any) => {
-            if (err) {
-                Logger.error("[database] Could not connect to database: " + dbFilePath, err);
-            } else {
-                Logger.info("[database] Connected to database: " + dbFilePath);
-            }
+    async init(_config) {
+        const dbFilePath = process.env.DATABASE_PATH || "./database.db";
+        await new Promise<void>((resolve, reject) => {
+            this.db = new sqlite3.Database(dbFilePath, (error: Error | null) => {
+                if (error) {
+                    Logger.error("[database] Could not connect to database: " + dbFilePath, error);
+                    reject(error);
+                } else {
+                    Logger.info("[database] Connected to database: " + dbFilePath);
+                    resolve();
+                }
+            });
         });
     }
 
@@ -25,71 +31,107 @@ export class DB_SQLLITE {
             return;
         }
 
-        let sql = fs.readFileSync("./database/sqllite.sql", { encoding: "utf8" });
-        let splitCharacter = ");";
+        const sql = fs.readFileSync("./database/sqllite.sql", { encoding: "utf8" });
+        const splitCharacter = ");";
+        const statements = sql.toString().split(splitCharacter);
 
-        // Convert the SQL string to array so that you can run them one at a time.
-        // You can split the strings using the query delimiter i.e. `;` in // my case I used `);` because some data in the queries had `;`.
-        const dataArr = sql.toString().split(splitCharacter);
-
-        // db.serialize ensures that your queries are one after the other depending on which one came first in your `dataArr`
-        this.db.serialize(() => {
-            // db.run runs your SQL query against the DB
-            this.db.run("PRAGMA foreign_keys=OFF;");
-            this.db.run("BEGIN TRANSACTION;");
-            // Loop through the `dataArr` and db.run each query
-            dataArr.forEach((query) => {
-                if (query) {
-                    // Add the delimiter back to each query before you run them
-                    // In my case the it was `);`
-                    query += splitCharacter;
-                    this.db.run(query, (err) => {
-                        if (err) throw err;
-                    });
+        await this.run("PRAGMA foreign_keys=OFF;");
+        await this.transaction(async (executor) => {
+            for (let statement of statements) {
+                if (statement.trim()) {
+                    statement += splitCharacter;
+                    await executor.run(statement);
                 }
-            });
-            this.db.run("COMMIT;");
+            }
         });
+    }
+
+    async query(sql: string, params = []): Promise<any> {
+        return this.all(sql, params);
     }
 
     async get(sql: string, params = []): Promise<any> {
-        return new Promise((resolve, reject) => {
-            this.db.get(sql, params, (err: any, result: []) => {
-                if (err) {
-                    console.log("Error running sql: " + sql);
-                    console.log(err);
-                    reject(err);
-                } else {
-                    resolve(result);
-                }
-            });
-        });
+        return this.enqueue(() => this.rawGet(sql, params));
     }
 
     async all(sql: string, params = []): Promise<any[]> {
-        return new Promise((resolve, reject) => {
-            this.db.all(sql, params, (err: any, rows: []) => {
-                if (err) {
-                    console.log("Error running sql: " + sql);
-                    console.log(err);
-                    reject(err);
-                } else {
-                    resolve(rows);
+        return this.enqueue(() => this.rawAll(sql, params));
+    }
+
+    async run(sql: string, params = []): Promise<number> {
+        return this.enqueue(() => this.rawRun(sql, params));
+    }
+
+    async transaction<T>(work: (executor: DatabaseExecutor) => Promise<T>): Promise<T> {
+        return this.enqueue(async () => {
+            await this.rawRun("BEGIN IMMEDIATE TRANSACTION;");
+            const executor = this.rawExecutor();
+            try {
+                const result = await work(executor);
+                await this.rawRun("COMMIT;");
+                return result;
+            } catch (error) {
+                try {
+                    await this.rawRun("ROLLBACK;");
+                } catch (rollbackError) {
+                    Logger.error("[database] sqlite transaction rollback failed", rollbackError);
                 }
+                throw error;
+            }
+        });
+    }
+
+    async close(): Promise<void> {
+        return this.enqueue(async () => {
+            if (!this.db) {
+                return;
+            }
+
+            const connection = this.db;
+            this.db = undefined;
+            await new Promise<void>((resolve, reject) => {
+                connection.close((error: Error | null) => (error ? reject(error) : resolve()));
             });
         });
     }
 
-    async run(sql: string, params = []) {
-        //console.log(sql, params);
+    private enqueue<T>(operation: () => Promise<T>): Promise<T> {
+        const result = this.operationQueue.then(operation, operation);
+        this.operationQueue = result.then(
+            () => undefined,
+            () => undefined
+        );
+        return result;
+    }
+
+    private rawExecutor(): DatabaseExecutor {
+        return {
+            query: (sql, params = []) => this.rawAll(sql, params),
+            get: (sql, params = []) => this.rawGet(sql, params),
+            all: (sql, params = []) => this.rawAll(sql, params),
+            run: (sql, params = []) => this.rawRun(sql, params),
+        };
+    }
+
+    private rawGet(sql: string, params: any[] = []): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.db.run(sql, params, function (err: any, result: any) {
-                if (err) {
-                    console.log("Error running sql " + sql);
-                    console.log(err);
-                    reject(err);
+            this.db.get(sql, params, (error: Error | null, result: any) => (error ? reject(error) : resolve(result)));
+        });
+    }
+
+    private rawAll(sql: string, params: any[] = []): Promise<any[]> {
+        return new Promise((resolve, reject) => {
+            this.db.all(sql, params, (error: Error | null, rows: any[]) => (error ? reject(error) : resolve(rows)));
+        });
+    }
+
+    private rawRun(sql: string, params: any[] = []): Promise<number> {
+        const database = this.db;
+        return new Promise((resolve, reject) => {
+            database.run(sql, params, function (error: Error | null) {
+                if (error) {
+                    reject(error);
                 } else {
-                    //console.log("[RUN] results", this);
                     resolve(this.lastID);
                 }
             });

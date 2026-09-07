@@ -26,6 +26,8 @@ import { VatController } from "../Controllers/VatController";
 import { Grid } from "@babylonjs/gui/2D/controls/grid";
 import { ScrollViewer } from "@babylonjs/gui/2D/controls/scrollViewers/scrollViewer";
 import { TranslationKey } from "../i18n";
+import { MAX_CHARACTERS_PER_USER } from "../../shared/Config";
+import { canCreateCharacter, characterCreationErrorKey } from "./characterCreation";
 
 export class CharacterEditor {
     public _game: GameController;
@@ -44,6 +46,11 @@ export class CharacterEditor {
     private rightColumnRect: Rectangle;
     private centerColumnRect: Rectangle;
     private camera: ArcRotateCamera;
+    private usernameInput: InputText;
+    private createButton: Button;
+    private creationFeedback: TextBlock;
+    private creationInProgress = false;
+    private creationLimitReached = false;
 
     private all_races: Race[] = [];
 
@@ -233,6 +240,14 @@ export class CharacterEditor {
         // load character
         await this.initialize(this.selected_race);
         this.resize();
+        this.bindKeyboardNavigation();
+        if (this._game.controlMode === "keyboard") {
+            this.setCreationFeedback(this._game.t("editor.keyboardHint"), "#d7cfae");
+            window.requestAnimationFrame(() => {
+                this._ui.focusedControl = this.usernameInput;
+                this._game.engine.getRenderingCanvas()?.focus();
+            });
+        }
     }
 
     cleanup(previousChoice) {
@@ -520,7 +535,7 @@ export class CharacterEditor {
         centerColumnRect.top = "0px";
         centerColumnRect.left = 0;
         centerColumnRect.width = compact ? 0.66 : "300px";
-        centerColumnRect.height = "176px";
+        centerColumnRect.height = "210px";
         centerColumnRect.thickness = 0;
         centerColumnRect.horizontalAlignment = compact ? Control.HORIZONTAL_ALIGNMENT_RIGHT : Control.HORIZONTAL_ALIGNMENT_CENTER;
         centerColumnRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -538,6 +553,19 @@ export class CharacterEditor {
         usernameInput.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         usernameInput.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         centerColumnRect.addControl(usernameInput);
+        this.usernameInput = usernameInput;
+
+        const creationFeedback = new TextBlock("creationFeedback", "");
+        creationFeedback.top = "-154px";
+        creationFeedback.width = compact ? 0.92 : "280px";
+        creationFeedback.height = "34px";
+        creationFeedback.color = "#d7cfae";
+        creationFeedback.fontSize = compact ? "11px" : "12px";
+        creationFeedback.textWrapping = TextWrapping.WordWrap;
+        creationFeedback.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        creationFeedback.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        centerColumnRect.addControl(creationFeedback);
+        this.creationFeedback = creationFeedback;
 
         // PLAY BUTTON
         const playBtn = Button.CreateSimpleButton("playBtn", this._game.t("editor.create"));
@@ -550,19 +578,8 @@ export class CharacterEditor {
         playBtn.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         playBtn.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         centerColumnRect.addControl(playBtn);
-        playBtn.onPointerDownObservable.add(() => {
-            // create new character via database
-            this.createCharacter(this._game.currentUser.token, usernameInput.text).then((char) => {
-                if (!char) {
-                    return;
-                }
-                // login as this character
-                this._game.setCharacter(char);
-                this._game.setScene(State.CHARACTER_SELECTION);
-                // reset text
-                usernameInput.text = "";
-            });
-        });
+        this.createButton = playBtn;
+        playBtn.onPointerDownObservable.add(() => void this.submitCharacterCreation());
 
         // BACK BUTTON
         const backBtn = Button.CreateSimpleButton("backBtn", this._game.t("common.cancel"));
@@ -578,6 +595,10 @@ export class CharacterEditor {
         backBtn.onPointerDownObservable.add(() => {
             this._game.setScene(State.CHARACTER_SELECTION);
         });
+
+        if (!canCreateCharacter(this._game.currentUser?.characters?.length ?? 0)) {
+            this.disableCreationAtLimit();
+        }
     }
 
     private setAnimationParameters(vec, currentAnim, delta = 60) {
@@ -638,12 +659,111 @@ export class CharacterEditor {
             url: apiUrl(this._game.config.port) + "/create_character",
         });
 
-        // check req status
-        if (req.status === 200) {
-            return req.data.character;
-        } else {
-            return false;
+        return req.status === 200 ? req.data.character : false;
+    }
+
+    private async submitCharacterCreation(): Promise<void> {
+        if (this.creationInProgress) {
+            return;
         }
+        if (!canCreateCharacter(this._game.currentUser?.characters?.length ?? 0)) {
+            this.disableCreationAtLimit();
+            return;
+        }
+
+        const name = this.usernameInput?.text?.trim();
+        if (!name) {
+            this.setCreationFeedback(this._game.t("editor.errorInvalid"), "#f0a29a");
+            this._ui.focusedControl = this.usernameInput;
+            return;
+        }
+
+        this.creationInProgress = true;
+        this.createButton.isEnabled = false;
+        this.createButton.alpha = 0.65;
+        this.setCreationFeedback(this._game.t("editor.creating"), "#d7cfae");
+
+        try {
+            const character = await this.createCharacter(this._game.currentUser.token, name);
+            if (!character) {
+                this.setCreationFeedback(this._game.t("editor.errorGeneric"), "#f0a29a");
+                return;
+            }
+            this.usernameInput.text = "";
+            this._game.setCharacter(character);
+            this._game.setScene(State.CHARACTER_SELECTION);
+        } catch (error) {
+            const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+            const key = characterCreationErrorKey(status);
+            this.setCreationFeedback(
+                this._game.t(key, { limit: MAX_CHARACTERS_PER_USER }),
+                "#f0a29a"
+            );
+            if (status === 409) {
+                this.disableCreationAtLimit();
+            }
+        } finally {
+            this.creationInProgress = false;
+            if (
+                this.createButton &&
+                !this.creationLimitReached &&
+                canCreateCharacter(this._game.currentUser?.characters?.length ?? 0)
+            ) {
+                this.createButton.isEnabled = true;
+                this.createButton.alpha = 1;
+            }
+        }
+    }
+
+    private disableCreationAtLimit(): void {
+        this.creationLimitReached = true;
+        if (this.createButton) {
+            this.createButton.isEnabled = false;
+            this.createButton.alpha = 0.65;
+            this.createButton.background = "#38433d";
+        }
+        this.setCreationFeedback(
+            this._game.t("editor.errorLimit", { limit: MAX_CHARACTERS_PER_USER }),
+            "#f0a29a"
+        );
+    }
+
+    private setCreationFeedback(message: string, color: string): void {
+        if (this.creationFeedback) {
+            this.creationFeedback.text = message;
+            this.creationFeedback.color = color;
+        }
+        const announcements = document.getElementById("gameAnnouncements");
+        if (announcements) {
+            announcements.textContent = message;
+        }
+    }
+
+    private bindKeyboardNavigation(): void {
+        if (this._game.controlMode !== "keyboard") {
+            return;
+        }
+
+        const handleKeyboard = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                this._ui.focusedControl = null;
+                this._game.setScene(State.CHARACTER_SELECTION);
+                return;
+            }
+            if (event.key === "Tab") {
+                event.preventDefault();
+                this._ui.focusedControl = this.usernameInput;
+                return;
+            }
+            if (event.key === "Enter" && !event.repeat) {
+                event.preventDefault();
+                void this.submitCharacterCreation();
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyboard);
+        this._scene.onDisposeObservable.addOnce(() => window.removeEventListener("keydown", handleKeyboard));
     }
 
     public resize() {

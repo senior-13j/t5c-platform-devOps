@@ -6,7 +6,7 @@ let QuestsDB = {
         title: "Dangerous Errands",
         description:
             "If you have a moment, please go to the forest to the south. It is currently plagued by a bandit invasion, perhaps you could offer some assistance in this matter?",
-        objective: "@NpcName in @LocationName wants you to kill @KillRequired @TargetName found south of Eldoria.",
+        objective: "@NpcName in @LocationName wants you to defeat @KillRequired @TargetName south of Oakwatch.",
         type: QuestObjective.KILL_AMOUNT,
         location: "lh_town",
         spawn_key: "lh_town_bandits",

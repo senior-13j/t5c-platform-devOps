@@ -5,9 +5,10 @@
 DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
 	`id`			int(10) NOT NULL,
-	`username`		varchar(255),
+	`username`		varchar(255) NOT NULL,
 	`password`		varchar(255),
-	`token`			varchar(255)
+	`token`			varchar(255),
+	UNIQUE KEY `uq_users_username` (`username`)
 );
 ALTER TABLE `users` ADD PRIMARY KEY (`id`);
 ALTER TABLE `users` MODIFY `id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1;

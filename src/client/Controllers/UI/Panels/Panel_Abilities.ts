@@ -8,6 +8,7 @@ import { Button } from "@babylonjs/gui/2D/controls/button";
 import { applyTheme } from "../Theme";
 import { ScrollViewer } from "@babylonjs/gui/2D/controls/scrollViewers/scrollViewer";
 import { ServerMsg } from "../../../../shared/types";
+import { getRoomCallbacks } from "../../RoomCallbacks";
 
 export class Panel_Abilities extends Panel {
     // inventory tab
@@ -20,17 +21,14 @@ export class Panel_Abilities extends Panel {
 
         // dynamic events
         let entity = this._currentPlayer.entity;
-        entity.player_data.abilities.onAdd((item, sessionId) => {
+        const callbacks = getRoomCallbacks(this._room);
+        callbacks.onAdd(entity.player_data, "abilities", (item) => {
             this.refresh();
-            // todo: could be a performance issue here?
-            // orion to keep an eye on this one
-            item.onChange((item, sessionId) => {
-                this.refresh();
-            });
-            item.onRemove((item, sessionId) => {
+            callbacks.onChange(item, () => {
                 this.refresh();
             });
         });
+        callbacks.onRemove(entity.player_data, "abilities", () => this.refresh());
     }
 
     // open panel
@@ -80,13 +78,13 @@ export class Panel_Abilities extends Panel {
             skillsPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             skillsPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             skillsPanel.top = "0px";
-            skillsPanel.left = "0px;";
+            skillsPanel.left = "0px";
             skillsPanel.width = 1;
             skillsPanel.height = "50px";
             skillsPanel.background = "#CCC";
             skillsPanel.thickness = 1;
-            skillsPanel.paddingLeft = "5px;";
-            skillsPanel.paddingBottom = "5px;";
+            skillsPanel.paddingLeft = "5px";
+            skillsPanel.paddingBottom = "5px";
             applyTheme(skillsPanel);
             skillsPanelStack.addControl(skillsPanel);
 
@@ -95,9 +93,9 @@ export class Panel_Abilities extends Panel {
             imageBLoc.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             imageBLoc.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             imageBLoc.top = "0px";
-            imageBLoc.left = "0px;";
-            imageBLoc.width = "40px;";
-            imageBLoc.height = "40px;";
+            imageBLoc.left = "0px";
+            imageBLoc.width = "40px";
+            imageBLoc.height = "40px";
             imageBLoc.thickness = 0;
             skillsPanel.addControl(imageBLoc);
             var imageData = this._loadedAssets[ability.icon];
@@ -118,7 +116,7 @@ export class Panel_Abilities extends Panel {
             tooltipName.color = "#FFF";
             tooltipName.top = "5px";
             tooltipName.left = "50px";
-            tooltipName.fontSize = "18px;";
+            tooltipName.fontSize = "18px";
             tooltipName.resizeToFit = true;
             tooltipName.text = ability.title;
             tooltipName.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -131,7 +129,7 @@ export class Panel_Abilities extends Panel {
             abilityDescr.color = "rgba(255,255,255,.6)";
             abilityDescr.top = "0px";
             abilityDescr.left = "50px";
-            abilityDescr.fontSize = "12px;";
+            abilityDescr.fontSize = "12px";
             abilityDescr.resizeToFit = true;
             abilityDescr.text = ability.description;
             abilityDescr.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;

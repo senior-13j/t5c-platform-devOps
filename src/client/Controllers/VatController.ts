@@ -171,15 +171,17 @@ export class VatController {
             entity.entityData.meshes.delete(entity.sessionId);
         }
 
-        // create new mesh based on the new data
-        this.prepareMesh(entity);
+        // Build the shared VAT mesh completely before swapping the instance.
+        // A fixed delay raced on slower devices and could leave the entity with
+        // no mesh at all when preparation took longer than 200 ms.
+        await this.prepareMesh(entity);
+        if (entity.isRemoved) {
+            return;
+        }
 
-        // wait a bit before adding the new mesh to the entity
-        setTimeout(() => {
-            entity.meshController.createMesh();
-            entity.animatorController.mesh = entity.meshController.mesh;
-            entity.animatorController.refreshAnimation();
-        }, 200);
+        entity.meshController.createMesh();
+        entity.animatorController.mesh = entity.meshController.mesh;
+        entity.animatorController.refreshAnimation();
     }
 
     async prepareMesh(entity) {

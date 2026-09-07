@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { Ability, Race, Item, Quest } from "../../../shared/types";
+import { getOwnDataEntry } from "../../utils/getOwnDataEntry";
 
 export class gameDataCTRL {
     private _gameData = {
@@ -32,19 +33,19 @@ export class gameDataCTRL {
         let returnData;
         switch (type) {
             case "ability":
-                returnData = (this._gameData.abilities[key] as Ability) ?? false;
+                returnData = getOwnDataEntry<Ability>(this._gameData.abilities, key);
                 break;
             case "race":
-                returnData = (this._gameData.races[key] as Race) ?? false;
+                returnData = getOwnDataEntry<Race>(this._gameData.races, key);
                 break;
             case "location":
-                returnData = this._gameData.locations[key] ?? false;
+                returnData = getOwnDataEntry(this._gameData.locations, key);
                 break;
             case "item":
-                returnData = (this._gameData.items[key] as Item) ?? false;
+                returnData = getOwnDataEntry<Item>(this._gameData.items, key);
                 break;
             case "quest":
-                returnData = (this._gameData.quests[key] as Quest) ?? false;
+                returnData = getOwnDataEntry<Quest>(this._gameData.quests, key);
                 break;
             case "":
                 returnData = false;

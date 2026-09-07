@@ -13,7 +13,7 @@ const DEFAULT_LOOT = [
 
 let LocationsDB = {
     lh_town: {
-        title: "Lighthaven",
+        title: "Oakwatch",
         key: "lh_town",
         mesh: "lh_town",
         sun: true,
@@ -27,7 +27,6 @@ let LocationsDB = {
         waterPlane: true,
         skyColor: [0, 0, 0, 1],
         fog: true,
-        music: "MUSIC_01",
         dynamic: {
             interactive: [
                 {
@@ -47,6 +46,13 @@ let LocationsDB = {
                     type: "teleport",
                     from: new Vector3(-8.4, 0, -49.08),
                     to_vector: new Vector3(-22, 0, -37.8),
+                },
+                {
+                    // hidden entrance from the secret grove to the Old Barrow
+                    type: "zone_change",
+                    from: new Vector3(-8, 0, -55),
+                    to_map: "lh_dungeon_01",
+                    to_vector: new Vector3(0, 0, 0),
                 },
             ],
             spawns: [
@@ -86,7 +92,7 @@ let LocationsDB = {
                         data: [
                             {
                                 type: "text",
-                                text: "Greetings, adventurer! Looking for a new weapon or some sturdy armor? I've got the finest in Eldoria.",
+                                text: "Greetings, adventurer! Looking for a new weapon or sturdy armor? I carry some of the finest work in Arkadia.",
                                 vendor: {
                                     items: [
                                         { key: "shield_01" }, //
@@ -439,7 +445,7 @@ let LocationsDB = {
         },
     },
     training_ground: {
-        title: "Training Ground",
+        title: "Adventurer's Yard",
         key: "training_ground",
         mesh: "training_ground",
         sun: true,
@@ -453,12 +459,9 @@ let LocationsDB = {
         },
         waterPlane: false,
         skyColor: [0, 0, 0, 1],
-        music: "MUSIC_01",
         dynamic: {
             interactive: [
                 {
-                    // Keep this at the southern edge and aligned with the
-                    // "stuck" reset position so trapped players can always leave.
                     type: "zone_change",
                     from: new Vector3(6.3, 0, -23.5),
                     to_map: "lh_town",
@@ -512,7 +515,7 @@ let LocationsDB = {
         },
     },
     lh_dungeon_01: {
-        title: "Dungeon Level 1",
+        title: "The Old Barrow",
         key: "lh_dungeon_01",
         mesh: "lh_dungeon_01",
         sun: false,
@@ -526,7 +529,6 @@ let LocationsDB = {
         },
         waterPlane: false,
         skyColor: [0, 0, 0, 1],
-        music: "MUSIC_01",
         dynamic: {
             interactive: [
                 {
@@ -553,9 +555,9 @@ let LocationsDB = {
                     ],
                     radius: 0,
                     amount: 25,
-                    race: "rat_01",
+                    race: "skeleton_01",
                     material: 0,
-                    name: "Rat",
+                    name: "Barrow Skeleton",
                     baseSpeed: Speed.VERY_SLOW,
                 },
             ],

@@ -1,8 +1,9 @@
 {
     "compileOnSave": true,
     "compilerOptions": {
-        "target": "ES6",
+        "target": "ES2022",
         "module": "CommonJS",
+        "useDefineForClassFields": false,
         "sourceMap": false,
         "outDir": "./dist/server",
         "strict": false,
@@ -10,6 +11,7 @@
         "esModuleInterop": true,
         "allowJs": true,
         "moduleResolution": "node",
+        "skipLibCheck": true,
         "types": ["node"],
         "typeRoots": ["node_modules/@types"],
         "baseUrl": ".",

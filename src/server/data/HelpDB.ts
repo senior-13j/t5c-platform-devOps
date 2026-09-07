@@ -1,37 +1,37 @@
 let HelpDB = {
     tab_01: {
-        title: "Welcome To T5C",
+        title: "Welcome to Arkadii Quest",
         objects: [
             {
                 type: "section",
-                title: "Welcome to T5C",
-                description: "This is a game where you can create your own character and explore the world.",
+                title: "Welcome to Arkadii Quest",
+                description: "Create an adventurer, meet other players, and shape your story across the realm of Arkadia.",
                 align: "center",
                 image: false,
             },
             {
                 type: "section",
                 title: "How to move?",
-                description: "Please press and hold the left mouse button and move your mouse to move your character. Release the left mouse button to stop.",
+                description: "Use WASD or the arrow keys. On touch screens, use the left joystick. Diagonal movement is normalized to the same speed.",
                 align: "left",
             },
             {
                 type: "section",
-                title: "Camera Controls",
-                description: "You can press the middle click of the mouse and drag the mouse to rotate the camera.",
+                title: "Automatic Camera",
+                description: "The camera follows your adventurer, looks toward the road ahead, and adjusts its distance automatically.",
                 align: "left",
             },
             {
                 type: "section",
                 title: "How to attack?",
                 description:
-                    "Please select an enemy and click on any ability at the bottom center of the screen. You can also use the relevant keyboard number to use an ability.",
+                    "Select an enemy with Tab or a click, then choose an ability on the hotbar or press its number from 1 to 9.",
                 align: "left",
             },
             {
                 type: "section",
                 title: "How to interact with things?",
-                description: "Simply get close to the object/npc and clicking on it will trigger the correct dialog/action.",
+                description: "Move close to a character or object, then click it or press E. Open the complete control guide at any time with F1.",
                 align: "left",
             },
         ],

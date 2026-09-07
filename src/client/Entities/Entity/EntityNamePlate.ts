@@ -13,7 +13,7 @@ export class EntityNamePlate {
     private _entity: Entity | Item;
     private damageBubbles: any = [];
     private font_size = 50;
-    private font = "bold 50px gamefont";
+    private font = "bold 50px Georgia";
 
     private currentMessage;
     private messageTimeout;

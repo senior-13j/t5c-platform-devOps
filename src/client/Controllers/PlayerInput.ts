@@ -9,9 +9,11 @@ import { GameController } from "./GameController";
 import { UserInterface } from "./UserInterface";
 import { GameScene } from "../Screens/GameScene";
 import { TouchControls } from "./TouchControls";
-import type { TranslationKey } from "../i18n";
 
 const MOVEMENT_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowLeft", "ArrowDown", "ArrowRight"]);
+const ONBOARDING_STORAGE_KEY = "arkadii_quest_onboarding_v1_seen";
+const TUTORIAL_STORAGE_KEY = "arkadii_quest_tutorial_v1_progress";
+type TutorialAction = "move" | "combat" | "explore";
 
 export class PlayerInput {
     private _gameScene: GameScene;
@@ -19,11 +21,11 @@ export class PlayerInput {
     private _game: GameController;
     private _ui: UserInterface;
     private pressedMovementKeys = new Set<string>();
-    private touchLookPointerId: number | null = null;
-    private touchLookPosition = { x: 0, y: 0 };
     private movementInput = { x: 0, y: 0 };
     private touchControls?: TouchControls;
-    private controlHintTimer?: number;
+    private tutorialProgress = new Set<TutorialAction>();
+    private guideIsBound = false;
+    private focusBeforeGuide: HTMLElement | null = null;
     private readonly handleWindowBlur = () => this.suspendMovement();
     private readonly handleVisibilityChange = () => {
         if (document.hidden) {
@@ -31,26 +33,44 @@ export class PlayerInput {
         }
     };
     private readonly preventContextMenu = (event: Event) => event.preventDefault();
+    private readonly handleGuideShortcut = (event: KeyboardEvent) => {
+        if (event.code === "F1") {
+            if (event.repeat) {
+                return;
+            }
+            event.preventDefault();
+            this.toggleOnboarding();
+            return;
+        }
+        if (event.code === "Escape" && this.isOnboardingOpen()) {
+            event.preventDefault();
+            this.closeOnboarding(true);
+            return;
+        }
+        if (event.code === "Tab" && this.isOnboardingOpen()) {
+            const overlay = document.getElementById("onboardingOverlay");
+            const focusable = Array.from(
+                overlay?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? []
+            ).filter((element) => !element.hidden);
+            if (!focusable.length) {
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if ((event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last)) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            }
+        }
+    };
 
     public angle: number = 0;
     public horizontal: number = 0;
     public vertical: number = 0;
 
-    public top_arrow: boolean = false;
-    public down_arrow: boolean = false;
-    public left_arrow: boolean = false;
-    public right_arrow: boolean = false;
-
     public left_click: boolean = false;
-    public right_click: boolean = false;
-    public middle_click: boolean = false;
-    public mouse_moving: boolean = false;
-    public left_alt_pressed: boolean = false;
-    public keyboard_c: boolean = false;
     public player_can_move: boolean = false;
     public digit_pressed: number = 0;
-    public movementX: number = 0;
-    public movementY: number = 0;
 
     constructor(gameScene: GameScene) {
         this._gameScene = gameScene;
@@ -61,7 +81,7 @@ export class PlayerInput {
         this.bindPointerInput();
         this.bindKeyboardInput();
         this.bindLifecycleEvents();
-        this.showControlHint();
+        this.restoreTutorialProgress();
 
         if (this._game.controlMode === "touch") {
             this.touchControls = new TouchControls(gameScene, this);
@@ -75,10 +95,6 @@ export class PlayerInput {
         this.setMovementInput(x, y);
     }
 
-    public refreshMovementDirection(): void {
-        this.applyScreenMovement(this.movementInput.x, this.movementInput.y);
-    }
-
     public suspendMovement(): void {
         this.pressedMovementKeys.clear();
         this.movementInput = { x: 0, y: 0 };
@@ -86,24 +102,10 @@ export class PlayerInput {
         this.touchControls?.reset();
     }
 
-    public consumeCameraMovement(): { x: number; y: number } {
-        const movement = { x: this.movementX, y: this.movementY };
-        this.movementX = 0;
-        this.movementY = 0;
-        return movement;
-    }
-
     private bindPointerInput(): void {
         this._scene.onPointerObservable.add((pointerInfo) => {
             const event = pointerInfo.event as PointerEvent;
-            const isTouch = event.pointerType === "touch";
-
-            if (isTouch && this._game.controlMode === "touch") {
-                this.processTouchLook(pointerInfo.type, event);
-                return;
-            }
-
-            if (this._game.controlMode !== "keyboard") {
+            if (this.isOnboardingOpen()) {
                 return;
             }
 
@@ -111,62 +113,14 @@ export class PlayerInput {
                 if (event.button === 0) {
                     this.left_click = true;
                 }
-                if (event.button === 1 || event.button === 2) {
-                    this.middle_click = true;
-                    this.right_click = event.button === 2;
-                }
             }
 
             if (pointerInfo.type === PointerEventTypes.POINTERUP) {
                 if (event.button === 0) {
                     this.left_click = false;
                 }
-                if (event.button === 1 || event.button === 2) {
-                    this.middle_click = false;
-                    this.right_click = false;
-                    this.mouse_moving = false;
-                    this.consumeCameraMovement();
-                }
-            }
-
-            if (pointerInfo.type === PointerEventTypes.POINTERMOVE && this.middle_click) {
-                this.mouse_moving = true;
-                this.movementX += event.movementX / 120;
-                this.movementY += event.movementY / 100;
             }
         });
-    }
-
-    private processTouchLook(type: number, event: PointerEvent): void {
-        if (type === PointerEventTypes.POINTERDOWN && this.touchLookPointerId === null) {
-            this.touchLookPointerId = event.pointerId;
-            this.touchLookPosition = { x: event.clientX, y: event.clientY };
-            return;
-        }
-
-        if (event.pointerId !== this.touchLookPointerId) {
-            return;
-        }
-
-        if (type === PointerEventTypes.POINTERMOVE) {
-            const deltaX = event.clientX - this.touchLookPosition.x;
-            const deltaY = event.clientY - this.touchLookPosition.y;
-            if (Math.abs(deltaX) + Math.abs(deltaY) > 2) {
-                this.middle_click = true;
-                this.mouse_moving = true;
-                this.movementX += deltaX / 180;
-                this.movementY += deltaY / 150;
-                this.touchLookPosition = { x: event.clientX, y: event.clientY };
-            }
-            return;
-        }
-
-        if (type === PointerEventTypes.POINTERUP) {
-            this.touchLookPointerId = null;
-            this.middle_click = false;
-            this.mouse_moving = false;
-            this.consumeCameraMovement();
-        }
     }
 
     private bindKeyboardInput(): void {
@@ -179,6 +133,10 @@ export class PlayerInput {
             }
 
             if (keyboardInfo.type !== KeyboardEventTypes.KEYDOWN) {
+                return;
+            }
+
+            if (this.isOnboardingOpen()) {
                 return;
             }
 
@@ -201,6 +159,7 @@ export class PlayerInput {
 
             if (event.code === "Enter") {
                 this.suspendMovement();
+                this.recordTutorialAction("explore");
                 event.preventDefault();
                 window.setTimeout(() => this._ui._ChatBox?.focus(), 0);
                 return;
@@ -213,6 +172,7 @@ export class PlayerInput {
             const digit = event.code.match(/^Digit([1-9])$/);
             if (digit) {
                 this.digit_pressed = Number(digit[1]);
+                this.recordTutorialAction("combat");
                 event.preventDefault();
                 return;
             }
@@ -232,18 +192,21 @@ export class PlayerInput {
             };
             if (panelHotkeys[event.code]) {
                 this._ui._MainMenu?.openPanel(panelHotkeys[event.code]);
+                this.recordTutorialAction("explore");
                 event.preventDefault();
                 return;
             }
 
             if (event.code === "KeyE") {
                 this._gameScene._currentPlayer?.interactWithNearest();
+                this.recordTutorialAction("explore");
                 event.preventDefault();
                 return;
             }
 
             if (event.code === "Tab") {
                 this._gameScene._currentPlayer?.selectNearestTarget();
+                this.recordTutorialAction("combat");
                 event.preventDefault();
                 return;
             }
@@ -260,10 +223,6 @@ export class PlayerInput {
                 return;
             }
 
-            if (event.code === "ControlLeft" || event.code === "ControlRight") {
-                this.left_alt_pressed = true;
-            }
-
         });
     }
 
@@ -273,13 +232,6 @@ export class PlayerInput {
             this.updateKeyboardMovement();
         }
 
-        if (event.code === "KeyC") {
-            this.keyboard_c = false;
-        }
-
-        if (event.code === "ControlLeft" || event.code === "ControlRight") {
-            this.left_alt_pressed = false;
-        }
     }
 
     private updateKeyboardMovement(): void {
@@ -300,7 +252,10 @@ export class PlayerInput {
 
     private setMovementInput(x: number, y: number): void {
         this.movementInput = { x, y };
-        this.refreshMovementDirection();
+        this.applyScreenMovement(x, y);
+        if (Math.hypot(x, y) >= 0.08) {
+            this.recordTutorialAction("move");
+        }
     }
 
     private applyScreenMovement(x: number, y: number): void {
@@ -336,16 +291,16 @@ export class PlayerInput {
     private bindLifecycleEvents(): void {
         const canvas = this._game.engine.getRenderingCanvas();
         window.addEventListener("blur", this.handleWindowBlur);
+        window.addEventListener("keydown", this.handleGuideShortcut);
         document.addEventListener("visibilitychange", this.handleVisibilityChange);
         canvas?.addEventListener("contextmenu", this.preventContextMenu);
 
         this._scene.onDisposeObservable.addOnce(() => {
             window.removeEventListener("blur", this.handleWindowBlur);
+            window.removeEventListener("keydown", this.handleGuideShortcut);
             document.removeEventListener("visibilitychange", this.handleVisibilityChange);
             canvas?.removeEventListener("contextmenu", this.preventContextMenu);
-            if (this.controlHintTimer) {
-                window.clearTimeout(this.controlHintTimer);
-            }
+            this.unbindOnboarding();
             this.suspendMovement();
         });
     }
@@ -381,51 +336,154 @@ export class PlayerInput {
         }
     }
 
-    private showControlHint(): void {
-        const hint = document.getElementById("controlHint");
-        const title = document.getElementById("controlHintTitle");
-        const body = document.getElementById("controlHintBody");
-        const dismiss = document.getElementById("controlHintDismiss") as HTMLButtonElement;
-        if (!hint || !title || !body || !dismiss) {
-            return;
+    public showOnboarding(): void {
+        this.bindOnboarding();
+        const quickGuide = document.getElementById("quickGuideButton");
+        if (quickGuide) {
+            quickGuide.hidden = false;
         }
+        this.updateTutorialProgress();
 
-        const storageKey = `t5c_control_hint_${this._game.controlMode}_${this._game.locale}`;
-        if (this.isHintDismissed(storageKey)) {
-            return;
+        try {
+            if (localStorage.getItem(ONBOARDING_STORAGE_KEY) === "seen") {
+                return;
+            }
+        } catch {
+            // The first-run guide still opens when storage is unavailable.
         }
-
-        const titleKey: TranslationKey = this._game.controlMode === "touch" ? "hint.touch.title" : "hint.keyboard.title";
-        const bodyKey: TranslationKey = this._game.controlMode === "touch" ? "hint.touch.body" : "hint.keyboard.body";
-        title.textContent = this._game.t(titleKey);
-        body.textContent = this._game.t(bodyKey);
-        dismiss.setAttribute("aria-label", this._game.t("hint.dismiss"));
-        dismiss.title = this._game.t("hint.dismiss");
-        dismiss.onclick = () => {
-            hint.hidden = true;
-            this.rememberHintDismissal(storageKey);
-            this._game.engine.getRenderingCanvas()?.focus();
-        };
-        hint.hidden = false;
-        this.controlHintTimer = window.setTimeout(() => {
-            hint.hidden = true;
-            this.rememberHintDismissal(storageKey);
-        }, 12000);
+        this.openOnboarding();
     }
 
-    private isHintDismissed(storageKey: string): boolean {
-        try {
-            return sessionStorage.getItem(storageKey) === "dismissed";
-        } catch {
-            return false;
+    public recordTutorialAction(action: TutorialAction): void {
+        if (this.tutorialProgress.has(action)) {
+            return;
+        }
+        this.tutorialProgress.add(action);
+        this.persistTutorialProgress();
+        this.updateTutorialProgress();
+    }
+
+    private bindOnboarding(): void {
+        if (this.guideIsBound) {
+            return;
+        }
+        const quickGuide = document.getElementById("quickGuideButton") as HTMLButtonElement;
+        const close = document.getElementById("onboardingClose") as HTMLButtonElement;
+        const later = document.getElementById("onboardingLater") as HTMLButtonElement;
+        const start = document.getElementById("onboardingStart") as HTMLButtonElement;
+        if (!quickGuide || !close || !later || !start) {
+            return;
+        }
+        quickGuide.onclick = () => this.openOnboarding();
+        close.onclick = () => this.closeOnboarding(true);
+        later.onclick = () => this.closeOnboarding(true);
+        start.onclick = () => this.closeOnboarding(true);
+        this.guideIsBound = true;
+    }
+
+    private unbindOnboarding(): void {
+        ["quickGuideButton", "onboardingClose", "onboardingLater", "onboardingStart"].forEach((id) => {
+            const button = document.getElementById(id) as HTMLButtonElement;
+            if (button) {
+                button.onclick = null;
+            }
+        });
+        this.guideIsBound = false;
+        this.closeOnboarding(false);
+        document.getElementById("quickGuideButton")?.setAttribute("hidden", "");
+    }
+
+    private toggleOnboarding(): void {
+        this.bindOnboarding();
+        if (this.isOnboardingOpen()) {
+            this.closeOnboarding(true);
+        } else {
+            this.openOnboarding();
         }
     }
 
-    private rememberHintDismissal(storageKey: string): void {
+    private openOnboarding(): void {
+        const overlay = document.getElementById("onboardingOverlay");
+        const quickGuide = document.getElementById("quickGuideButton");
+        if (!overlay) {
+            return;
+        }
+        if (!this.isOnboardingOpen()) {
+            this.focusBeforeGuide = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }
+        this.suspendMovement();
+        this.updateTutorialProgress();
+        overlay.hidden = false;
+        if (quickGuide) {
+            quickGuide.hidden = true;
+        }
+        document.body.classList.add("guide-open");
+        window.setTimeout(() => (document.getElementById("onboardingStart") as HTMLButtonElement)?.focus(), 0);
+    }
+
+    private closeOnboarding(remember: boolean): void {
+        const overlay = document.getElementById("onboardingOverlay");
+        const quickGuide = document.getElementById("quickGuideButton");
+        if (overlay) {
+            overlay.hidden = true;
+        }
+        if (quickGuide && this._gameScene.playerIsSpawned) {
+            quickGuide.hidden = false;
+        }
+        document.body.classList.remove("guide-open");
+        if (remember) {
+            try {
+                localStorage.setItem(ONBOARDING_STORAGE_KEY, "seen");
+            } catch {
+                // The guide remains available via F1 when storage is unavailable.
+            }
+            if (this._game.controlMode === "keyboard") {
+                const focusTarget = this.focusBeforeGuide?.isConnected
+                    ? this.focusBeforeGuide
+                    : this._game.engine.getRenderingCanvas();
+                focusTarget?.focus();
+            }
+        }
+        this.focusBeforeGuide = null;
+    }
+
+    private isOnboardingOpen(): boolean {
+        const overlay = document.getElementById("onboardingOverlay");
+        return Boolean(overlay && !overlay.hidden);
+    }
+
+    private restoreTutorialProgress(): void {
         try {
-            sessionStorage.setItem(storageKey, "dismissed");
+            const stored = JSON.parse(localStorage.getItem(TUTORIAL_STORAGE_KEY) ?? "[]");
+            if (Array.isArray(stored)) {
+                stored.forEach((action) => {
+                    if (action === "move" || action === "combat" || action === "explore") {
+                        this.tutorialProgress.add(action);
+                    }
+                });
+            }
         } catch {
-            // The hint can still be dismissed when session storage is unavailable.
+            this.tutorialProgress.clear();
+        }
+    }
+
+    private persistTutorialProgress(): void {
+        try {
+            localStorage.setItem(TUTORIAL_STORAGE_KEY, JSON.stringify([...this.tutorialProgress]));
+        } catch {
+            // Progress remains active for the current play session.
+        }
+    }
+
+    private updateTutorialProgress(): void {
+        document.querySelectorAll<HTMLElement>("[data-tutorial-step]").forEach((step) => {
+            const action = step.dataset.tutorialStep as TutorialAction;
+            const isComplete = this.tutorialProgress.has(action);
+            step.classList.toggle("is-complete", isComplete);
+        });
+        const progress = document.getElementById("tutorialProgress");
+        if (progress) {
+            progress.textContent = `${this.tutorialProgress.size} / 3`;
         }
     }
 }

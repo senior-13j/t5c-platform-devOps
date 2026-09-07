@@ -5,6 +5,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { getBg } from "./Theme";
 import { Rectangle } from "@babylonjs/gui/2D/controls/rectangle";
 import { Leveling } from "../../../shared/Class/Leveling";
+import { getRoomCallbacks } from "../RoomCallbacks";
 
 export class ExperienceBar {
     private _UI;
@@ -31,7 +32,7 @@ export class ExperienceBar {
         // some ui must be refreshed as things change
         let entity = this._currentPlayer.entity;
         if (entity && entity.player_data) {
-            entity.player_data.onChange((item, sessionId) => {
+            getRoomCallbacks(this._UI._room).onChange(entity.player_data, () => {
                 this.update();
             });
         }
@@ -41,7 +42,7 @@ export class ExperienceBar {
         /////////////////////////////////////
         //////////////////// mana bar
         const experienceBar = new Rectangle("experienceBar");
-        experienceBar.top = "2px;";
+        experienceBar.top = "2px";
         experienceBar.left = "0px";
         experienceBar.width = 1;
         experienceBar.height = "20px";
@@ -54,9 +55,9 @@ export class ExperienceBar {
         this.experienceBar = experienceBar;
 
         const experienceBarInside = new Rectangle("experienceBarInside");
-        experienceBarInside.top = "0px;";
-        experienceBarInside.left = "0px;";
-        experienceBarInside.width = "400px;";
+        experienceBarInside.top = "0px";
+        experienceBarInside.left = "0px";
+        experienceBarInside.width = "400px";
         experienceBarInside.thickness = 0;
         experienceBarInside.height = "20px";
         experienceBarInside.background = "violet";
@@ -70,7 +71,7 @@ export class ExperienceBar {
         experienceBarTextRight.color = "#FFF";
         experienceBarTextRight.top = "0px";
         experienceBarTextRight.left = "-5px";
-        experienceBarTextRight.fontSize = "11px;";
+        experienceBarTextRight.fontSize = "11px";
         experienceBarTextRight.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         experienceBarTextRight.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         experienceBarTextRight.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -83,7 +84,7 @@ export class ExperienceBar {
         experienceBarTextLeft.color = "#FFF";
         experienceBarTextLeft.top = "1px";
         experienceBarTextLeft.left = "5px";
-        experienceBarTextLeft.fontSize = "11px;";
+        experienceBarTextLeft.fontSize = "11px";
         experienceBarTextLeft.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         experienceBarTextLeft.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         experienceBarTextLeft.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;

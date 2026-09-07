@@ -5,19 +5,20 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { BlackAndWhitePostProcess } from "@babylonjs/core/PostProcesses/blackAndWhitePostProcess";
 import { Player } from "../Player";
 import { PlayerInput } from "../../Controllers/PlayerInput";
-import { RayHelper } from "@babylonjs/core/Debug/rayHelper";
-import { Ray } from "@babylonjs/core/Culling/ray";
-import { Mesh } from "@babylonjs/core/Meshes/mesh";
+
+const DESKTOP_DISTANCE = 42;
+const TOUCH_DISTANCE = 47;
+const CAMERA_HEIGHT_RATIO = 0.58;
+const LOOK_AHEAD_DISTANCE = 3.2;
 
 export class PlayerCamera {
     private player: Player;
-    public camera;
     private _scene: Scene;
     private _input: PlayerInput;
-    public _camRoot;
-    public cameraPos;
-    private _postProcess: BlackAndWhitePostProcess; //
-    private rayHelper;
+    public _camRoot: TransformNode;
+    public camera: UniversalCamera;
+    public cameraPos: Vector3;
+    private _postProcess: BlackAndWhitePostProcess;
 
     constructor(player) {
         this._scene = player._scene;
@@ -26,111 +27,68 @@ export class PlayerCamera {
     }
 
     public init() {
-        // root camera parent that handles positioning of the camera to follow the player
-        this._camRoot = new TransformNode("camera_root");
-        this._camRoot.position = new Vector3(0, 0.5, 0); //initialized at (0,0,0)
+        this._camRoot = new TransformNode("arkadii_camera_target", this._scene);
+        this._camRoot.position = new Vector3(0, 1.6, 0);
 
-        // to face the player from behind (180 degrees)
-        this._camRoot.rotation = new Vector3(0, (3 / 4) * Math.PI, 0);
-
-        // rotations along the x-axis (up/down tilting)
-        const yTilt = new TransformNode("camera_ytilt");
-
-        // adjustments to camera view to point down at our player
-        yTilt.rotation = new Vector3(0.6, 0, 0);
-        yTilt.parent = this._camRoot;
-
-        // our actual camera that's pointing at our root's position
-        this.camera = new UniversalCamera("camera", new Vector3(0, 0, -45), this._scene);
-        this.camera.lockedTarget = this._camRoot.position;
-        this.camera.fov = 0.35;
-        this.camera.parent = yTilt;
+        // A steady, automatic isometric camera keeps navigation readable and leaves
+        // the mouse wheel available to the page. It follows the player with a small
+        // look-ahead instead of requiring players to orbit and zoom it manually.
+        this.camera = new UniversalCamera("arkadii_camera", Vector3.Zero(), this._scene);
+        this.camera.fov = 0.48;
+        this.camera.minZ = 0.2;
+        this.camera.maxZ = 1100;
         this.camera.inputs.clear();
-        this.camera.position.z = -50;
-
-        // set as active camera
         this._scene.activeCamera = this.camera;
-        //this._scene.cameraToUseForPointers = this.camera; // is this necessary?
-
-        //
         this.cameraPos = this.camera.position;
-
-        // text ssao
-        //const ssao = new SSAORenderingPipeline("ssaopipeline", this._scene, 1, this.camera);
     }
+
     public attach(player: Player) {
         this.player = player;
-        this._camRoot.parent = player;
+        this.snapToPlayer();
     }
 
     public update(): void {
-        let preventVertical = false;
-
-        // rotate camera around the Y position if right click is true
-        if (!this._input.middle_click) {
+        if (!this.player) {
             return;
         }
 
-        const movement = this._input.consumeCameraMovement();
-        if (movement.x === 0 && movement.y === 0) {
-            return;
-        }
+        const deltaSeconds = Math.min(this._scene.getEngine().getDeltaTime() / 1000, 0.1);
+        const targetBlend = 1 - Math.exp(-deltaSeconds * 7.5);
+        const cameraBlend = 1 - Math.exp(-deltaSeconds * 4.8);
+        const isMoving = this._input.player_can_move;
+        const lookAhead = isMoving
+            ? new Vector3(-this._input.horizontal, 0, -this._input.vertical).scale(LOOK_AHEAD_DISTANCE)
+            : Vector3.Zero();
+        const desiredTarget = this.player.position.add(new Vector3(0, 1.6, 0)).add(lookAhead);
+        this._camRoot.position = Vector3.Lerp(this._camRoot.position, desiredTarget, targetBlend);
 
-        // only do vertical if allowed
-        let rotationX = 0;
-        if (!preventVertical) {
-            rotationX =
-                Math.abs(this._camRoot.rotation.x + movement.y) < 0.5
-                    ? this._camRoot.rotation.x + movement.y
-                    : this._camRoot.rotation.x;
-        }
-
-        // set camera delta
-        this.player._game.deltaCamY = this.player._game.deltaCamY + movement.x;
-        this._input.refreshMovementDirection();
-
-        // set horizontal rotation
-        const rotationY = this._camRoot.rotation.y + movement.x;
-
-        // apply canmera rotation
-        this._camRoot.rotation = new Vector3(rotationX, rotationY, 0);
-
-        //
-        this.castRay();
+        const baseDistance = this.player._game.controlMode === "touch" ? TOUCH_DISTANCE : DESKTOP_DISTANCE;
+        const distance = baseDistance + (isMoving ? 2.2 : 0);
+        const yaw = this.player._game.deltaCamY;
+        const offset = new Vector3(
+            -Math.sin(yaw) * distance,
+            distance * CAMERA_HEIGHT_RATIO,
+            -Math.cos(yaw) * distance
+        );
+        const desiredPosition = this._camRoot.position.add(offset);
+        this.camera.position = Vector3.Lerp(this.camera.position, desiredPosition, cameraBlend);
+        this.camera.setTarget(this._camRoot.position);
+        this.cameraPos = this.camera.position;
     }
 
-    public zoom(deltaY): void {
-        // zoom in/out
-        if (deltaY > 0 && this.camera.position.z > -50) this.camera.position.z -= 2;
-        if (deltaY < 0 && this.camera.position.z < -20) this.camera.position.z += 2;
-    }
-
-    public vecToLocal(vector, mesh){
-        var m = mesh.getWorldMatrix();
-        var v = Vector3.TransformCoordinates(vector, m);
-		return v;		 
-    }
-
-    public castRay(){       
-
-        /*
-        todo: WIP
-        if(this.rayHelper){
-            this.rayHelper.dispose()
-        }
-
-        const ray = this.camera.getForwardRay(50) as Ray;
-        this.rayHelper = new RayHelper(ray);		
-		this.rayHelper.show(this._scene);		
-
-        var pickInfos = ray.intersectsMeshes(this._scene.meshes)
-        if(pickInfos.length > 0){
-            pickInfos.forEach((m:any) => {
-                console.log('hiding', m.pickedMesh.name);
-                m.pickedMesh.setEnabled(false);
-            } );
-        }
-            */
+    private snapToPlayer(): void {
+        const target = this.player.position.add(new Vector3(0, 1.6, 0));
+        const distance = this.player._game.controlMode === "touch" ? TOUCH_DISTANCE : DESKTOP_DISTANCE;
+        const yaw = this.player._game.deltaCamY;
+        const offset = new Vector3(
+            -Math.sin(yaw) * distance,
+            distance * CAMERA_HEIGHT_RATIO,
+            -Math.cos(yaw) * distance
+        );
+        this._camRoot.position.copyFrom(target);
+        this.camera.position.copyFrom(target.add(offset));
+        this.camera.setTarget(target);
+        this.cameraPos = this.camera.position;
     }
 
     // post processing effect black and white

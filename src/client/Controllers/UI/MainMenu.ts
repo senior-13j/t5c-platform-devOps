@@ -37,9 +37,9 @@ export class MainMenu {
 
         // mainmenu panel
         let mainmenuPanel = new Rectangle("mainmenuPanel");
-        mainmenuPanel.top = "15px;";
-        mainmenuPanel.left = "-15px;";
-        mainmenuPanel.width = "400px;";
+        mainmenuPanel.top = "15px";
+        mainmenuPanel.left = "-15px";
+        mainmenuPanel.width = "400px";
         mainmenuPanel.height = "60px";
         mainmenuPanel.thickness = 0;
         mainmenuPanel.isVisible = true;
@@ -105,8 +105,8 @@ export class MainMenu {
         };
 
         let button = createButton("button_dropdown", dropdownOptions.menuTitle, "30px", "30px");
-        button.top = "0px;";
-        button.left = "0px;";
+        button.top = "0px";
+        button.left = "0px";
         button.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
         button.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         this._mainPanel.addControl(button);
@@ -117,9 +117,9 @@ export class MainMenu {
         button.addControl(b1);
 
         let drowpdownMenu = new Rectangle("drowpdownMenu");
-        drowpdownMenu.top = "60px;";
-        drowpdownMenu.left = "-15px;";
-        drowpdownMenu.width = "150px;";
+        drowpdownMenu.top = "60px";
+        drowpdownMenu.left = "-15px";
+        drowpdownMenu.width = "150px";
         drowpdownMenu.height = "100px";
         drowpdownMenu.isVisible = false;
         drowpdownMenu.adaptHeightToChildren = true;
@@ -202,7 +202,7 @@ export class MainMenu {
         const grid = new StackPanel("mainmenu");
         grid.top = "0px";
         grid.left = "-40px";
-        grid.height = "30px;";
+        grid.height = "30px";
         grid.spacing = 5;
         grid.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         grid.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;

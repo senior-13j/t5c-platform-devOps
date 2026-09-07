@@ -82,7 +82,7 @@ export class ChatBox {
     }
 
     _createUI() {
-        const chatPanel = generatePanel("chatPanel", "350px;", "200px", "-35px", "15px");
+        const chatPanel = generatePanel("chatPanel", "350px", "200px", "-35px", "15px");
         chatPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         chatPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         chatPanel.isPointerBlocker = true;
@@ -99,7 +99,7 @@ export class ChatBox {
         // add chat input
         const chatInput = new InputText("chatInput");
         chatInput.width = 0.8;
-        chatInput.height = "24px;";
+        chatInput.height = "24px";
         chatInput.top = "0px";
         chatInput.color = "#FFF";
         chatInput.fontSize = "12px";
@@ -114,7 +114,7 @@ export class ChatBox {
         // add chat send button
         const chatButton = Button.CreateSimpleButton("chatButton", this._game.t("chat.send"));
         chatButton.width = 0.2;
-        chatButton.height = "24px;";
+        chatButton.height = "24px";
         chatButton.top = "0px";
         chatButton.color = "#FFF";
         chatButton.fontSize = "12px";
@@ -126,7 +126,7 @@ export class ChatBox {
         // add scrollable container
         const chatScrollViewer = new ScrollViewer("chatScrollViewer");
         chatScrollViewer.width = 1;
-        chatScrollViewer.height = "168px;";
+        chatScrollViewer.height = "168px";
         chatScrollViewer.top = "-22px";
         chatScrollViewer.thickness = 0;
         chatScrollViewer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
@@ -139,7 +139,7 @@ export class ChatBox {
         chatStackPanel.width = "100%";
         chatStackPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         chatStackPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-        chatStackPanel.paddingTop = "5px;";
+        chatStackPanel.paddingTop = "5px";
         chatScrollViewer.addControl(chatStackPanel);
         this._chatUI = chatStackPanel;
 
@@ -255,7 +255,7 @@ export class ChatBox {
             headlineRect.paddingBottom = "1px";
             headlineRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             headlineRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-            headlineRect.height = "50px;";
+            headlineRect.height = "50px";
             headlineRect.adaptHeightToChildren = true;
             this._chatUI.addControl(headlineRect);
 

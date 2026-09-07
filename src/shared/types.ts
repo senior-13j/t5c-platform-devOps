@@ -337,7 +337,7 @@ export enum PlayerKeys {
     ENDURANCE = "endurance",
     AGILITY = "agility",
     WISDOM = "wisdom",
-    INTELLIGENCE = "inteligence",
+    INTELLIGENCE = "intelligence",
     AC = "ac",
     LEVEL = "level",
     HEALTH = "health",

@@ -32,12 +32,16 @@ class AttackState extends State {
     }
 
     attack(owner) {
-        // cast ability
-        let abilities = owner.AI_SPAWN_INFO.abilities ?? [];
-        let abilityKey = this.getAbilityKeyByChance(abilities);
-        let ability = owner._state.gameData.get("ability", abilityKey);
-        owner.abilitiesCTRL.cast(owner, owner.AI_TARGET, ability, 1);
-        console.log(owner.name, owner.sessionId, "attacking with", abilityKey, "target: ", owner.AI_TARGET.sessionId);
+        const target = owner?.AI_TARGET;
+        const abilities = owner?.AI_SPAWN_INFO?.abilities ?? [];
+        const abilityKey = this.getAbilityKeyByChance(abilities);
+        const ability = owner?._state?.gameData?.get("ability", abilityKey);
+        if (!target || !ability || !owner.abilitiesCTRL.castIfAllowed(owner, target, ability, 1)) {
+            return false;
+        }
+
+        console.log(owner.name, owner.sessionId, "attacking with", abilityKey, "target: ", target.sessionId);
+        return true;
     }
 
     execute(owner: BrainSchema) {

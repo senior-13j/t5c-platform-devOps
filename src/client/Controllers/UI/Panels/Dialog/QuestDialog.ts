@@ -33,7 +33,7 @@ export class QuestDialog {
 
         // show back button
         const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("common.back"));
-        createBtn.left = "0px;";
+        createBtn.left = "0px";
         createBtn.top = "0px";
         createBtn.width = 1;
         createBtn.height = this.panel.getActionHeight();
@@ -52,7 +52,8 @@ export class QuestDialog {
         this.currentLocation = this.panel._game.getGameData("location", this.currentQuest.location);
 
         // get player quest
-        this.playerQuest = this.panel._currentPlayer.player_data.quests[quest_id] ?? false;
+        const playerQuests = this.panel._currentPlayer.player_data.quests;
+        this.playerQuest = playerQuests?.get?.(quest_id) ?? playerQuests?.[quest_id] ?? false;
 
         // is quest completed
         this.questReadyToComplete = this.isQuestReadyToComplete();
@@ -99,7 +100,7 @@ export class QuestDialog {
 
             // complete quest button
             const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("quest.complete"));
-            createBtn.left = "0px;";
+            createBtn.left = "0px";
             createBtn.top = "0px";
             createBtn.width = 1;
             createBtn.height = this.panel.getActionHeight();
@@ -184,7 +185,7 @@ export class QuestDialog {
 
         // show back button
         const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("common.back"));
-        createBtn.left = "0px;";
+        createBtn.left = "0px";
         createBtn.top = "0px";
         createBtn.width = 1;
         createBtn.height = this.panel.getActionHeight();
@@ -237,7 +238,7 @@ export class QuestDialog {
 
         // show back button
         const createBtn = Button.CreateSimpleButton("characterBtn", this._game.t("common.back"));
-        createBtn.left = "0px;";
+        createBtn.left = "0px";
         createBtn.top = "0px";
         createBtn.width = 1;
         createBtn.height = this.panel.getActionHeight();

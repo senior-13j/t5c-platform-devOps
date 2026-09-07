@@ -11,6 +11,7 @@ import { UserInterface } from "../../Controllers/UserInterface";
 import { VatController } from "../../Controllers/VatController";
 import { EquippableType } from "../../../shared/types";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { getRoomCallbacks } from "../../Controllers/RoomCallbacks";
 
 export class EntityMesh {
     private _entity: Entity;
@@ -29,6 +30,7 @@ export class EntityMesh {
     public selectedCone: Mesh;
     public fakeShadow: Mesh;
     public equipments;
+    private equipmentListenerTimer: ReturnType<typeof setTimeout>;
 
     constructor(entity: Entity) {
         this._entity = entity;
@@ -130,12 +132,17 @@ export class EntityMesh {
             this.fakeShadow = shadowMesh;
         }
 
-        setTimeout(() => {
+        this.equipmentListenerTimer = setTimeout(() => {
+            if (this._entity.isRemoved || !this.mesh || this.mesh.isDisposed()) {
+                return;
+            }
+
             // check for any equipment changes
-            this._entity.entity.equipment.onAdd((e) => {
+            const callbacks = getRoomCallbacks(this._entity._room);
+            callbacks.onAdd(this._entity.entity, "equipment", (e) => {
                 this.equipItem(e);
             });
-            this._entity.entity.equipment.onRemove((e) => {
+            callbacks.onRemove(this._entity.entity, "equipment", (e) => {
                 this.removeItem(e);
             });
         }, 300);
@@ -144,15 +151,30 @@ export class EntityMesh {
     }
 
     public deleteMeshes() {
+        if (this.equipmentListenerTimer) {
+            clearTimeout(this.equipmentListenerTimer);
+            this.equipmentListenerTimer = undefined;
+        }
+
         // remove player mesh
-        this.mesh.dispose();
-        this.fakeShadow.dispose();
+        if (this.mesh && !this.mesh.isDisposed()) {
+            this.mesh.dispose();
+        }
+        if (this.fakeShadow && !this.fakeShadow.isDisposed()) {
+            this.fakeShadow.dispose();
+        }
+        if (this.selectedMesh && !this.selectedMesh.isDisposed()) {
+            this.selectedMesh.dispose();
+        }
 
         // remove any other mesh
-        if (this.equipments.length > 0) {
+        if (this.equipments?.size > 0) {
             this.equipments.forEach((equipment) => {
-                equipment.dispose();
+                if (!equipment.isDisposed()) {
+                    equipment.dispose();
+                }
             });
+            this.equipments.clear();
         }
     }
 

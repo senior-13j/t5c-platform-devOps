@@ -1,6 +1,6 @@
 # Public Deployment
 
-This guide describes how to run T5C publicly at:
+This guide describes how to run Arkadii Quest publicly at:
 
 ```text
 https://arkadii.world/game/
@@ -22,7 +22,7 @@ public `80`/`443` bindings.
 | Host firewall allows only the intended public ports | MySQL, Prometheus, Grafana, and the Node.js port should stay private |
 | Database backup is verified | Existing plaintext credentials migrate to `scrypt` after successful login |
 | Asset provenance has been reviewed | Public release must have a source/license record for shipped models, textures, audio, and fonts |
-| Localization and both input profiles pass QA | Public users must be able to enter, move, act, chat, and manage panels in English/Russian on desktop and touch devices |
+| Localization, onboarding, automatic camera, and both input profiles pass QA | Public users must be able to learn the controls, enter, move, act, chat, and manage panels in English/Russian on desktop and touch devices |
 
 ## Public Architecture
 
@@ -107,6 +107,7 @@ Replace every `CHANGE_ME` value before starting the stack.
 | `HTTP_PORT` | `80` | Public HTTP port for redirects and ACME challenges |
 | `HTTPS_PORT` | `443` | Public HTTPS port |
 | `CLIENT_BASE_PATH` | `/game` | Browser base path baked into the game bundle |
+| `CORS_ALLOWED_ORIGINS` | `https://arkadii.world,https://www.arkadii.world` | Exact browser origins allowed for HTTP CORS and WebSocket upgrades |
 | `DATABASE_PASSWORD` | required | MySQL application password |
 | `MYSQL_ROOT_PASSWORD` | required | MySQL root password |
 | `GRAFANA_ADMIN_PASSWORD` | required | Grafana admin password, even though Grafana is not publicly routed |
@@ -168,12 +169,14 @@ docker run --rm \
 Validate application metadata and production builds before creating the image:
 
 ```bash
+npm test
 npm run check:localization
 npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+npm audit
 npm audit --omit=dev
 ```
 
@@ -198,7 +201,10 @@ Run these checks from the deployment host:
 ```bash
 docker compose --env-file .env.public -f docker-compose.public.yml ps
 curl -fsS https://arkadii.world/health
-SMOKE_WS_URL=wss://arkadii.world/game npm run smoke:ws
+SMOKE_WS_URL=wss://arkadii.world/game \
+SMOKE_TOKEN='<account-token>' \
+SMOKE_CHARACTER_ID='<owned-character-id>' \
+npm run smoke:ws
 ```
 
 Verify search, answer-engine, manifest, compression, and cache delivery:
@@ -222,7 +228,9 @@ Expected results:
 - the manifest and entry HTML revalidate instead of receiving a long immutable
   cache lifetime;
 - the bundle is compressed and does not expose `X-Powered-By`;
-- WebSocket smoke testing can join through `/game`.
+- authenticated WebSocket smoke testing can join through `/game`;
+- a browser WebSocket upgrade from an origin outside
+  `CORS_ALLOWED_ORIGINS` receives `403`.
 
 Run this from another network, such as a phone on mobile data:
 
@@ -252,6 +260,13 @@ The public MySQL volume is:
 t5c-platform-public_mysql_data
 ```
 
+This volume name, the `t5c` database/user defaults, and the `t5c_*` Prometheus
+series are temporary legacy compatibility identifiers. They are internal and
+do not represent the Arkadii Quest brand. Do not rename them during a routine
+deployment: an uncoordinated change can attach an empty volume, break database
+access, or orphan dashboards. Migrate only with verified backups and a planned
+cutover across Compose, SQL grants, restore procedures, and metrics consumers.
+
 ## Operations
 
 | Task | Command |
@@ -271,19 +286,24 @@ After a public rollout:
    both a desktop and a narrow touch viewport.
 2. Complete the entry dialog once in English keyboard/mouse mode and once in
    Russian touch mode; verify translated login/game content in both sessions.
-3. On desktop, verify WASD movement, mouse camera rotation, `1`-`9`, panel
-   hotkeys, nearest targeting/interaction, and chat.
-4. On a phone or tablet, verify joystick movement, world swipe, hotbar, action,
-   chat, zoom, menu panels, portrait layout, and short-landscape layout.
-5. Confirm keyboard focus remains visible and every touch action has a practical
+3. Enter the world as a new player, complete the localized onboarding prompt,
+   dismiss it, and verify that `F1` reopens the controls table on desktop and
+   the guide button reopens it on touch.
+4. On desktop, verify WASD movement, stable automatic follow-camera behavior,
+   `1`-`9`, panel hotkeys, nearest targeting/interaction, and chat. Confirm that
+   wheel and mouse-drag input do not rotate or zoom the gameplay camera.
+5. On a phone or tablet, verify joystick movement, automatic camera tracking,
+   hotbar, contextual actions, chat, menu panels, portrait layout, and
+   short-landscape layout without requiring world-swipe camera control.
+6. Confirm keyboard focus remains visible and every touch action has a practical
    target size without HUD/panel overlap.
-6. Run Lighthouse against `https://arkadii.world/game/` for Performance,
+7. Run Lighthouse against `https://arkadii.world/game/` for Performance,
    Accessibility, Best Practices, and SEO.
-7. Confirm the canonical URL and bilingual `VideoGame` JSON-LD in the delivered
+8. Confirm the canonical URL and bilingual `VideoGame` JSON-LD in the delivered
    HTML.
-8. Submit `https://arkadii.world/sitemap.xml` to the search-engine webmaster
+9. Submit `https://arkadii.world/sitemap.xml` to the search-engine webmaster
    tools used for the domain.
-9. Verify docs navigation opens localization/controls, API/security, and
+10. Verify docs navigation opens localization/controls, API/security, and
    game-quality documents.
 
 The branch audit measured 80/100/100/100 for Performance, Accessibility, Best
@@ -300,13 +320,27 @@ host, network, and proxy load; semantic/discovery checks should remain stable.
 - New passwords use salted `scrypt`; valid legacy plaintext rows migrate during
   login. Keep a verified pre-deployment backup and handle dormant accounts with
   a reset policy.
+- MySQL startup idempotently enforces a unique, non-null username. Before the
+  first rollout over legacy data, inspect `users` for null/empty/overlong names
+  and `GROUP BY username HAVING COUNT(*) > 1`; resolve every result manually
+  after taking a verified backup. Startup refuses unsafe rows without merging or
+  deleting accounts.
 - Password fields are removed from authentication payloads, but tokens remain
   bearer credentials and must not enter URLs, logs, or analytics.
-- Add rate limiting and production CORS restrictions before treating the
-  prototype login and Quick Play endpoints as a hardened account service.
+- Password login and Quick Play have process-local per-IP fixed-window limits;
+  use an infrastructure/shared-store limiter before scaling to multiple Node
+  workers or hosts.
+- HTTP CORS and browser WebSocket upgrades share an exact-origin allowlist.
+  Keep `CORS_ALLOWED_ORIGINS` synchronized with every intentional public
+  frontend origin; this browser boundary does not replace authentication.
+- New-character/default-loadout creation and complete player snapshot saves are
+  atomic MySQL transactions. Keep verified backups despite rollback coverage.
+- Gameplay messages have known-type, per-client all/movement/action budgets and
+  movement replay/displacement validation. Continue treating combat/economy
+  anomaly detection as defense-in-depth work, not a solved anti-cheat problem.
 - Add backups before depending on the public MySQL volume for persistent data.
-- Resolve the asset provenance gaps recorded in the game quality audit before a
-  commercial release.
+- Resolve the asset provenance gaps recorded in the repository root
+  `THIRD_PARTY_ASSETS.md` before a commercial release.
 
 ## Troubleshooting
 

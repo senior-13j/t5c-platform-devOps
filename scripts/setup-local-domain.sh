@@ -41,7 +41,7 @@ mkdir -p "$CERT_DIR"
 if [ ! -f "$CA_KEY" ] || [ ! -f "$CA_CERT" ]; then
     openssl genrsa -out "$CA_KEY" 4096
     openssl req -x509 -new -nodes -key "$CA_KEY" -sha256 -days 3650 -out "$CA_CERT" \
-        -subj "/CN=T5C Local Development CA"
+        -subj "/CN=Arkadii Quest Local Development CA"
 fi
 
 SAN_FILE="$(mktemp)"

@@ -158,7 +158,7 @@ export class spawnCTRL {
         let randomRegion = this._room.navMesh.getRandomRegion();
         let currentPosition = randomRegion.centroid;
         if (sender) {
-            let currentPosition = sender.getPosition();
+            currentPosition = sender.getPosition();
             currentPosition.x += randomNumberInRange(0.1, 1.5);
             currentPosition.z += randomNumberInRange(0.1, 1.5);
         }
@@ -173,7 +173,7 @@ export class spawnCTRL {
             qty: 1,
         };
         let entity = new LootSchema(this._state, data);
-        this._state.entityCTRL.add(entity);
+        return this._state.addGroundLoot(entity);
 
         //Logger.info("[gameroom][state][createEntity] created new item " + data.key + ": " + sessionId);
     }

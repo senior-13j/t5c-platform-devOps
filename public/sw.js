@@ -1,4 +1,4 @@
-const version = "0.3.5";
+const version = "arkadii-quest-v1";
 
 self.addEventListener("install", (event) => {
     event.waitUntil(caches.open(version));
@@ -15,7 +15,7 @@ self.addEventListener("activate", (event) => {
                     })
                 )
             )
-            .then(self.clients.claim())
+            .then(() => self.clients.claim())
     );
 });
 

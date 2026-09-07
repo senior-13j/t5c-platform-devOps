@@ -6,8 +6,9 @@ import { Player } from "../../Entities/Player";
 import { generatePanel, getBg, getPadding } from "./Theme";
 import { GameController } from "../GameController";
 import { ServerMsg } from "../../../shared/types";
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
 import { UserInterface } from "../UserInterface";
+import { getRoomCallbacks } from "../RoomCallbacks";
 
 type HotbarLayout = {
     columns: number;
@@ -42,17 +43,14 @@ export class HotBar {
 
         // add ui events
         let entity = this._currentPlayer.entity;
-        entity.player_data.hotbar.onAdd((item, sessionId) => {
+        const callbacks = getRoomCallbacks(this._room);
+        callbacks.onAdd(entity.player_data, "hotbar", (item) => {
             this._createUI();
-            // todo: could be a performance issue here?
-            // orion to keep an eye on this one
-            item.onChange((item, sessionId) => {
-                this._createUI();
-            });
-            item.onRemove((item, sessionId) => {
+            callbacks.onChange(item, () => {
                 this._createUI();
             });
         });
+        callbacks.onRemove(entity.player_data, "hotbar", () => this._createUI());
     }
 
     _createUI() {
@@ -86,7 +84,7 @@ export class HotBar {
 
         // add stack panel
         const abilityPanel = new Rectangle("abilityPanel");
-        abilityPanel.top = "0px;";
+        abilityPanel.top = "0px";
         abilityPanel.width = layout.width + "px";
         abilityPanel.height = layout.contentHeight + "px";
         abilityPanel.thickness = 0;
@@ -105,8 +103,9 @@ export class HotBar {
             headlineRect.left = column * cellSize + "px";
             headlineRect.width = layout.iconSize + "px";
             headlineRect.height = layout.iconSize + "px";
-            headlineRect.thickness = 0;
-            headlineRect.background = "rgba(255,255,255,.2)";
+            headlineRect.thickness = 1;
+            headlineRect.color = "rgba(217,170,67,.72)";
+            headlineRect.background = "rgba(13,28,19,.88)";
             headlineRect.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             headlineRect.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
             abilityPanel.addControl(headlineRect);
@@ -161,11 +160,13 @@ export class HotBar {
         var abilityNumber = new Rectangle("abilityNumber" + digit + "_cooldown");
         abilityNumber.top = "0px";
         abilityNumber.left = "0px";
-        abilityNumber.width = "15px";
-        abilityNumber.height = "15px;";
+        abilityNumber.width = "18px";
+        abilityNumber.height = "18px";
         abilityNumber.thickness = 0;
         abilityNumber.isVisible = true;
-        abilityNumber.background = "rgba(0,0,0,.7)";
+        abilityNumber.background = "rgba(5,12,8,.9)";
+        abilityNumber.color = "#d9aa43";
+        abilityNumber.thickness = 1;
         abilityNumber.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         abilityNumber.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         headlineRect.addControl(abilityNumber);
@@ -173,7 +174,7 @@ export class HotBar {
         var roomTxt = new TextBlock("ability_text_" + digit);
         roomTxt.text = "" + digit;
         roomTxt.fontSize = "12px";
-        roomTxt.color = "#FFF";
+        roomTxt.color = "#f2d37a";
         roomTxt.fontWeight = "bold";
         roomTxt.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         roomTxt.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;

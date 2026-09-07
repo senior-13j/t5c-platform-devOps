@@ -1,7 +1,13 @@
 import { Leveling } from "../../../shared/Class/Leveling";
 import { Quest, QuestObjective, QuestStatus, QuestUpdate, ServerMsg } from "../../../shared/types";
+import Logger from "../../utils/Logger";
 import { BrainSchema, LootSchema, PlayerSchema, QuestSchema } from "../schema";
 import { GameRoomState } from "../state/GameRoomState";
+import { calculateSaturatedGoldBalance, isQuestDefinition, isQuestProgressComplete } from "../gameplayRules";
+
+const QUEST_ACTIVE_STATUS = 0;
+const QUEST_COMPLETED_STATUS = 1;
+const MAX_QUEST_PROGRESS = 32767;
 
 export class dynamicCTRL {
     private _state: GameRoomState;
@@ -31,7 +37,19 @@ export class dynamicCTRL {
                     if (element.type == "zone_change" && this._player.isTeleporting === false) {
                         this._player.isTeleporting = true;
 
-                        let client = this._state._gameroom.clients.getById(this._player.sessionId);
+                        const client = this._state._gameroom.clients.getById(this._player.sessionId);
+                        if (!client) {
+                            this._player.isTeleporting = false;
+                            return;
+                        }
+
+                        const previousState = {
+                            location: this._player.location,
+                            x: this._player.x,
+                            y: this._player.y,
+                            z: this._player.z,
+                            rot: this._player.rot,
+                        };
 
                         // update player location in database
                         this._player.location = element.to_map;
@@ -40,12 +58,25 @@ export class dynamicCTRL {
                         this._player.z = element.to_vector.z;
                         this._player.rot = 0;
 
-                        // save player before leaving
-                        const playerState: PlayerSchema = this._state.getEntity(client.sessionId) as PlayerSchema;
-                        playerState.save(this._state._gameroom.database);
-
-                        // inform client he cand now teleport to new zone
-                        client.send(ServerMsg.PLAYER_TELEPORT, element.to_map);
+                        // Persist the destination before the client joins its new
+                        // room: room authentication verifies the saved location.
+                        // Using GameRoom's queue also prevents this transition
+                        // from racing a periodic or disconnect save.
+                        void this._state._gameroom
+                            .persistPlayer(this._player)
+                            .then(() => {
+                                if (this._player.getClient() === client) {
+                                    client.send(ServerMsg.PLAYER_TELEPORT, element.to_map);
+                                }
+                            })
+                            .catch((error) => {
+                                Object.assign(this._player, previousState);
+                                this._player.isTeleporting = false;
+                                Logger.error(
+                                    `[dynamicCTRL] failed to persist zone change to ${element.to_map}.`,
+                                    error
+                                );
+                            });
                     }
                 }
             });
@@ -62,35 +93,51 @@ export class dynamicCTRL {
         //
         if (type === "kill" && target.AI_SPAWN_INFO) {
             this._player.player_data.quests.forEach((element: QuestSchema) => {
-                if (element.type === QuestObjective.KILL_AMOUNT && element.spawn_key === target.AI_SPAWN_INFO.key) {
-                    element.qty++;
+                if (
+                    element.status === QUEST_ACTIVE_STATUS &&
+                    element.type === QuestObjective.KILL_AMOUNT &&
+                    element.spawn_key === target.AI_SPAWN_INFO.key
+                ) {
+                    const quest = this._state.gameData.get("quest", element.key) as Quest;
+                    const maximum = Number.isSafeInteger(quest?.quantity)
+                        ? Math.min(Math.max(quest.quantity, 0), MAX_QUEST_PROGRESS)
+                        : MAX_QUEST_PROGRESS;
+                    element.qty = Math.min(element.qty + 1, maximum);
                 }
             });
         }
     }
 
     isQuestReadyToComplete(quest: Quest) {
-        let pQuest = this._player.player_data.quests[quest.key];
-        if (quest && pQuest) {
-            if (quest.type === QuestObjective.KILL_AMOUNT && pQuest.qty >= quest.quantity && pQuest.status === 0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    questUpdate(data: QuestUpdate) {
-        let quest = this._state.gameData.get("quest", data.key) as Quest;
-
         if (!quest) {
             return false;
         }
+        const playerQuest = this._player.player_data.quests.get(quest.key);
+        return isQuestProgressComplete(quest, playerQuest);
+    }
 
-        if (data.status === QuestStatus.OBJECTIVE_UPDATE) {
+    questUpdate(data: QuestUpdate) {
+        if (!data || typeof data.key !== "string" || !Number.isInteger(data.status)) {
+            return false;
+        }
+
+        const quest = this._state.gameData.get("quest", data.key);
+
+        if (!isQuestDefinition(quest, data.key)) {
+            return false;
         }
 
         if (data.status === QuestStatus.ACCEPTED) {
-            this._player.player_data.quests.set(quest.key, new QuestSchema(quest));
+            const existingQuest = this._player.player_data.quests.get(quest.key);
+            if (existingQuest && (existingQuest.status === QUEST_ACTIVE_STATUS || !quest.isRepeatable)) {
+                return false;
+            }
+
+            this._player.player_data.quests.set(
+                quest.key,
+                new QuestSchema({ ...quest, status: QUEST_ACTIVE_STATUS, qty: 0 })
+            );
+            return true;
         }
 
         if (data.status === QuestStatus.READY_TO_COMPLETE) {
@@ -99,6 +146,9 @@ export class dynamicCTRL {
 
             // find player quest
             let playerQuest = this._player.player_data.quests.get(data.key);
+            if (!playerQuest) {
+                return false;
+            }
 
             // experience
             let experienceReward = quest.rewards.experience ?? 0;
@@ -109,7 +159,10 @@ export class dynamicCTRL {
             // gold
             let goldReward = quest.rewards.gold ?? 0;
             if (goldReward) {
-                this._player.player_data.gold += goldReward;
+                const updatedBalance = calculateSaturatedGoldBalance(this._player.player_data.gold, goldReward);
+                if (updatedBalance !== null) {
+                    this._player.player_data.gold = updatedBalance;
+                }
             }
 
             // add items
@@ -121,7 +174,10 @@ export class dynamicCTRL {
             // remove quest as it is completed
             // later on we will save a history, not necessary yet..
             //this._player.player_data.quests.delete(quest.key);
-            playerQuest.status = 1;
+            playerQuest.status = QUEST_COMPLETED_STATUS;
+            return true;
         }
+
+        return false;
     }
 }

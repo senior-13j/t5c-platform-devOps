@@ -117,7 +117,8 @@ export class Panel_Dialog extends Panel {
         if (currentDialog.quests) {
             let q = 1;
             currentDialog.quests.forEach((btn: any) => {
-                let playerQuest = this._currentPlayer.player_data.quests[btn.key] ?? false;
+                const playerQuests = this._currentPlayer.player_data.quests;
+                let playerQuest = playerQuests?.get?.(btn.key) ?? playerQuests?.[btn.key] ?? false;
 
                 if (playerQuest && playerQuest.status === 1) return false;
 
@@ -125,7 +126,7 @@ export class Panel_Dialog extends Panel {
                 let color = playerQuest && playerQuest.status === 1 ? "gray" : "orange";
 
                 const createBtn = Button.CreateSimpleButton("questBtn-" + q, "! " + quest.title);
-                createBtn.left = "0px;";
+                createBtn.left = "0px";
                 createBtn.top = "0px";
                 createBtn.width = 1;
                 createBtn.height = this.getActionHeight();
@@ -143,7 +144,7 @@ export class Panel_Dialog extends Panel {
         // create any trainer buttons
         if (currentDialog.trainer) {
             const createBtn = Button.CreateSimpleButton("gotoVendor", this._game.t("dialog.train"));
-            createBtn.left = "0px;";
+            createBtn.left = "0px";
             createBtn.top = "0px";
             createBtn.width = 1;
             createBtn.height = this.getActionHeight();
@@ -159,7 +160,7 @@ export class Panel_Dialog extends Panel {
         // create any vendor buttons
         if (currentDialog.vendor) {
             const createBtn = Button.CreateSimpleButton("gotoVendor", this._game.t("dialog.vendor"));
-            createBtn.left = "0px;";
+            createBtn.left = "0px";
             createBtn.top = "0px";
             createBtn.width = 1;
             createBtn.height = this.getActionHeight();
@@ -182,7 +183,7 @@ export class Panel_Dialog extends Panel {
                 }
 
                 const createBtn = Button.CreateSimpleButton("characterBtn-" + i, label);
-                createBtn.left = "0px;";
+                createBtn.left = "0px";
                 createBtn.top = "0px";
                 createBtn.width = 1;
                 createBtn.height = this.getActionHeight();
@@ -204,7 +205,7 @@ export class Panel_Dialog extends Panel {
             let buttonName = currentDialog.buttonName ?? this._game.t("common.bye");
 
             const createBtn = Button.CreateSimpleButton("characterBtn", buttonName);
-            createBtn.left = "0px;";
+            createBtn.left = "0px";
             createBtn.top = "0px";
             createBtn.width = 1;
             createBtn.height = this.getActionHeight();
@@ -249,7 +250,7 @@ export class Panel_Dialog extends Panel {
         dialogPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         dialogPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         dialogPanel.top = "0px";
-        dialogPanel.left = "0px;";
+        dialogPanel.left = "0px";
         dialogPanel.width = 1;
         dialogPanel.height = 0.85;
         dialogPanel.thickness = 0;
@@ -263,7 +264,7 @@ export class Panel_Dialog extends Panel {
         chatStackPanel.width = "100%";
         chatStackPanel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         chatStackPanel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-        chatStackPanel.paddingTop = "5px;";
+        chatStackPanel.paddingTop = "5px";
         chatStackPanel.spacing = 5;
         dialogPanel.addControl(chatStackPanel);
         this.dialogStackPanel = chatStackPanel;

@@ -35,7 +35,7 @@
 	}
 
 	handle {
-		respond "T5C game is available at https://{$APP_DOMAIN:arkadii.world}{$APP_BASE_PATH:/game}/" 404
+		respond "Arkadii Quest is available at https://{$APP_DOMAIN:arkadii.world}{$APP_BASE_PATH:/game}/" 404
 	}
 }
 

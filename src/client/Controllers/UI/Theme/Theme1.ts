@@ -25,20 +25,20 @@ const createButton = function (name, text, width, height, icon?: string, size: s
     //textBlock.fontFamily = getFont();
 
     if (size === "md") {
-        textBlock.fontSize = "14px;";
+        textBlock.fontSize = "14px";
     } else if (size === "sm") {
-        textBlock.fontSize = "12px;";
+        textBlock.fontSize = "12px";
     } else if (size === "xs") {
-        textBlock.fontSize = "10px;";
+        textBlock.fontSize = "10px";
     } else {
-        textBlock.fontSize = "14px;";
+        textBlock.fontSize = "14px";
     }
 
     result.addControl(textBlock);
     return result;
 };
 
-const generatePanel = function (panelName: string = "Default Name", width = "300px;", height = "400px", top = "0px", left = "0px") {
+const generatePanel = function (panelName: string = "Default Name", width = "300px", height = "400px", top = "0px", left = "0px") {
     let panel: Rectangle = new Rectangle("panel-" + panelName);
     panel.top = top;
     panel.left = left;
@@ -50,10 +50,10 @@ const generatePanel = function (panelName: string = "Default Name", width = "300
 };
 
 const applyTheme = function (panel) {
-    panel.thickness = 3;
+    panel.thickness = 1;
     panel.cornerRadius = 2;
     panel.background = getBg();
-    panel.color = "rgba(0,0,0,1)";
+    panel.color = "rgba(217,170,67,0.9)";
     panel.fontFamily = getFont();
 };
 
@@ -63,11 +63,11 @@ const applyFont = function (p: Rectangle, size = "12px") {
 };
 
 const getFont = function () {
-    //return "inherit";
+    return "Arial, sans-serif";
 };
 
 const getBg = function () {
-    return "rgba(0,0,0,.8)";
+    return "rgba(7,16,11,.9)";
 };
 
 const getPadding = function (multiplier = 1) {

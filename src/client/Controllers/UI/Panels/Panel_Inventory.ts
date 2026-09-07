@@ -6,6 +6,7 @@ import { Grid } from "@babylonjs/gui/2D/controls/grid";
 import { Item, ServerMsg } from "../../../../shared/types";
 import { Rarity } from "../../../../shared/Class/Rarity";
 import { Panel } from "./Panel";
+import { getRoomCallbacks } from "../../RoomCallbacks";
 
 export class Panel_Inventory extends Panel {
     // inventory tab
@@ -22,18 +23,15 @@ export class Panel_Inventory extends Panel {
         // dynamic events
         let entity = this._currentPlayer.entity;
         if (entity) {
-            entity.player_data.inventory.onAdd((item, sessionId) => {
+            const callbacks = getRoomCallbacks(this._room);
+            callbacks.onAdd(entity.player_data, "inventory", (item) => {
                 this.refresh();
-                // todo: could be a performance issue here?
-                // orion to keep an eye on this one
-                item.onChange((item, sessionId) => {
-                    this.refresh();
-                });
-                item.onRemove((item, sessionId) => {
+                callbacks.onChange(item, () => {
                     this.refresh();
                 });
             });
-            entity.player_data.listen("gold", (currentValue, previousValue) => {
+            callbacks.onRemove(entity.player_data, "inventory", () => this.refresh());
+            callbacks.listen(entity.player_data, "gold", () => {
                 this.updateGold();
             });
         }
@@ -84,7 +82,7 @@ export class Panel_Inventory extends Panel {
         goldTitle.left = "5px";
         goldTitle.fontSize = "14px";
         goldTitle.width = 1;
-        goldTitle.height = "30px;";
+        goldTitle.height = "30px";
         goldTitle.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         goldTitle.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         goldTitle.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
@@ -115,7 +113,7 @@ export class Panel_Inventory extends Panel {
         let grid = new Grid();
         grid.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         grid.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        grid.left = "0px;";
+        grid.left = "0px";
         grid.width = 1;
         grid.heightInPixels = inventorySpaceRows * (size + 10);
         inventoryGrid.addControl(grid);
@@ -220,7 +218,7 @@ export class Panel_Inventory extends Panel {
             itemTxtQty.color = "#FFF";
             itemTxtQty.top = "-2px";
             itemTxtQty.left = "-2px";
-            itemTxtQty.fontSize = "12px;";
+            itemTxtQty.fontSize = "12px";
             itemTxtQty.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             itemTxtQty.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
             itemTxtQty.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;

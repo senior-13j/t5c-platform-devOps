@@ -5,7 +5,8 @@ import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { Rectangle } from "@babylonjs/gui/2D/controls/rectangle";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode";
 
-import { Room } from "colyseus.js";
+import { Room } from "@colyseus/sdk";
+import { getRoomCallbacks } from "../Controllers/RoomCallbacks";
 
 import { PlayerCamera } from "./Player/PlayerCamera";
 import { EntityAnimator } from "./Entity/EntityAnimator";
@@ -95,6 +96,8 @@ export class Entity extends TransformNode {
     public vat;
     public entityData;
     public raceData;
+    public ready: Promise<void>;
+    private _removed = false;
 
     // state
     public debugMaterialActive;
@@ -139,15 +142,29 @@ export class Entity extends TransformNode {
         this.debugMaterialNeutral = this._scene.getMaterialByName("debug_entity_neutral");
 
         // spawn player
-        this._game._vatController.prepareMesh(entity);
+        // Spawn only after the shared vertex-animation mesh is actually ready;
+        // the former fixed delay raced on slower devices.
+        this.ready = this.prepareAndSpawn(entity);
+    }
 
-        // wait for vat to be ready
-        setTimeout(() => {
-            this.spawn(entity);
-        }, 250);
+    public get isRemoved(): boolean {
+        return this._removed;
+    }
+
+    private async prepareAndSpawn(entity): Promise<void> {
+        await this._game._vatController.prepareMesh(entity);
+        if (this._removed || this._scene.isDisposed) {
+            return;
+        }
+
+        await this.spawn(entity);
     }
 
     public async spawn(entity) {
+        if (this._removed || this._scene.isDisposed) {
+            return;
+        }
+
         // set default vat animation
         this.entityData = this._game._vatController.entityData.get(this.vat.key);
 
@@ -158,6 +175,13 @@ export class Entity extends TransformNode {
         this.debugMesh = this.meshController.debugMesh;
         this.selectedMesh = this.meshController.selectedMesh;
         this.playerSkeleton = this.meshController.skeleton;
+
+        // `EntityMesh.load()` is async. The server may remove this entity while
+        // it is yielding, so do not install controllers or listeners afterward.
+        if (this._removed || this._scene.isDisposed) {
+            this.meshController.deleteMeshes();
+            return;
+        }
 
         // set initial position & roation
         this.position = new Vector3(entity.x, entity.y, entity.z);
@@ -172,7 +196,11 @@ export class Entity extends TransformNode {
         ///////////////////////////////////////////////////////////
         // entity network event
         // colyseus automatically sends entity updates, so let's listen to those changes
-        this.entity.onChange(() => {
+        getRoomCallbacks(this._room).onChange(this.entity, () => {
+            if (this._removed || !this.mesh || this.mesh.isDisposed()) {
+                return;
+            }
+
             // make sure players are always visible
             this.mesh.isVisible = true;
 
@@ -274,25 +302,29 @@ export class Entity extends TransformNode {
         }
     }
 
-    public remove() {
+    public remove(doNotRecurse = false, disposeMaterialAndTextures = false) {
+        if (this._removed) {
+            return;
+        }
+        this._removed = true;
+
         // delete any ui linked to entity
         //this.characterLabel.dispose();
         //this.characterChatLabel.dispose();
-        if (this.interactableButtons) {
-            this.interactableButtons.dispose();
-        }
+        this.interactableButtons?.dispose();
 
         // remove nameplate
-        this.nameplate.dispose();
+        this.nameplate?.dispose();
 
-        // delete mesh, including equipment
-        this.meshController.deleteMeshes();
-
-        // delete any action manager
-        if (this.meshController.mesh.actionManager) {
-            this.meshController.mesh.actionManager.dispose();
+        // delete any action manager before its mesh is disposed
+        const actionManager = this.meshController?.mesh?.actionManager;
+        if (actionManager) {
+            actionManager.dispose();
             this.meshController.mesh.actionManager = null;
         }
+
+        // delete mesh, including equipment
+        this.meshController?.deleteMeshes();
 
         // if was selected, make sure to unselect it
         if (this._game.selectedEntity && this._game.selectedEntity.sessionId === this.sessionId) {
@@ -300,6 +332,19 @@ export class Entity extends TransformNode {
         }
 
         // remove selected mesh
-        this.meshController.selectedMesh.isVisible = false;
+        if (this.meshController?.selectedMesh && !this.meshController.selectedMesh.isDisposed()) {
+            this.meshController.selectedMesh.isVisible = false;
+        }
+
+        if (!this.isDisposed()) {
+            super.dispose(doNotRecurse, disposeMaterialAndTextures);
+        }
+    }
+
+    public override dispose(doNotRecurse = false, disposeMaterialAndTextures = false): void {
+        // Babylon may dispose a node directly (for example during scene
+        // teardown). Route that through the same cancellation-aware cleanup so
+        // a pending preparation promise cannot attach children afterward.
+        this.remove(doNotRecurse, disposeMaterialAndTextures);
     }
 }
