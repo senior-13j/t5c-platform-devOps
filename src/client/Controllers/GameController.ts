@@ -20,7 +20,6 @@ import {
 } from "../i18n";
 
 const TOKEN_STORAGE_KEY = "arkadii_quest_token";
-const LEGACY_TOKEN_STORAGE_KEY = "t5c_token";
 
 export class GameController {
     // core
@@ -303,7 +302,6 @@ export class GameController {
         if (user?.token) {
             try {
                 localStorage.setItem(TOKEN_STORAGE_KEY, user.token);
-                localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
             } catch {
                 // Authentication still works for the current tab without storage.
             }
@@ -349,13 +347,7 @@ export class GameController {
     private readStoredToken(): string {
         try {
             const current = localStorage.getItem(TOKEN_STORAGE_KEY);
-            const legacy = localStorage.getItem(LEGACY_TOKEN_STORAGE_KEY);
-            const token = current || legacy || "";
-            if (!current && legacy) {
-                localStorage.setItem(TOKEN_STORAGE_KEY, legacy);
-                localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
-            }
-            return token;
+            return current || "";
         } catch {
             return "";
         }
@@ -364,7 +356,6 @@ export class GameController {
     private clearStoredToken(): void {
         try {
             localStorage.removeItem(TOKEN_STORAGE_KEY);
-            localStorage.removeItem(LEGACY_TOKEN_STORAGE_KEY);
         } catch {
             // Nothing else to clear when storage is unavailable.
         }

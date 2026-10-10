@@ -23,10 +23,10 @@ material.
 ## Upstream Software
 
 This repository is a rebranded and modified distribution derived from
-**T5C — The 5th Continent**, originally:
+an earlier upstream distribution, originally:
 
 - Copyright (c) 2023 ORION3DGAME
-- Upstream source: <https://github.com/orion3dgames/t5c>
+- Upstream source: ORION3DGAME's public GitHub distribution
 - License: MIT
 
 The original copyright notice and full MIT terms are preserved in

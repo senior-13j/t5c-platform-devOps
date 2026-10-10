@@ -105,9 +105,7 @@ level and disables scene shadows to reduce GPU cost.
 ## Input Profiles
 
 `PreferencesController` stores the selected locale and control mode after the
-entry dialog. The current storage keys are `arkadii_quest_locale` and
-`arkadii_quest_control_mode`; values from the former `t5c_*` keys are migrated
-once and the legacy keys are removed.
+entry dialog using `arkadii_quest_locale` and `arkadii_quest_control_mode`.
 A coarse pointer or viewport below 700 px recommends touch mode; otherwise
 keyboard/mouse is recommended. The dialog appears on first entry; returning
 players go directly to login and can reopen the choice through the language and
@@ -202,22 +200,26 @@ The Docker profiles use MySQL by default:
 ```env
 APP_DATABASE=mysql
 DATABASE_HOST=mysql
-DATABASE_DB=t5c
-DATABASE_USER=t5c
+DATABASE_DB=arkadii_quest
+DATABASE_USER=arkadii_quest
 DATABASE_PASSWORD=replace-with-a-secret
 ```
 
-The `t5c` database and user values above are temporary legacy identifiers kept
-to preserve existing deployments. Changing them without migrating grants,
-data, environment files, backups, and Compose volumes can make a healthy
-database appear empty. The same compatibility rule applies to current
-`t5c_*` Prometheus series and Compose volume/project names: keep them stable
-until a coordinated migration is available.
+The database, user, Docker network, Prometheus series, and dashboard use the
+Arkadii Quest identifiers. For an existing deployment, migrate data and grants
+as one planned maintenance operation before changing its environment file.
 
-Host development can use the SQLite adapter without MySQL:
+Host development can use the SQLite adapter without MySQL. In Bash:
 
 ```bash
 APP_DATABASE=sqllite npm run server-dev
+```
+
+In PowerShell:
+
+```powershell
+$env:APP_DATABASE = "sqllite"
+npm run server-dev
 ```
 
 `sqllite` is intentionally documented with the spelling used by the existing
@@ -270,19 +272,19 @@ browser reports Do Not Track.
 | --- | --- |
 | `npm test` | Run unit, security, database rollback, and Colyseus protocol tests |
 | `npm run client-dev` | Run the Webpack client with hot reload on port `8080` |
-| `APP_DATABASE=sqllite npm run server-dev` | Run the host server with reload and SQLite on port `3000` |
+| `npm run server-dev` with `APP_DATABASE=sqllite` | Run the host server with reload and SQLite on port `3000`; use the shell-specific form in [Cross-Platform Operations](./CROSS_PLATFORM.md#local-docker-stack) |
 | `npm run client-build` | Build the production client and copy assets/docs |
 | `npm run server-build` | Compile the server and copy server-side public files |
 | `npm run check:localization` | Validate English/Russian catalogs, placeholders, active game data, dialogs, HTML bindings, and literal calls |
 | `npm run check:web-quality` | Validate HTML semantics, JSON-LD, manifest, crawler files, and references |
 | `npm run test:e2e` | Start SQLite/server/client fixtures and run desktop plus touch Chromium projects |
 | `npx tsc --noEmit` | Type-check client and server without writing output |
-| `SMOKE_TOKEN=... SMOKE_CHARACTER_ID=... npm run smoke:ws` | Join the default Colyseus room through local HTTPS/WSS with owned-character credentials |
-| `LOADTEST_TOKEN=... LOADTEST_CHARACTER_ID=... npm run loadtest` | Run the authenticated Colyseus chat-room load test |
+| `npm run smoke:ws -- --token ... --character-id ...` | Join the default Colyseus room through local HTTPS/WSS with owned-character credentials on any supported shell |
+| `npm run loadtest -- --token ... --character-id ...` | Run the authenticated Colyseus chat-room load test on any supported shell |
 | `npm run check:public` | Check DNS and host readiness for `arkadii.world` |
 | `npm audit` | Audit the complete dependency tree |
 | `npm audit --omit=dev` | Audit the production dependency tree only |
-| `scripts/setup-local-domain.sh` | Prepare local HTTPS domains and certificates |
+| Local HTTPS setup | Run the PowerShell or Bash command in [Cross-Platform Operations](./CROSS_PLATFORM.md#local-docker-stack) |
 | `docker compose up -d --build` | Build and run the complete local container stack |
 
 ## Repository Documentation
@@ -296,5 +298,5 @@ dist/client/docs/content/*.md
 The browser shell in `public/docs` fetches that Markdown at runtime. Its
 navigation covers the project overview, localization/controls reference,
 API/security reference, quality audit, local infrastructure runbook, and public
-deployment runbook. Copyright provenance and asset licensing are maintained in
+deployment runbook, and cross-platform operations. Copyright provenance and asset licensing are maintained in
 the root `NOTICE.md` and `THIRD_PARTY_ASSETS.md` files.

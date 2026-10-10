@@ -60,7 +60,7 @@
         </main>
 
         <script>
-            const storedLocale = localStorage.getItem("arkadii_quest_locale") ?? localStorage.getItem("t5c_locale");
+            const storedLocale = localStorage.getItem("arkadii_quest_locale");
             const locale = storedLocale === "ru" ? "ru" : "en";
             document.documentElement.lang = locale;
             document.querySelectorAll("[data-language]").forEach((section) => {

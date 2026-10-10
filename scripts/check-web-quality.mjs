@@ -61,6 +61,7 @@ const requiredDocs = [
     "API_AND_SECURITY.md",
     "GAME_QUALITY_AUDIT.md",
     "INFRASTRUCTURE_AND_DEPLOYMENT.md",
+    "CROSS_PLATFORM.md",
     "PUBLIC_DEPLOYMENT.md",
 ];
 

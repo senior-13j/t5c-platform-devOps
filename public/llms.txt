@@ -15,6 +15,7 @@ Russian.
 - Localization, onboarding, and controls: https://arkadii.world/game/docs/#localization_and_controls
 - API and security reference: https://arkadii.world/game/docs/#api_and_security
 - Game quality audit: https://arkadii.world/game/docs/#game_quality_audit
+- Cross-platform operations: https://arkadii.world/game/docs/#cross_platform
 
 ## Controls and onboarding
 

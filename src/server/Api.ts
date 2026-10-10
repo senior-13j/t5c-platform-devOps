@@ -143,11 +143,39 @@ class Api {
             new FixedWindowRateLimiter(CHARACTER_CREATE_RATE_LIMIT_COUNT, CHARACTER_CREATE_RATE_LIMIT_WINDOW_MS);
         const requestValue = (req, key: string) => req.body?.[key] ?? req.query?.[key];
         const requestIp = (req) => String(req.ip ?? req.socket?.remoteAddress ?? "unknown");
+        const requestMetrics = new Map<
+            string,
+            { method: string; route: string; status: number; count: number; durationSeconds: number }
+        >();
+        const prometheusLabel = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+        const recordRequestMetric = (method: string, route: string, status: number, durationSeconds: number) => {
+            const key = `${method}:${route}:${status}`;
+            const existing = requestMetrics.get(key);
+            if (existing) {
+                existing.count += 1;
+                existing.durationSeconds += durationSeconds;
+                return;
+            }
+            requestMetrics.set(key, { method, route, status, count: 1, durationSeconds });
+        };
         const safeUser = (user) => {
             const result = { ...user };
             delete result.password;
             return result;
         };
+
+        app.use((req, res, next) => {
+            const startedAt = process.hrtime.bigint();
+            res.on("finish", () => {
+                if (req.path === "/metrics") {
+                    return;
+                }
+                const route = String(req.route?.path ?? req.path ?? "unknown");
+                const durationSeconds = Number(process.hrtime.bigint() - startedAt) / 1_000_000_000;
+                recordRequestMetric(req.method, route, res.statusCode, durationSeconds);
+            });
+            next();
+        });
 
         app.get("/health", (req, res) => {
             res.send({
@@ -157,14 +185,37 @@ class Api {
         });
 
         app.get("/metrics", (req, res) => {
+            const memory = process.memoryUsage();
+            const requestMetricLines = Array.from(requestMetrics.values()).flatMap((metric) => {
+                const labels = `method="${prometheusLabel(metric.method)}",route="${prometheusLabel(metric.route)}",status="${metric.status}"`;
+                return [
+                    `arkadii_quest_http_requests_total{${labels}} ${metric.count}`,
+                    `arkadii_quest_http_request_duration_seconds_sum{${labels}} ${metric.durationSeconds}`,
+                    `arkadii_quest_http_request_duration_seconds_count{${labels}} ${metric.count}`,
+                ];
+            });
             res.type("text/plain").send(
                 [
-                    "# HELP t5c_server_uptime_seconds Server uptime in seconds.",
-                    "# TYPE t5c_server_uptime_seconds gauge",
-                    `t5c_server_uptime_seconds ${process.uptime()}`,
-                    "# HELP t5c_server_memory_rss_bytes Resident set size in bytes.",
-                    "# TYPE t5c_server_memory_rss_bytes gauge",
-                    `t5c_server_memory_rss_bytes ${process.memoryUsage().rss}`,
+                    "# HELP arkadii_quest_server_uptime_seconds Server uptime in seconds.",
+                    "# TYPE arkadii_quest_server_uptime_seconds gauge",
+                    `arkadii_quest_server_uptime_seconds ${process.uptime()}`,
+                    "# HELP arkadii_quest_server_memory_rss_bytes Resident set size in bytes.",
+                    "# TYPE arkadii_quest_server_memory_rss_bytes gauge",
+                    `arkadii_quest_server_memory_rss_bytes ${memory.rss}`,
+                    "# HELP arkadii_quest_server_memory_heap_used_bytes Used V8 heap in bytes.",
+                    "# TYPE arkadii_quest_server_memory_heap_used_bytes gauge",
+                    `arkadii_quest_server_memory_heap_used_bytes ${memory.heapUsed}`,
+                    "# HELP arkadii_quest_server_memory_heap_total_bytes Allocated V8 heap in bytes.",
+                    "# TYPE arkadii_quest_server_memory_heap_total_bytes gauge",
+                    `arkadii_quest_server_memory_heap_total_bytes ${memory.heapTotal}`,
+                    "# HELP arkadii_quest_server_memory_external_bytes External memory in bytes.",
+                    "# TYPE arkadii_quest_server_memory_external_bytes gauge",
+                    `arkadii_quest_server_memory_external_bytes ${memory.external}`,
+                    "# HELP arkadii_quest_http_requests_total Completed HTTP requests.",
+                    "# TYPE arkadii_quest_http_requests_total counter",
+                    "# HELP arkadii_quest_http_request_duration_seconds HTTP request duration in seconds.",
+                    "# TYPE arkadii_quest_http_request_duration_seconds summary",
+                    ...requestMetricLines,
                     "",
                 ].join("\n")
             );

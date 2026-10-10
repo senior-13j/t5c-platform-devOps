@@ -2,7 +2,7 @@
     "name": "arkadii-quest",
     "version": "0.5.0",
     "repository": {
-        "url": "git+https://github.com/senior-13j/t5c-platform-devOps.git"
+        "url": "git+https://github.com/senior-13j/arkadii-quest-RPG.git"
     },
     "homepage": "https://arkadii.world/game/",
     "description": "Arkadii Quest is a bilingual multiplayer 3D browser RPG set in Arkadia.",
@@ -15,13 +15,13 @@
         "server-debug": "ts-node-dev --respawn --inspect --transpile-only src/server/index.ts",
         "server-dev": "ts-node-dev --respawn --inspect --transpile-only src/server/index.ts",
         "server-start": "ts-node --transpile-only src/server/index.ts",
-        "server-build": "node scripts/clean-server-dist.mjs && tsc && cp -r public dist",
-        "smoke:ws": "NODE_OPTIONS=--use-system-ca node scripts/smoke-websocket.js",
-        "check:public": "scripts/check-public-readiness.sh",
+        "server-build": "node scripts/clean-server-dist.mjs && tsc && node scripts/copy-public.mjs",
+        "smoke:ws": "node --use-system-ca scripts/smoke-websocket.js",
+        "check:public": "node scripts/check-public-readiness.mjs",
         "check:localization": "tsx scripts/check-localization.ts",
         "check:web-quality": "node scripts/check-web-quality.mjs",
-        "test:e2e": "env -u DISPLAY playwright test",
-        "loadtest": "NODE_OPTIONS=--use-system-ca npx tsx loadtest/chat.ts --room chat_room --numClients 10 --endpoint wss://arkadii.game.local"
+        "test:e2e": "playwright test",
+        "loadtest": "node scripts/run-loadtest.mjs"
     },
     "author": "Arkadii",
     "license": "MIT",

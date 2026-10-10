@@ -20,10 +20,6 @@ Stored values skip the dialog on later visits. A language-and-controls link on
 the login panel clears the choice and opens the setup again after reload. If
 local storage is unavailable, the session still works with detected defaults.
 
-The former `t5c_locale` and `t5c_control_mode` values are read once so existing
-players keep their preferences through the rebrand, copied to the current keys,
-and then removed.
-
 The setup surface is a native HTML `role="dialog"` with `aria-modal`, a visible
 heading and description, native radio inputs, keyboard focus styling, localized
 labels, and a touch-sized submit action. Changing language updates the document
@@ -183,11 +179,14 @@ Then run both desktop and touch projects:
 npm run test:e2e
 ```
 
-To use a system browser explicitly:
+To use a Linux system browser explicitly:
 
 ```bash
 PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
 ```
+
+On Windows, run `npx playwright install chromium` once and then use `npm run
+test:e2e`; no Unix environment-variable syntax is required.
 
 The desktop project verifies persisted English/keyboard preferences, entry
 semantics, real WASD displacement, hotbar and menu hotkeys, interaction,

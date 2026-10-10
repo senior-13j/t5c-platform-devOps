@@ -18,6 +18,7 @@ public `80`/`443` bindings.
 | DNS for `arkadii.world` points to the deployment host | Let's Encrypt and browsers must reach the correct machine |
 | TCP ports `80` and `443` are reachable from the internet | Caddy needs them for HTTP redirects, ACME challenges, and HTTPS traffic |
 | `.env.public` exists with strong secrets | Public MySQL and Grafana passwords must not use defaults |
+| GitHub `production` environment contains deploy secrets | CI can deploy after a successful `main` verification run |
 | Local stack is stopped if it owns port `443` | The public Caddy profile needs the host HTTPS port |
 | Host firewall allows only the intended public ports | MySQL, Prometheus, Grafana, and the Node.js port should stay private |
 | Database backup is verified | Existing plaintext credentials migrate to `scrypt` after successful login |
@@ -46,17 +47,19 @@ server:3000
   +-- grafana:3001     internal dashboard service
 ```
 
-Only Caddy publishes host ports:
+Only Caddy publishes internet-facing host ports:
 
 ```text
 0.0.0.0:80  -> caddy:80
 0.0.0.0:443 -> caddy:443
 ```
 
-The game server port, MySQL, Prometheus, and Grafana remain private inside the
-Docker network. The game client, API, docs, and WebSocket endpoint are routed
-through `/game/`. Crawler and answer-engine discovery files are routed at the
-domain root because crawlers conventionally request them there.
+The game server port and MySQL remain private inside the Docker network.
+Prometheus and Grafana are bound only to `127.0.0.1` on the server, so they are
+available through SSH tunnels without being exposed on the public internet. The
+game client, API, docs, and WebSocket endpoint are routed through `/game/`.
+Crawler and answer-engine discovery files are routed at the domain root because
+crawlers conventionally request them there.
 
 ## DNS Requirements
 
@@ -91,7 +94,13 @@ Do not open these ports to the internet:
 
 ## Environment Setup
 
-Create the public environment file:
+Create the public environment file. In PowerShell:
+
+```powershell
+Copy-Item .env.public.example .env.public
+```
+
+In Bash:
 
 ```bash
 cp .env.public.example .env.public
@@ -106,6 +115,8 @@ Replace every `CHANGE_ME` value before starting the stack.
 | `PUBLIC_BIND` | `0.0.0.0` | Host interface for public Caddy bindings |
 | `HTTP_PORT` | `80` | Public HTTP port for redirects and ACME challenges |
 | `HTTPS_PORT` | `443` | Public HTTPS port |
+| `PROMETHEUS_PORT` | `9090` | Loopback-only Prometheus port for SSH tunnels |
+| `GRAFANA_PORT` | `3001` | Loopback-only Grafana port for SSH tunnels |
 | `CLIENT_BASE_PATH` | `/game` | Browser base path baked into the game bundle |
 | `CORS_ALLOWED_ORIGINS` | `https://arkadii.world,https://www.arkadii.world` | Exact browser origins allowed for HTTP CORS and WebSocket upgrades |
 | `DATABASE_PASSWORD` | required | MySQL application password |
@@ -126,9 +137,14 @@ npm run check:public
 
 Or specify another environment file:
 
-```bash
-scripts/check-public-readiness.sh .env.public
+```text
+npm run check:public -- --env-file .env.public
 ```
+
+The Node.js command above works from PowerShell, cmd.exe, Bash, and CI. Native
+wrappers are also available: `.\scripts\check-public-readiness.ps1 -EnvFile .env.public`
+on Windows and `scripts/check-public-readiness.sh .env.public` on Linux/macOS.
+See [Cross-Platform Operations](./CROSS_PLATFORM.md) for equivalent commands.
 
 The check reports:
 
@@ -138,7 +154,112 @@ The check reports:
 - `A`, `AAAA`, and `www` DNS records;
 - blocking DNS problems before Caddy attempts certificate issuance.
 
-## Start the Public Stack
+## CI/CD: GitHub Actions to OVH
+
+`.github/workflows/ci-cd.yml` replaces the obsolete cloud-deployment workflow. It
+runs for every pull request to `main` and every push to `main`:
+
+1. installs the locked Node.js dependencies and Playwright Chromium;
+2. runs unit/integration, localization, web-quality, type, production-build,
+   browser E2E, production dependency audit, Docker Compose, Caddy, and Docker
+   image checks;
+3. only for a successful `main` run, uploads an immutable source release to
+   OVH, validates its Compose/Caddy configuration, builds the public stack,
+   checks `health`, branded public metrics, and the Prometheus scrape target;
+4. restores the previous release automatically when startup or verification
+   fails.
+
+The verification job runs on both `ubuntu-latest` and `windows-latest`.
+Docker/Caddy image checks run on Linux, where the deployment image is built.
+
+Deployments are serialized: a second production deploy waits for the first one
+instead of interrupting it. Pull-request runs may be cancelled when superseded
+by a newer commit.
+
+### One-time OVH bootstrap
+
+The deployment host must run supported Ubuntu. Connect with an administrator
+account and run this once from a checked-out release:
+
+```bash
+sudo bash scripts/deploy/bootstrap-ovh.sh
+```
+
+From Windows PowerShell, run the same remote bootstrap through OpenSSH:
+
+```powershell
+.\scripts\deploy\bootstrap-ovh.ps1 -Host YOUR_OVH_HOST -IdentityFile "$HOME\.ssh\arkadii-quest-admin" -KnownHostsFile "$HOME\.ssh\known_hosts"
+```
+
+The bootstrap installs Docker Engine plus the Compose plugin from Docker's
+Ubuntu repository, creates the `arkadii` deploy user, prepares
+`/srv/arkadii-quest/{releases,shared}`, and enables UFW rules for SSH, HTTP,
+and HTTPS. It does not open MySQL, Prometheus, Grafana, or the game-server port.
+
+Create a dedicated deploy key locally, add its public half to
+`/home/arkadii/.ssh/authorized_keys` on OVH, and keep the private half only in
+GitHub Secrets:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/arkadii-quest-github-deploy -C arkadii-quest-github-actions
+ssh-copy-id -i ~/.ssh/arkadii-quest-github-deploy.pub arkadii@YOUR_OVH_HOST
+```
+
+From Windows PowerShell, create and install the same key after independently
+verifying the OVH host key:
+
+```powershell
+ssh-keygen -t ed25519 -f "$HOME\.ssh\arkadii-quest-github-deploy" -C arkadii-quest-github-actions
+Get-Content "$HOME\.ssh\arkadii-quest-github-deploy.pub" | ssh arkadii@YOUR_OVH_HOST 'umask 077; mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys; chmod 700 ~/.ssh; chmod 600 ~/.ssh/authorized_keys'
+```
+
+If `ssh-copy-id` is unavailable, append the contents of the `.pub` file to the
+deploy user's `~/.ssh/authorized_keys` with mode `600` and its `.ssh` directory
+with mode `700`.
+
+### GitHub production environment
+
+Create a GitHub Environment named `production` for this repository. Restrict
+its deployment branch to `main`. Do not add required reviewers if a push to
+`main` must deploy unattended. Add these **environment secrets**:
+
+| Secret | Value |
+| --- | --- |
+| `OVH_HOST` | OVH hostname or IPv4 address |
+| `OVH_SSH_USER` | `arkadii`, unless the bootstrap was deliberately customized |
+| `OVH_SSH_PORT` | SSH port, usually `22` |
+| `OVH_SSH_PRIVATE_KEY` | Private content of `~/.ssh/arkadii-quest-github-deploy` |
+| `OVH_SSH_KNOWN_HOSTS` | Verified `known_hosts` line for the OVH host and port |
+| `OVH_PUBLIC_ENV_BASE64` | Base64 representation of the complete, non-placeholder `.env.public` |
+
+Verify the OVH SSH host fingerprint in the OVH control panel or an existing
+trusted session before saving `OVH_SSH_KNOWN_HOSTS`; do not rely on an
+unverified `ssh-keyscan` result. The workflow enables strict host-key checking
+and will fail instead of trusting a changed host key.
+
+From PowerShell, create the environment-file secret without displaying it:
+
+```powershell
+$envBytes = [Text.Encoding]::UTF8.GetBytes((Get-Content .env.public -Raw))
+[Convert]::ToBase64String($envBytes) | gh secret set --env production OVH_PUBLIC_ENV_BASE64
+```
+
+Base64 here is only a transport format. GitHub encrypts the secret at rest; the
+workflow never writes it to the repository or action log. Add the other values
+with `gh secret set --env production SECRET_NAME` or in the GitHub Environment
+Secrets UI. GitHub Actions environments delay access to their secrets until any
+environment protection rules have passed, and the `production` job records the
+deployment URL in the repository history. See GitHub's documentation for
+[environments](https://docs.github.com/en/actions/concepts/workflows-and-actions/deployment-environments),
+[secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets),
+and [deployment concurrency](https://docs.github.com/en/actions/concepts/workflows-and-actions/concurrency).
+
+The first successful push to `main` creates a release under
+`/srv/arkadii-quest/releases/` and atomically updates the `current` symlink.
+Database, Prometheus, Grafana, and Caddy data remain in named Docker volumes,
+outside release directories.
+
+## Start the Public Stack Manually
 
 Stop the local stack if it is using port `443`:
 
@@ -166,6 +287,9 @@ docker run --rm \
   caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
 ```
 
+On Windows, use the PowerShell Docker-volume syntax in
+[Cross-Platform Operations](./CROSS_PLATFORM.md#public-readiness-and-local-validation).
+
 Validate application metadata and production builds before creating the image:
 
 ```bash
@@ -175,14 +299,15 @@ npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+npm run test:e2e
 npm audit
 npm audit --omit=dev
 ```
 
-Install a compatible browser with `npx playwright install chromium` and omit
-the executable-path override when the deployment host does not provide
-`/usr/bin/chromium`.
+Install a compatible browser with `npx playwright install chromium`. The
+build and test commands above also run unchanged from PowerShell, cmd.exe,
+and Bash; only the public server-management commands below must run on the
+Ubuntu host (directly, through SSH, or through GitHub Actions).
 
 Start the public stack:
 
@@ -201,10 +326,7 @@ Run these checks from the deployment host:
 ```bash
 docker compose --env-file .env.public -f docker-compose.public.yml ps
 curl -fsS https://arkadii.world/health
-SMOKE_WS_URL=wss://arkadii.world/game \
-SMOKE_TOKEN='<account-token>' \
-SMOKE_CHARACTER_ID='<owned-character-id>' \
-npm run smoke:ws
+npm run smoke:ws -- --endpoint wss://arkadii.world/game --token <account-token> --character-id <owned-character-id>
 ```
 
 Verify search, answer-engine, manifest, compression, and cache delivery:
@@ -250,22 +372,47 @@ https://arkadii.world/game/
 | Answer-engine summary | Served at `https://arkadii.world/llms.txt` |
 | `www` host | Redirects to `https://arkadii.world` |
 | MySQL | Private Docker service with persistent volume |
-| Prometheus | Internal Docker service |
-| Grafana | Internal Docker service |
+| Prometheus | Loopback-only `127.0.0.1:9090` Docker service, available through SSH tunnel |
+| Grafana | Loopback-only `127.0.0.1:3001` dashboard service, available through SSH tunnel |
 | Metrics endpoint | Exposed at `https://arkadii.world/metrics` by the current Caddy config |
 
 The public MySQL volume is:
 
 ```text
-t5c-platform-public_mysql_data
+arkadii-quest-public_mysql_data
 ```
 
-This volume name, the `t5c` database/user defaults, and the `t5c_*` Prometheus
-series are temporary legacy compatibility identifiers. They are internal and
-do not represent the Arkadii Quest brand. Do not rename them during a routine
-deployment: an uncoordinated change can attach an empty volume, break database
-access, or orphan dashboards. Migrate only with verified backups and a planned
-cutover across Compose, SQL grants, restore procedures, and metrics consumers.
+The public profile uses Arkadii Quest names for its database, application user,
+network, volume, Prometheus job, and dashboard. Take an up-to-date backup and
+test a coordinated cutover before changing those values in a live environment.
+
+## Metrics and Dashboards
+
+The CI/CD post-deploy gate confirms all of the following before it marks the
+deployment successful:
+
+- `https://arkadii.world/health` returns the game health response;
+- `https://arkadii.world/metrics` includes
+  `arkadii_quest_server_uptime_seconds`;
+- the running server contains the required memory, HTTP request-count, and HTTP
+  duration metric families;
+- Prometheus reports `up{job="arkadii-quest-server"} == 1`.
+
+Grafana provisions the **Arkadii Quest Overview** dashboard and its Prometheus
+datasource automatically from `docker/grafana/provisioning`. Access both
+observability services without exposing them publicly:
+
+```bash
+ssh -N \
+  -L 3001:127.0.0.1:3001 \
+  -L 9090:127.0.0.1:9090 \
+  arkadii@YOUR_OVH_HOST
+```
+
+Then open `http://127.0.0.1:3001` for Grafana or
+`http://127.0.0.1:9090/targets` for Prometheus. Sign in to Grafana with
+`GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` from the production
+environment file.
 
 ## Operations
 
@@ -349,7 +496,7 @@ host, network, and proxy load; semantic/discovery checks should remain stable.
 Check DNS and firewall first:
 
 ```bash
-scripts/check-public-readiness.sh .env.public
+npm run check:public -- --env-file .env.public
 docker compose --env-file .env.public -f docker-compose.public.yml logs --tail=100 caddy
 ```
 
@@ -363,6 +510,9 @@ DNS propagation can take time. Compare DNS with the host public IP:
 dig +short arkadii.world A
 curl -fsS https://api.ipify.org
 ```
+
+From Windows, run `Resolve-DnsName arkadii.world` and
+`(Invoke-WebRequest https://api.ipify.org).Content` instead.
 
 ### HTTPS Works but WebSocket Fails
 

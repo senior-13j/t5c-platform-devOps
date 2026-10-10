@@ -5,6 +5,7 @@ const documents = [
     { file: "API_AND_SECURITY.md", title: "API and Security" },
     { file: "GAME_QUALITY_AUDIT.md", title: "Game Quality Audit" },
     { file: "INFRASTRUCTURE_AND_DEPLOYMENT.md", title: "Infrastructure and Deployment" },
+    { file: "CROSS_PLATFORM.md", title: "Cross-Platform Operations" },
     { file: "PUBLIC_DEPLOYMENT.md", title: "Public Deployment" },
 ];
 

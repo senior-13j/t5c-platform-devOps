@@ -15,11 +15,11 @@ APP_DOMAIN="${APP_DOMAIN:-arkadii.game.local}"
 GRAFANA_DOMAIN="${GRAFANA_DOMAIN:-grafana.${APP_DOMAIN}}"
 PROMETHEUS_DOMAIN="${PROMETHEUS_DOMAIN:-prometheus.${APP_DOMAIN}}"
 
-CA_KEY="$CERT_DIR/t5c-local-ca.key"
-CA_CERT="$CERT_DIR/t5c-local-ca.crt"
-SERVER_KEY="$CERT_DIR/t5c-local.key"
-SERVER_CSR="$CERT_DIR/t5c-local.csr"
-SERVER_CERT="$CERT_DIR/t5c-local.crt"
+CA_KEY="$CERT_DIR/arkadii-quest-local-ca.key"
+CA_CERT="$CERT_DIR/arkadii-quest-local-ca.crt"
+SERVER_KEY="$CERT_DIR/arkadii-quest-local.key"
+SERVER_CSR="$CERT_DIR/arkadii-quest-local.csr"
+SERVER_CERT="$CERT_DIR/arkadii-quest-local.crt"
 
 run_root() {
     if [ "$(id -u)" -eq 0 ]; then
@@ -67,10 +67,10 @@ add_host "$GRAFANA_DOMAIN"
 add_host "$PROMETHEUS_DOMAIN"
 
 if command -v update-ca-trust >/dev/null 2>&1; then
-    run_root install -Dm644 "$CA_CERT" /etc/ca-certificates/trust-source/anchors/t5c-local-ca.crt
+    run_root install -Dm644 "$CA_CERT" /etc/ca-certificates/trust-source/anchors/arkadii-quest-local-ca.crt
     run_root update-ca-trust
 elif command -v update-ca-certificates >/dev/null 2>&1; then
-    run_root install -Dm644 "$CA_CERT" /usr/local/share/ca-certificates/t5c-local-ca.crt
+    run_root install -Dm644 "$CA_CERT" /usr/local/share/ca-certificates/arkadii-quest-local-ca.crt
     run_root update-ca-certificates
 else
     echo "CA trust store was not updated: update-ca-trust/update-ca-certificates not found." >&2

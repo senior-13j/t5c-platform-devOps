@@ -32,6 +32,7 @@ COPY --from=build /app/package*.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/database ./database
+COPY --from=build /app/scripts/deploy/verify-observability.mjs ./scripts/deploy/verify-observability.mjs
 
 EXPOSE 3000
 USER node

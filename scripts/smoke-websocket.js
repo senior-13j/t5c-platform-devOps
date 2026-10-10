@@ -2,14 +2,19 @@
 
 const { Client } = require("@colyseus/sdk");
 
-const endpoint = process.env.SMOKE_WS_URL || "wss://arkadii.game.local";
-const roomName = process.env.SMOKE_ROOM || "chat_room";
-const timeoutMs = Number(process.env.SMOKE_TIMEOUT_MS || 10000);
-const token = String(process.env.SMOKE_TOKEN || "").trim();
-const characterId = Number(process.env.SMOKE_CHARACTER_ID);
+function optionValue(name) {
+    const index = process.argv.indexOf(name);
+    return index === -1 ? undefined : process.argv[index + 1];
+}
+
+const endpoint = optionValue("--endpoint") || process.env.SMOKE_WS_URL || "wss://arkadii.game.local";
+const roomName = optionValue("--room") || process.env.SMOKE_ROOM || "chat_room";
+const timeoutMs = Number(optionValue("--timeout-ms") || process.env.SMOKE_TIMEOUT_MS || 10000);
+const token = String(optionValue("--token") || process.env.SMOKE_TOKEN || "").trim();
+const characterId = Number(optionValue("--character-id") || process.env.SMOKE_CHARACTER_ID);
 
 if (!token || !Number.isSafeInteger(characterId) || characterId <= 0) {
-    console.error("SMOKE_TOKEN and a positive integer SMOKE_CHARACTER_ID are required for authenticated rooms.");
+    console.error("Provide --token and a positive --character-id (or SMOKE_TOKEN and SMOKE_CHARACTER_ID).");
     process.exit(2);
 }
 
@@ -28,7 +33,7 @@ function withTimeout(promise, label) {
         client.joinOrCreate(roomName, {
             token,
             character_id: characterId,
-            ...(roomName === "game_room" ? { location: process.env.SMOKE_LOCATION || "lh_town" } : {}),
+            ...(roomName === "game_room" ? { location: optionValue("--location") || process.env.SMOKE_LOCATION || "lh_town" } : {}),
         }),
         `joining ${roomName} at ${endpoint}`
     );

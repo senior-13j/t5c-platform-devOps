@@ -227,8 +227,9 @@ actions are in the root `THIRD_PARTY_ASSETS.md` file.
 
 ## Dependency Review
 
-On 6 September 2026, both `npm audit` and `npm audit --omit=dev` reported zero
-known low, moderate, high, or critical vulnerabilities. The real-time stack was
+The production dependency audit (`npm audit --omit=dev`) is the release gate.
+Review the complete `npm audit` output independently because development-tool
+advisories can change without affecting the production image. The real-time stack was
 migrated from Colyseus 0.15 to pinned compatible 0.18 packages, removing the
 legacy `@colyseus/core`/`nanoid@2.1.11` advisory chain. The browser and load-test
 clients now use `@colyseus/sdk`; server runtime packages are production
@@ -236,7 +237,7 @@ dependencies, and the obsolete `colyseus`/`colyseus.js` packages are absent.
 The migration is covered by an in-process WebSocket test for server-side
 location matching, proxy collection callbacks, and private `StateView` data.
 Run current audits before every deployment because registry advisory data can
-change after this dated result.
+change.
 
 ## Reproduce
 
@@ -247,14 +248,15 @@ npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+npm run test:e2e
 docker compose --env-file .env.public.example -f docker-compose.public.yml config --quiet
 npm audit
 npm audit --omit=dev
 ```
 
-When `/usr/bin/chromium` is not available, run `npx playwright install chromium`
-once and then use `npm run test:e2e` without the executable-path override.
+Run `npx playwright install chromium` once when the host has no compatible
+browser. The listed commands work in PowerShell, cmd.exe, Bash, and CI; a
+Linux-only system-browser override is unnecessary when Playwright manages Chromium.
 After the automated run, manually verify both languages, onboarding/`F1`,
 automatic camera behavior, the new key art/logo/icon set, and the deployed
 social preview at `https://arkadii.world/game/`.

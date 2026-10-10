@@ -112,23 +112,51 @@ risks.
 - Node.js 22, matching [`.nvmrc`](.nvmrc).
 - npm, installed with Node.js.
 - Docker with Docker Compose support for the containerized stack.
-- `openssl` and `sudo` for the local HTTPS domain setup script.
 - Chromium for browser E2E tests; install it with
   `npx playwright install chromium` when no compatible browser is available.
 
-Install dependencies once:
+See [Cross-Platform Operations](docs/CROSS_PLATFORM.md) for the equivalent
+Windows PowerShell and Linux/macOS commands, including OVH administration.
 
-```bash
-npm install
+### Windows setup
+
+Use Docker Desktop with its Linux container engine enabled, Node.js 22, and
+PowerShell 7 or later. Start **Windows Terminal / PowerShell as Administrator**
+once: the local HTTPS setup must edit the hosts file and trust a development
+certificate. No WSL or OpenSSL installation is required.
+
+```powershell
+Copy-Item .env.example .env
+pwsh -ExecutionPolicy Bypass -File .\scripts\setup-local-domain.ps1
+docker compose up -d --build
 ```
 
-## Quick Start with Docker
+For a host-only development server, use PowerShell environment syntax:
+
+```powershell
+$env:APP_DATABASE = "sqllite"; npm run server-dev
+```
+
+In a second PowerShell window, run `npm run client-dev`. Remove the temporary
+variable with `Remove-Item Env:APP_DATABASE` when it is no longer needed.
+
+Install dependencies once (`npm ci` is preferred for the checked-in lockfile):
+
+```text
+npm ci
+```
+
+## Quick Start with Docker (Linux/macOS)
 
 ```bash
 cp .env.example .env
 scripts/setup-local-domain.sh
 docker compose up -d --build
 ```
+
+On Windows, use the preceding [Windows setup](#windows-setup) commands. The
+[cross-platform runbook](docs/CROSS_PLATFORM.md) is the authoritative command
+reference for both operating systems.
 
 | Surface | URL |
 | --- | --- |
@@ -142,11 +170,13 @@ server, MySQL, Prometheus, and Grafana remain private inside the Docker network.
 
 ## Local Development without Docker
 
-Start the server and Webpack client in separate terminals:
+Start the server and Webpack client in separate terminals. In Bash:
 
 ```bash
 APP_DATABASE=sqllite npm run server-dev
 ```
+
+In PowerShell, use `$env:APP_DATABASE = "sqllite"; npm run server-dev`.
 
 ```bash
 npm run client-dev
@@ -177,8 +207,8 @@ port `3000` starts with the production entry flow.
 | `npm audit --omit=dev` | Review production dependencies only |
 | `docker compose config` | Validate the local Compose configuration |
 | `docker compose up -d --build` | Build and run the complete local stack |
-| `SMOKE_TOKEN=... SMOKE_CHARACTER_ID=... npm run smoke:ws` | Authenticated Colyseus join through local HTTPS/WSS |
-| `LOADTEST_TOKEN=... LOADTEST_CHARACTER_ID=... npm run loadtest` | Run the authenticated Colyseus chat load test |
+| `npm run smoke:ws -- --token ... --character-id ...` | Authenticated Colyseus join through local HTTPS/WSS on any shell |
+| `npm run loadtest -- --token ... --character-id ...` | Run the authenticated chat-room load test on any shell |
 | `npm run check:public` | Check DNS and host readiness for the public deployment |
 
 ## Public Deployment
@@ -187,15 +217,21 @@ The public profile serves Arkadii Quest at
 [`https://arkadii.world/game/`](https://arkadii.world/game/) through Caddy with
 automatic Let's Encrypt certificates.
 
-```bash
-cp .env.public.example .env.public
+```text
+Copy-Item .env.public.example .env.public   # PowerShell
+cp .env.public.example .env.public          # Bash
 npm run check:public
 docker compose --env-file .env.public -f docker-compose.public.yml up -d --build
 ```
 
 Replace every `CHANGE_ME` value in `.env.public` before starting the public
-stack. Caddy publishes only ports `80` and `443`; MySQL, Prometheus, and Grafana
-remain private inside Docker.
+stack. Caddy publishes only ports `80` and `443`; MySQL remains private inside
+Docker, while Prometheus and Grafana bind only to server loopback for SSH-tunnel
+access. Pushes to `main` run the GitHub Actions CI/CD pipeline and, after all
+checks pass, deploy to OVH. See [Public Deployment](docs/PUBLIC_DEPLOYMENT.md#cicd-github-actions-to-ovh)
+for the one-time bootstrap, GitHub `production` secrets, automatic rollback,
+and observability access. Windows users can run the readiness check and OVH
+bootstrap over OpenSSH without WSL; see [Cross-Platform Operations](docs/CROSS_PLATFORM.md).
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -204,17 +240,11 @@ remain private inside Docker.
 | `https://arkadii.world/llms.txt` | Concise answer-engine project description |
 | `https://arkadii.world/game/manifest.webmanifest` | Browser app metadata |
 
-## Legacy Compatibility Identifiers
+## Arkadii Quest Identifiers
 
-The public product name is Arkadii Quest, but several internal identifiers still
-use the `t5c` prefix. Database names/users, Docker Compose project and volume
-names, and Prometheus metric names are temporarily kept unchanged so an in-place
-rebrand cannot disconnect existing data or dashboards. Browser preferences and
-tokens now use `arkadii_quest_*`; the former `t5c_*` browser keys are read once
-as migration aliases and then removed. Treat the remaining legacy names as
-implementation details; do not rename them without a coordinated backup, data
-migration, and metrics transition. Exact values are documented in the
-deployment guides.
+Runtime configuration, database credentials, Docker network names, browser
+storage keys, Prometheus series, dashboards, local certificates, and deployment
+profiles use the `arkadii_quest` or `arkadii-quest` identity consistently.
 
 ## Documentation
 
@@ -227,6 +257,7 @@ deployment guides.
 | [Game Quality Audit](docs/GAME_QUALITY_AUDIT.md) | UX, accessibility, assets, performance, and remaining risks |
 | [Infrastructure and Deployment](docs/INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local Docker stack, TLS, observability, and troubleshooting |
 | [Public Deployment](docs/PUBLIC_DEPLOYMENT.md) | DNS, Caddy, secrets, startup, and production checks |
+| [Cross-Platform Operations](docs/CROSS_PLATFORM.md) | Windows PowerShell and Linux/macOS equivalents for local, test, and OVH operations |
 | [Third-Party Assets](THIRD_PARTY_ASSETS.md) | Known asset sources, license obligations, and unresolved provenance |
 
 ## License and Attribution

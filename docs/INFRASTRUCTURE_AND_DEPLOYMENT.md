@@ -82,12 +82,17 @@ three files, preventing routine runtime output from growing without bound.
 
 - Node.js 22 and npm.
 - Docker with Docker Compose support.
-- `openssl` for local certificate generation.
 - Chromium for end-to-end input/layout QA. Install the Playwright-managed build
   with `npx playwright install chromium` when the host has no compatible
   browser.
-- `sudo` access when the setup script needs to update `/etc/hosts` or the trust
-  store.
+- On macOS/Linux: `openssl` and `sudo` access, so the setup script can update
+  `/etc/hosts` and the trust store.
+- On Windows: Docker Desktop using Linux containers, PowerShell 7 or later, and
+  one elevated PowerShell session for the hosts file and trusted Root store.
+
+Use [Cross-Platform Operations](./CROSS_PLATFORM.md) as the command reference:
+it gives equivalent PowerShell and Linux/macOS commands for every local check,
+smoke test, public readiness check, and OVH bootstrap.
 
 ## Environment Setup
 
@@ -108,10 +113,10 @@ Important local defaults:
 | `PROMETHEUS_DOMAIN` | `prometheus.arkadii.game.local` | Prometheus browser domain |
 | `HTTPS_PORT` | `443` | Host HTTPS port bound to nginx on localhost |
 | `DATABASE_HOST` | `mysql` | MySQL hostname inside Docker |
-| `DATABASE_DB` | `t5c` | MySQL database name |
-| `DATABASE_USER` | `t5c` | MySQL application user |
-| `DATABASE_PASSWORD` | `t5c_password` | MySQL application password |
-| `MYSQL_ROOT_PASSWORD` | `t5c_root_password` | MySQL root password |
+| `DATABASE_DB` | `arkadii_quest` | MySQL database name |
+| `DATABASE_USER` | `arkadii_quest` | MySQL application user |
+| `DATABASE_PASSWORD` | `arkadii_quest_password` | MySQL application password |
+| `MYSQL_ROOT_PASSWORD` | `arkadii_quest_root_password` | MySQL root password |
 | `GRAFANA_ADMIN_USER` | `admin` | Grafana admin user |
 | `GRAFANA_ADMIN_PASSWORD` | `admin` | Grafana admin password |
 | `CLIENT_API_URL` | empty | Optional build-time API URL override |
@@ -121,6 +126,52 @@ Important local defaults:
 
 When `CLIENT_API_URL` and `CLIENT_WS_URL` are empty, the production client uses
 the current HTTPS origin and `wss://` host.
+
+## Windows Local Setup
+
+The local Compose stack works natively in Windows with Docker Desktop; WSL and
+OpenSSL are not required. Install Node.js 22, Docker Desktop (Linux containers),
+and [PowerShell 7](https://aka.ms/powershell). Confirm Docker Desktop is running
+before continuing.
+
+Open **Windows Terminal / PowerShell as Administrator** in the repository and
+run:
+
+```powershell
+Copy-Item .env.example .env
+pwsh -ExecutionPolicy Bypass -File .\scripts\setup-local-domain.ps1
+docker compose up -d --build
+```
+
+`setup-local-domain.ps1` is idempotent. It reads the domains from `.env`,
+creates `docker/nginx/certs/` with a local CA and TLS certificate, installs that
+CA in `LocalMachine\Root`, and adds any missing records for the game, Grafana,
+and Prometheus to `%SystemRoot%\System32\drivers\etc\hosts`. The generated
+private keys remain ignored by Git. The Administrator session is needed only
+for the certificate trust store and hosts file; Docker itself does not need to
+run elevated.
+
+Open the game at `https://arkadii.game.local`. On the first run Docker may need
+several minutes to pull its images and build the game image. Verify it with:
+
+```powershell
+docker compose ps
+Invoke-WebRequest https://arkadii.game.local/health | Select-Object -ExpandProperty Content
+```
+
+For host-only development, run the server and client in separate PowerShell
+windows:
+
+```powershell
+$env:APP_DATABASE = "sqllite"; npm run server-dev
+```
+
+```powershell
+npm run client-dev
+```
+
+The spelling `sqllite` is the existing runtime configuration spelling. Clear
+the temporary server setting with `Remove-Item Env:APP_DATABASE` after it exits.
 
 ## Host Development with SQLite
 
@@ -143,7 +194,7 @@ the built client served at `http://localhost:3000` uses the production login
 flow. The connected game presents localized onboarding when appropriate, and
 `F1` reopens its controls guide.
 
-## Local DNS and TLS
+## Local DNS and TLS (Linux/macOS)
 
 Run this once per machine:
 
@@ -169,7 +220,7 @@ docker/nginx/certs/
 That directory is ignored by git because it contains machine-local certificate
 and key material.
 
-## Build and Run
+## Build and Run (macOS/Linux)
 
 Start the local stack:
 
@@ -177,6 +228,8 @@ Start the local stack:
 scripts/setup-local-domain.sh
 docker compose up -d --build
 ```
+
+For Windows, follow [Windows Local Setup](#windows-local-setup).
 
 Open:
 
@@ -204,30 +257,35 @@ npm run check:web-quality
 npx tsc --noEmit
 npm run client-build
 npm run server-build
-PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+npm run test:e2e
 npm audit
 npm audit --omit=dev
 ```
 
 `client-build` currently emits size warnings for the 2.7 MiB entrypoint and
 large world/VAT/audio assets. Those warnings are tracked performance debt, not a
-failed build. After the tested Colyseus 0.18 migration, both the full and
-production npm audits reported zero known vulnerabilities on 6 September 2026.
-Audit data changes over time, so both commands remain part of pre-deployment QA.
+failed build. `npm audit --omit=dev` is the production release gate; review the
+complete `npm audit` output separately because development-tool advisories can
+change. Both commands remain part of pre-deployment QA.
 
 The Playwright configuration starts an isolated SQLite server and Webpack dev
 client when ports `3000` and `8080` are free. It runs one English desktop
 keyboard/mouse project at `1440x900` and one Russian touch project at `412x915`,
 including a short-landscape resize. Omit
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` when using the browser installed by
-Playwright.
+Playwright. The shown commands run in PowerShell and Bash; use
+`npx playwright install chromium` rather than a Linux system-browser path on
+Windows.
 
 The browser checks exercise real WebGL movement, automatic follow-camera
 behavior, onboarding/`F1`, hotkeys, chat, targeting, translated names, touch
 target sizes, and panel/HUD separation. Test artifacts are written to ignored
 `test-results/` and `playwright-report/` directories only when applicable.
 
-After the stack is running, check service state and browser-facing health:
+After the stack is running, check service state and browser-facing health. The
+following uses Bash `curl`; use the PowerShell form in
+[Cross-Platform Operations](./CROSS_PLATFORM.md#public-readiness-and-local-validation)
+on Windows:
 
 ```bash
 docker compose ps
@@ -242,7 +300,9 @@ Verify that Prometheus can scrape the game server:
 docker compose exec -T server node -e "fetch('http://prometheus:9090/api/v1/targets').then(r => r.json()).then(j => console.log(JSON.stringify(j.data.activeTargets.map(t => ({ health: t.health, scrapeUrl: t.scrapeUrl, lastError: t.lastError })), null, 2)))"
 ```
 
-Verify that only the HTTPS proxy is published on the host:
+Verify that only the HTTPS proxy is published on the host. This is the Linux
+form; on Windows use `Get-NetTCPConnection -State Listen` to inspect listener
+ports:
 
 ```bash
 ss -ltnp | rg ':443\\b|:8080\\b|:3000\\b|:3001\\b|:3306\\b|:9090\\b'
@@ -286,12 +346,11 @@ same-origin, and health-check requests remain valid.
 
 ## WebSocket Smoke Test
 
-Run the Colyseus smoke test through the local HTTPS/WSS domain:
+Run the Colyseus smoke test through the local HTTPS/WSS domain. CLI arguments
+avoid shell-specific environment-variable syntax:
 
-```bash
-SMOKE_TOKEN='<account-token>' \
-SMOKE_CHARACTER_ID='<owned-character-id>' \
-npm run smoke:ws
+```text
+npm run smoke:ws -- --token <account-token> --character-id <owned-character-id>
 ```
 
 The default endpoint is `wss://arkadii.game.local` and the default room is
@@ -299,22 +358,15 @@ The default endpoint is `wss://arkadii.game.local` and the default room is
 the same token/character ownership boundary as the browser. Override the
 endpoint when testing another environment:
 
-```bash
-SMOKE_WS_URL=wss://arkadii.world/game \
-SMOKE_TOKEN='<account-token>' \
-SMOKE_CHARACTER_ID='<owned-character-id>' \
-npm run smoke:ws
+```text
+npm run smoke:ws -- --endpoint wss://arkadii.world/game --token <account-token> --character-id <owned-character-id>
 ```
 
 To verify location-filtered game matchmaking, also provide the character's
 persisted location (default `lh_town`):
 
-```bash
-SMOKE_ROOM=game_room \
-SMOKE_LOCATION=lh_town \
-SMOKE_TOKEN='<account-token>' \
-SMOKE_CHARACTER_ID='<owned-character-id>' \
-npm run smoke:ws
+```text
+npm run smoke:ws -- --room game_room --location lh_town --token <account-token> --character-id <owned-character-id>
 ```
 
 ## Load Testing
@@ -322,10 +374,8 @@ npm run smoke:ws
 Run the authenticated interactive Colyseus load test with a token and character
 owned by that account:
 
-```bash
-LOADTEST_TOKEN=<account-token> \
-LOADTEST_CHARACTER_ID=<owned-character-id> \
-npm run loadtest
+```text
+npm run loadtest -- --token <account-token> --character-id <owned-character-id>
 ```
 
 The default load test joins `chat_room` with 10 clients over
@@ -349,29 +399,27 @@ Initial metrics:
 
 | Metric | Meaning |
 | --- | --- |
-| `t5c_server_uptime_seconds` | Server process uptime |
-| `t5c_server_memory_rss_bytes` | Resident memory used by the server process |
+| `arkadii_quest_server_uptime_seconds` | Server process uptime |
+| `arkadii_quest_server_memory_rss_bytes` | Resident memory used by the server process |
+| `arkadii_quest_server_memory_heap_used_bytes` | Used V8 heap |
+| `arkadii_quest_http_requests_total` | Completed HTTP requests, labelled by method, route, and status |
+| `arkadii_quest_http_request_duration_seconds` | HTTP request duration summary |
 
-These `t5c_*` series are legacy compatibility identifiers, not public branding.
-Keep them until dashboards, alert rules, scrapers, and any external consumers
-can migrate together; a transition should dual-publish old and new names before
-the legacy series are retired. Additional game metrics can be added without
-changing the Docker network layout.
+Grafana provisions the **Arkadii Quest Overview** dashboard automatically. It
+shows uptime, RSS/heap memory, request rate, average latency, and response
+statuses from the Arkadii Quest Prometheus datasource.
 
 ## Data Persistence
 
 MySQL data is stored in the named Docker volume:
 
 ```text
-t5c-platform-devops_mysql_data
+arkadii-quest-rpg_mysql_data
 ```
 
-The volume name and the `t5c` database/user defaults are legacy compatibility
-identifiers. Renaming the Compose project, volume, database, or user in place
-does not rebrand existing data; it can instead attach a new empty volume or
-break database grants. Keep the current identifiers until a backed-up,
-explicitly tested migration updates all Compose files, environments, grants,
-dashboards, and restore procedures together.
+The local Compose project stores MySQL data in this named volume. Back up a
+long-lived environment before changing its project name, database name, user,
+or credentials.
 
 Routine restart without deleting database data:
 
@@ -430,7 +478,7 @@ manually before retrying the deployment.
 | Show server logs | `docker compose logs --tail=100 server` |
 | Rebuild only the game image | `docker compose build server` |
 | Validate public profile syntax | `docker compose --env-file .env.public -f docker-compose.public.yml config` |
-| Validate Caddy syntax | `docker run --rm -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile` |
+| Validate Caddy syntax | Use the PowerShell or Bash form in [Cross-Platform Operations](./CROSS_PLATFORM.md#public-readiness-and-local-validation) |
 | Validate web metadata/docs | `npm run check:web-quality` |
 
 ## Public Deployment Link
@@ -458,6 +506,12 @@ scripts/setup-local-domain.sh
 
 Then restart the browser if it cached the old certificate state.
 
+On Windows, rerun the elevated command instead:
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File .\scripts\setup-local-domain.ps1
+```
+
 ### Domain Does Not Resolve
 
 Check local host records:
@@ -467,6 +521,12 @@ getent hosts arkadii.game.local grafana.arkadii.game.local prometheus.arkadii.ga
 ```
 
 Each domain should resolve to `127.0.0.1`.
+
+On Windows, use:
+
+```powershell
+Resolve-DnsName arkadii.game.local
+```
 
 ### Port 443 Is Busy
 

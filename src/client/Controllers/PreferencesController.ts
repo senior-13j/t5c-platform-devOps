@@ -2,8 +2,6 @@ import { ControlMode, Locale, TranslationKey, TranslationParams, t } from "../i1
 
 const LOCALE_STORAGE_KEY = "arkadii_quest_locale";
 const CONTROL_STORAGE_KEY = "arkadii_quest_control_mode";
-const LEGACY_LOCALE_STORAGE_KEY = "t5c_locale";
-const LEGACY_CONTROL_STORAGE_KEY = "t5c_control_mode";
 
 export class PreferencesController {
     public locale: Locale;
@@ -15,7 +13,6 @@ export class PreferencesController {
 
     constructor() {
         this.recommendedControlMode = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 700 ? "touch" : "keyboard";
-        this.migrateLegacyPreferences();
         this.hasPersistedPreferences = this.hasStoredSelection();
         this.locale = this.readLocale();
         this.controlMode = this.readControlMode();
@@ -218,8 +215,6 @@ export class PreferencesController {
             try {
                 localStorage.removeItem(LOCALE_STORAGE_KEY);
                 localStorage.removeItem(CONTROL_STORAGE_KEY);
-                localStorage.removeItem(LEGACY_LOCALE_STORAGE_KEY);
-                localStorage.removeItem(LEGACY_CONTROL_STORAGE_KEY);
             } catch {
                 // Reload still gives the player another chance to choose preferences.
             }
@@ -234,26 +229,6 @@ export class PreferencesController {
             return (locale === "en" || locale === "ru") && (controls === "keyboard" || controls === "touch");
         } catch {
             return false;
-        }
-    }
-
-    private migrateLegacyPreferences(): void {
-        try {
-            const legacyLocale = localStorage.getItem(LEGACY_LOCALE_STORAGE_KEY);
-            const legacyControls = localStorage.getItem(LEGACY_CONTROL_STORAGE_KEY);
-            if (!localStorage.getItem(LOCALE_STORAGE_KEY) && (legacyLocale === "en" || legacyLocale === "ru")) {
-                localStorage.setItem(LOCALE_STORAGE_KEY, legacyLocale);
-            }
-            if (
-                !localStorage.getItem(CONTROL_STORAGE_KEY) &&
-                (legacyControls === "keyboard" || legacyControls === "touch")
-            ) {
-                localStorage.setItem(CONTROL_STORAGE_KEY, legacyControls);
-            }
-            localStorage.removeItem(LEGACY_LOCALE_STORAGE_KEY);
-            localStorage.removeItem(LEGACY_CONTROL_STORAGE_KEY);
-        } catch {
-            // Private browsing can reject storage; defaults still work.
         }
     }
 

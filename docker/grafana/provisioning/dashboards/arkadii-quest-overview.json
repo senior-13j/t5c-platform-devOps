@@ -1,0 +1,60 @@
+{
+  "uid": "arkadii-quest-overview",
+  "title": "Arkadii Quest Overview",
+  "tags": ["arkadii-quest", "operations"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Server uptime",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "arkadii-quest-prometheus" },
+      "targets": [{ "expr": "arkadii_quest_server_uptime_seconds", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "s", "decimals": 0 }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Process memory",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "arkadii-quest-prometheus" },
+      "targets": [
+        { "expr": "arkadii_quest_server_memory_rss_bytes", "legendFormat": "RSS", "refId": "A" },
+        { "expr": "arkadii_quest_server_memory_heap_used_bytes", "legendFormat": "Heap used", "refId": "B" },
+        { "expr": "arkadii_quest_server_memory_heap_total_bytes", "legendFormat": "Heap total", "refId": "C" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 18, "x": 6, "y": 0 }
+    },
+    {
+      "id": 3,
+      "title": "HTTP request rate",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "arkadii-quest-prometheus" },
+      "targets": [{ "expr": "sum(rate(arkadii_quest_http_requests_total[5m]))", "legendFormat": "requests / second", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 }
+    },
+    {
+      "id": 4,
+      "title": "HTTP average latency",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "arkadii-quest-prometheus" },
+      "targets": [{ "expr": "1000 * sum(rate(arkadii_quest_http_request_duration_seconds_sum[5m])) / sum(rate(arkadii_quest_http_request_duration_seconds_count[5m]))", "legendFormat": "milliseconds", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "id": 5,
+      "title": "HTTP responses by status",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "arkadii-quest-prometheus" },
+      "targets": [{ "expr": "sum by (status) (rate(arkadii_quest_http_requests_total[5m]))", "legendFormat": "{{status}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 }
+    }
+  ]
+}

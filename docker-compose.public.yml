@@ -1,4 +1,4 @@
-name: t5c-platform-public
+name: arkadii-quest-public
 
 x-logging: &default-logging
   driver: json-file
@@ -23,7 +23,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     networks:
-      - t5c_internal
+      - arkadii_quest_internal
     restart: unless-stopped
     logging: *default-logging
 
@@ -42,8 +42,8 @@ services:
       APP_DATABASE: mysql
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://arkadii.world,https://www.arkadii.world}
       DATABASE_HOST: mysql
-      DATABASE_DB: ${DATABASE_DB:-t5c}
-      DATABASE_USER: ${DATABASE_USER:-t5c}
+      DATABASE_DB: ${DATABASE_DB:-arkadii_quest}
+      DATABASE_USER: ${DATABASE_USER:-arkadii_quest}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required for public deployment}
     depends_on:
       mysql:
@@ -51,7 +51,7 @@ services:
     expose:
       - "${APP_PORT:-3000}"
     networks:
-      - t5c_internal
+      - arkadii_quest_internal
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:' + (process.env.APP_PORT || 3000) + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 15s
@@ -64,8 +64,8 @@ services:
   mysql:
     image: mysql:8.4
     environment:
-      MYSQL_DATABASE: ${DATABASE_DB:-t5c}
-      MYSQL_USER: ${DATABASE_USER:-t5c}
+      MYSQL_DATABASE: ${DATABASE_DB:-arkadii_quest}
+      MYSQL_USER: ${DATABASE_USER:-arkadii_quest}
       MYSQL_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD is required for public deployment}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required for public deployment}
     volumes:
@@ -73,7 +73,7 @@ services:
     expose:
       - "3306"
     networks:
-      - t5c_internal
+      - arkadii_quest_internal
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
       interval: 10s
@@ -96,10 +96,12 @@ services:
     volumes:
       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
     expose:
       - "9090"
     networks:
-      - t5c_internal
+      - arkadii_quest_internal
     restart: unless-stopped
     logging: *default-logging
 
@@ -115,18 +117,21 @@ services:
       GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: false
       GF_PLUGINS_PREINSTALL_DISABLED: true
       GF_PLUGINS_PREINSTALL_AUTO_UPDATE: false
+      GF_AUTH_ANONYMOUS_ENABLED: false
     volumes:
       - grafana_data:/var/lib/grafana
       - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-3001}:3001"
     expose:
       - "3001"
     networks:
-      - t5c_internal
+      - arkadii_quest_internal
     restart: unless-stopped
     logging: *default-logging
 
 networks:
-  t5c_internal:
+  arkadii_quest_internal:
     driver: bridge
 
 volumes:

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { resolve } from "node:path";
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
 const reuseExistingServer = process.env.CI !== "true";
@@ -53,8 +54,12 @@ export default defineConfig({
     ],
     webServer: [
         {
-            command:
-                "APP_DATABASE=sqllite DATABASE_PATH=/tmp/arkadii-quest-controls-e2e.db NODE_ENV=development npm run server-start",
+            command: "npm run server-start",
+            env: {
+                APP_DATABASE: "sqllite",
+                DATABASE_PATH: resolve("arkadii-quest-controls-e2e.db"),
+                NODE_ENV: "development",
+            },
             url: "http://127.0.0.1:3000/load_game_data",
             timeout: 120_000,
             reuseExistingServer,

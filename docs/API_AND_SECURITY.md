@@ -15,12 +15,18 @@ private inside the Docker network.
   proxies and access logs can retain them.
 - Authentication responses omit the stored password field.
 
-Example login request:
+The following login example uses Bash with the standalone `curl` client:
 
 ```bash
 curl -sS https://arkadii.world/game/login \
   -H 'Content-Type: application/json' \
   --data '{"username":"example-user","password":"replace-this-value"}'
+```
+
+PowerShell equivalent:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "https://arkadii.world/game/login" -ContentType "application/json" -Body '{"username":"example-user","password":"replace-this-value"}'
 ```
 
 ## HTTP Endpoints
@@ -240,10 +246,17 @@ service:
 
 ## Verification
 
-Run the server with the SQLite fallback for host QA:
+Run the server with the SQLite fallback for host QA. In Bash:
 
 ```bash
 APP_DATABASE=sqllite npm run server-dev
+```
+
+In PowerShell:
+
+```powershell
+$env:APP_DATABASE = "sqllite"
+npm run server-dev
 ```
 
 Run source, localization, and browser behavior checks before deployment:
@@ -255,7 +268,7 @@ npm run server-build
 npm run test:e2e
 ```
 
-Then verify representative behavior:
+Then verify representative behavior. The following uses Bash `curl`; on PowerShell use `curl.exe` for the same flags or `Invoke-WebRequest` / `Invoke-RestMethod` as shown in [Cross-Platform Operations](./CROSS_PLATFORM.md#public-readiness-and-local-validation):
 
 ```bash
 curl -i http://127.0.0.1:3000/health
@@ -270,8 +283,7 @@ npm audit --omit=dev
 ```
 
 Expected results include a `400` response for the missing token, compressed
-bundle delivery, no `X-Powered-By` header, and zero known vulnerabilities in
-both npm audit scopes. The 6 September 2026 lockfile audit reported zero low,
-moderate, high, or critical findings for the full and production dependency
-trees. Advisory data changes over time, so both audits remain deployment-time
-checks.
+bundle delivery, and no `X-Powered-By` header. `npm audit --omit=dev` is the
+production release gate; review the full `npm audit` output separately because
+development-tool advisories can change independently. Advisory data changes
+over time, so both audits remain deployment-time checks.

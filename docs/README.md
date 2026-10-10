@@ -14,6 +14,8 @@ public deployment workflow.
 | Integrate with or secure the HTTP API | [API and Security](./API_AND_SECURITY.md) |
 | Review UX, accessibility, SEO, assets, and quality results | [Game Quality Audit](./GAME_QUALITY_AUDIT.md) |
 | Run the complete stack locally | [Infrastructure and Deployment](./INFRASTRUCTURE_AND_DEPLOYMENT.md) |
+| Run the complete stack locally on Windows | [Windows local setup](./INFRASTRUCTURE_AND_DEPLOYMENT.md#windows-local-setup) |
+| Run, test, or administer from either operating system | [Cross-Platform Operations](./CROSS_PLATFORM.md) |
 | Publish the game on `arkadii.world` | [Public Deployment](./PUBLIC_DEPLOYMENT.md) |
 
 ## Runtime Map
@@ -36,6 +38,9 @@ Prometheus, and Grafana remain internal Docker services.
 
 ## Local Quick Start
 
+Use the full [Cross-Platform Operations](./CROSS_PLATFORM.md) guide for
+Windows PowerShell and Linux/macOS. The Linux/macOS path is:
+
 ```bash
 cp .env.example .env
 scripts/setup-local-domain.sh
@@ -48,10 +53,13 @@ Open the game:
 https://arkadii.game.local
 ```
 
+Windows users should use the dedicated [Windows local setup](./INFRASTRUCTURE_AND_DEPLOYMENT.md#windows-local-setup), which configures the hosts records and trusted local certificate without WSL.
+
 ## Public Quick Start
 
-```bash
-cp .env.public.example .env.public
+```text
+Copy-Item .env.public.example .env.public   # PowerShell
+cp .env.public.example .env.public          # Bash
 npm run check:public
 docker compose --env-file .env.public -f docker-compose.public.yml up -d --build
 ```
@@ -76,21 +84,22 @@ Use these commands before committing infrastructure or deployment changes.
 | `npm audit --omit=dev` | Audit production dependencies only |
 | `docker compose config` | Validate local Compose interpolation and service wiring |
 | `docker compose --env-file .env.public -f docker-compose.public.yml config` | Validate the public Compose profile |
-| `SMOKE_TOKEN=... SMOKE_CHARACTER_ID=... npm run smoke:ws` | Verify authenticated Colyseus access through local HTTPS/WSS |
-| `LOADTEST_TOKEN=... LOADTEST_CHARACTER_ID=... npm run loadtest` | Run the authenticated chat-room load test |
+| `npm run smoke:ws -- --token ... --character-id ...` | Verify authenticated Colyseus access through local HTTPS/WSS on any shell |
+| `npm run loadtest -- --token ... --character-id ...` | Run the authenticated chat-room load test on any shell |
 
 ## Readiness Checks
 
 After the stack is running, check the main surfaces:
 
-```bash
-curl -fsS https://arkadii.game.local/health
-curl -fsS https://grafana.arkadii.game.local/api/health
-curl -fsS https://prometheus.arkadii.game.local/-/healthy
-SMOKE_TOKEN='<account-token>' SMOKE_CHARACTER_ID='<owned-character-id>' npm run smoke:ws
+```text
+npm run smoke:ws -- --token <account-token> --character-id <owned-character-id>
 ```
 
-For a public deployment, also verify the discovery surface:
+For HTTP checks, use the PowerShell or Bash form in [Cross-Platform Operations](./CROSS_PLATFORM.md#public-readiness-and-local-validation).
+
+For a public deployment, also verify the discovery surface. Use `curl.exe`
+instead of the PowerShell `curl` alias, or the equivalent `Invoke-WebRequest`
+commands on Windows:
 
 ```bash
 curl -fsS https://arkadii.world/robots.txt
@@ -108,9 +117,8 @@ curl -fsS https://arkadii.world/llms.txt
 | [GAME_QUALITY_AUDIT.md](./GAME_QUALITY_AUDIT.md) | Visual QA, accessibility, SEO/AEO, assets, performance, and dependency findings |
 | [INFRASTRUCTURE_AND_DEPLOYMENT.md](./INFRASTRUCTURE_AND_DEPLOYMENT.md) | Local compose stack, TLS setup, validation, observability, operations, and troubleshooting |
 | [PUBLIC_DEPLOYMENT.md](./PUBLIC_DEPLOYMENT.md) | Public DNS, Caddy, required secrets, startup commands, validation, and troubleshooting |
+| [CROSS_PLATFORM.md](./CROSS_PLATFORM.md) | Windows PowerShell and Linux/macOS command equivalents, including OVH bootstrap |
 
 Repository-level legal and asset records are maintained in the root
-`NOTICE.md` and `THIRD_PARTY_ASSETS.md` files. The visible product brand is
-Arkadii Quest; any remaining `t5c` database, volume, or metric identifier is a
-temporary compatibility detail, not a public name. Former `t5c_*` browser keys
-exist only as one-time migration aliases for the new `arkadii_quest_*` keys.
+`NOTICE.md` and `THIRD_PARTY_ASSETS.md` files. Arkadii Quest uses consistent
+`arkadii_quest` browser, database, metric, and runtime identifiers.

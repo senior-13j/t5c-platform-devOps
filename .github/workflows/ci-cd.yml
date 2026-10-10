@@ -1,0 +1,153 @@
+name: CI and production deploy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arkadii-quest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Verify application and deployment profile
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright Chromium on Windows
+        if: runner.os == 'Windows'
+        run: npx playwright install chromium
+
+      - name: Run unit and integration tests
+        run: npm test
+
+      - name: Validate localization and web metadata
+        run: |
+          npm run check:localization
+          npm run check:web-quality
+
+      - name: Type-check and build production artifacts
+        run: |
+          npx tsc --noEmit
+          npm run client-build
+          npm run server-build
+
+      - name: Run browser end-to-end tests
+        run: npm run test:e2e
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Validate Compose profiles and Caddy
+        if: runner.os == 'Linux'
+        run: |
+          docker compose --env-file .env.example -f docker-compose.yml config -q
+          docker compose --env-file .env.public.example -f docker-compose.public.yml config -q
+          docker run --rm -v "$PWD/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+
+      - name: Build the production image
+        if: runner.os == 'Linux'
+        run: docker build --build-arg CLIENT_BASE_PATH=/game -t arkadii-quest:${{ github.sha }} .
+
+  deploy:
+    name: Deploy to OVH production
+    needs: verify
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://arkadii.world/game/
+    concurrency:
+      group: arkadii-quest-production
+      cancel-in-progress: false
+    env:
+      OVH_HOST: ${{ secrets.OVH_HOST }}
+      OVH_SSH_USER: ${{ secrets.OVH_SSH_USER }}
+      OVH_SSH_PORT: ${{ secrets.OVH_SSH_PORT }}
+      OVH_SSH_PRIVATE_KEY: ${{ secrets.OVH_SSH_PRIVATE_KEY }}
+      OVH_SSH_KNOWN_HOSTS: ${{ secrets.OVH_SSH_KNOWN_HOSTS }}
+      OVH_PUBLIC_ENV_BASE64: ${{ secrets.OVH_PUBLIC_ENV_BASE64 }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Validate deployment secrets
+        shell: bash
+        run: |
+          required=(OVH_HOST OVH_SSH_USER OVH_SSH_PORT OVH_SSH_PRIVATE_KEY OVH_SSH_KNOWN_HOSTS OVH_PUBLIC_ENV_BASE64)
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing production environment secret: $name" >&2
+              exit 1
+            fi
+          done
+          [[ "$OVH_SSH_PORT" =~ ^[0-9]+$ ]] || { echo "OVH_SSH_PORT must be numeric." >&2; exit 1; }
+
+      - name: Configure SSH trust
+        shell: bash
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$OVH_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$OVH_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Upload release and production environment
+        shell: bash
+        env:
+          RELEASE_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          set -Eeuo pipefail
+          ssh_args=(-i "$HOME/.ssh/id_ed25519" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o "UserKnownHostsFile=$HOME/.ssh/known_hosts" -p "$OVH_SSH_PORT")
+          remote="$OVH_SSH_USER@$OVH_HOST"
+          release="/srv/arkadii-quest/releases/$RELEASE_ID"
+
+          ssh "${ssh_args[@]}" "$remote" bash -s -- "$release" <<'REMOTE_BOOTSTRAP'
+          set -Eeuo pipefail
+          release="$1"
+          install -d -m 0750 /srv/arkadii-quest/releases /srv/arkadii-quest/shared
+          test ! -e "$release"
+          install -d -m 0755 "$release"
+          REMOTE_BOOTSTRAP
+          printf '%s' "$OVH_PUBLIC_ENV_BASE64" | base64 --decode | ssh "${ssh_args[@]}" "$remote" "umask 077; cat > /srv/arkadii-quest/shared/.env.public.new; mv -f /srv/arkadii-quest/shared/.env.public.new /srv/arkadii-quest/shared/.env.public"
+          tar --exclude-vcs --exclude=node_modules --exclude=dist --exclude=.env --exclude=.env.public --exclude=playwright-report --exclude=test-results -czf - . | ssh "${ssh_args[@]}" "$remote" tar -xzf - -C "$release"
+          ssh "${ssh_args[@]}" "$remote" bash "$release/scripts/deploy/deploy-public.sh" --root /srv/arkadii-quest --release "$release"
+
+      - name: Publish deployment summary
+        if: success()
+        run: |
+          {
+            echo "## Arkadii Quest production deployment"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Game: https://arkadii.world/game/"
+            echo "- Health: https://arkadii.world/health"
+            echo "- Metrics: https://arkadii.world/metrics"
+            echo "- Grafana and Prometheus: available through an SSH tunnel only"
+          } >> "$GITHUB_STEP_SUMMARY"
